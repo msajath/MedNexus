@@ -93,6 +93,10 @@ export default function BookAppointment() {
   }
 
   const handleBook = async () => {
+    if (doctor && doctor.available === false) {
+      alert('This doctor is currently not available. You cannot book an appointment.')
+      return
+    }
     if (selectedDate === null || !selectedSlot) {
       alert('Please select both date and time')
       return
@@ -188,6 +192,12 @@ export default function BookAppointment() {
                   </div>
                 </div>
 
+                {!doctor?.available && (
+                  <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl">
+                    This doctor is currently not available for booking. You cannot book an appointment at this time.
+                  </div>
+                )}
+
                 <div className="p-6 bg-white rounded-xl shadow-sm border border-slate-200">
                   <h2 className="text-xl font-semibold text-navy mb-4">Select Date</h2>
                   <div className="flex gap-3 overflow-x-auto pb-3 -mx-2 px-2 md:mx-0 md:px-0">
@@ -274,7 +284,7 @@ export default function BookAppointment() {
                   </div>
                   <button 
                     className="w-full mt-4 py-3.5 bg-primary text-white text-base font-semibold rounded-xl hover:bg-primary-dark transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed" 
-                    disabled={selectedDate === null || !selectedSlot} 
+                    disabled={selectedDate === null || !selectedSlot || !doctor?.available} 
                     onClick={handleBook} 
                     id="confirm-booking"
                   >

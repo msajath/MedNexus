@@ -20,6 +20,11 @@ router.post('/', protect, authorize('patient'), async (req, res) => {
       return res.status(404).json({ success: false, message: 'Doctor not found' });
     }
 
+    // Prevent booking when doctor is marked unavailable
+    if (doctor.available === false) {
+      return res.status(400).json({ success: false, message: 'Doctor is currently not available for booking' });
+    }
+
     // Check if slot is already booked
     const existingAppt = await Appointment.findOne({
       doctor: doctorId,
