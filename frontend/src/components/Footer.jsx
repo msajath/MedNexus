@@ -20,7 +20,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="pt-6 text-sm text-center">
-          <p>© 2024 MEDNEXUS. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} MEDNEXUS. All rights reserved.</p>
         </div>
       </div>
     </footer>

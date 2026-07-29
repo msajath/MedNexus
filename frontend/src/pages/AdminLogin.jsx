@@ -126,7 +126,7 @@ export default function AdminLogin() {
         </div>
 
         <p className="text-center text-navy-muted text-xs mt-4">
-          © 2024 MEDNEXUS · Secure Admin Access
+          © {new Date().getFullYear()} MEDNEXUS · Secure Admin Access
         </p>
       </div>
     </div>

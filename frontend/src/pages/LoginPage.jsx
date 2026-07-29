@@ -116,7 +116,7 @@ export default function LoginPage() {
             </button>
           </form>
           <p className="text-center text-sm text-navy-muted mb-8 mt-6">Don't have an account? <Link to="/register" className="text-primary font-semibold hover:underline">Register</Link></p>
-          <p className="text-center text-xs text-outline mb-4">© 2024 MEDNEXUS. Secure, HIPAA compliant platform.</p>
+          <p className="text-center text-xs text-outline mb-4">© {new Date().getFullYear()} MEDNEXUS. Secure, HIPAA compliant platform.</p>
 
           <div className="text-[0.85rem] text-slate-500 bg-slate-50 p-4 rounded-lg border border-slate-200">
             <strong className="text-slate-700">Demo Accounts:</strong><br/>

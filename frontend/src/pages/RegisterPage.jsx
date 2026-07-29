@@ -126,7 +126,7 @@ export default function RegisterPage() {
             <button type="submit" className="w-full py-3.5 bg-primary text-white text-base font-semibold rounded-xl hover:bg-primary-dark transition-colors mb-2 disabled:bg-slate-400 disabled:cursor-not-allowed" id="register-submit" disabled={loading}>{loading ? 'Creating Account...' : 'Create Account'}</button>
           </form>
           <p className="text-center text-sm text-navy-muted mb-8 mt-6">Already have an account? <Link to="/login" className="text-primary font-semibold hover:underline">Sign In</Link></p>
-          <p className="text-center text-xs text-outline mb-4">© 2024 MEDNEXUS. Secure, HIPAA compliant platform.</p>
+          <p className="text-center text-xs text-outline mb-4">© {new Date().getFullYear()} MEDNEXUS. Secure, HIPAA compliant platform.</p>
         </div>
       </div>
     </div>

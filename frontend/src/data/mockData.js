@@ -15,19 +15,25 @@ export const doctors = [
   { id: 14, _id: 'doc14', name: 'Dr. Ryan Martinez', avatar: '/images/doc14.png', specialty: 'Gynecologist', fee: 60, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '3 Years', location: 'London, UK', available: true, languages: ['English'] },
   { id: 15, _id: 'doc15', name: 'Dr. Amelia Hill', avatar: '/images/doc15.png', specialty: 'Dermatologist', fee: 30, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '1 Years', location: 'New York, NY', available: true, languages: ['English'] },
 ]
+// Helper to generate dates relative to today
+const getRelativeDate = (daysOffset) => {
+  const d = new Date()
+  d.setDate(d.getDate() + daysOffset)
+  return d.toISOString().split('T')[0]
+}
 
 export const appointments = [
-  { id: 1, doctor: 'Dr. Sarah Chen', specialty: 'Cardiology', date: '2024-05-20', time: '10:00 AM', status: 'confirmed', type: 'Follow-up', notes: 'Regular check-up for heart condition monitoring.' },
-  { id: 2, doctor: 'Dr. James Wilson', specialty: 'General Practice', date: '2024-05-18', time: '2:30 PM', status: 'confirmed', type: 'Consultation', notes: 'Annual physical examination.' },
-  { id: 3, doctor: 'Dr. Emily Blunt', specialty: 'Pediatrics', date: '2024-05-15', time: '11:00 AM', status: 'cancelled', type: 'Check-up', notes: 'Cancelled due to personal emergency.' },
-  { id: 4, doctor: 'Dr. Robert Chen', specialty: 'Cardiology', date: '2024-05-22', time: '9:00 AM', status: 'pending', type: 'New Consultation', notes: 'First appointment for chest pain evaluation.' },
-  { id: 5, doctor: 'Dr. Sarah Mitchell', specialty: 'Cardiology', date: '2024-05-25', time: '3:00 PM', status: 'confirmed', type: 'Follow-up', notes: 'Post-surgery follow-up visit.' },
+  { id: 1, doctor: 'Dr. Sarah Chen', specialty: 'Cardiology', date: getRelativeDate(0), time: '10:00 AM', status: 'confirmed', type: 'Follow-up', notes: 'Regular check-up for heart condition monitoring.' },
+  { id: 2, doctor: 'Dr. James Wilson', specialty: 'General Practice', date: getRelativeDate(-2), time: '2:30 PM', status: 'confirmed', type: 'Consultation', notes: 'Annual physical examination.' },
+  { id: 3, doctor: 'Dr. Emily Blunt', specialty: 'Pediatrics', date: getRelativeDate(-5), time: '11:00 AM', status: 'cancelled', type: 'Check-up', notes: 'Cancelled due to personal emergency.' },
+  { id: 4, doctor: 'Dr. Robert Chen', specialty: 'Cardiology', date: getRelativeDate(2), time: '9:00 AM', status: 'pending', type: 'New Consultation', notes: 'First appointment for chest pain evaluation.' },
+  { id: 5, doctor: 'Dr. Sarah Mitchell', specialty: 'Cardiology', date: getRelativeDate(5), time: '3:00 PM', status: 'confirmed', type: 'Follow-up', notes: 'Post-surgery follow-up visit.' },
 ]
 
 export const doctorAppointments = [
-  { id: 1, patient: 'Marcus Webb', age: 34, date: '2024-05-20', time: '09:00 AM', status: 'confirmed', type: 'General Check-up', notes: 'Patient reports dull aching in the lumbar region for 3 weeks. No history of injury. Pain radiates slightly to the left hip. Aggravated by prolonged sitting. Patient requests ergonomic assessment and physical therapy referral.' },
-  { id: 2, patient: 'Linda Hartley', age: 58, date: '2024-05-20', time: '10:30 AM', status: 'confirmed', type: 'Cardiology Follow-up', notes: 'Regular follow-up for hypertensive heart disease. Patient has been monitoring blood pressure at home with average readings of 135/85. No shortness of breath or edema. Current medication: Lisinopril 10mg.' },
-  { id: 3, patient: 'Kevin Brooks', age: 27, date: '2024-05-20', time: '02:00 PM', status: 'cancelled', type: 'Allergy Consultation', notes: "Appointment cancelled by patient. Noted as 'personal emergency'. Need to reschedule for the following week. Patient mentioned seasonal allergies earlier this month." },
+  { id: 1, patient: 'Marcus Webb', age: 34, date: getRelativeDate(0), time: '09:00 AM', status: 'confirmed', type: 'General Check-up', notes: 'Patient reports dull aching in the lumbar region for 3 weeks. No history of injury. Pain radiates slightly to the left hip. Aggravated by prolonged sitting. Patient requests ergonomic assessment and physical therapy referral.' },
+  { id: 2, patient: 'Linda Hartley', age: 58, date: getRelativeDate(0), time: '10:30 AM', status: 'confirmed', type: 'Cardiology Follow-up', notes: 'Regular follow-up for hypertensive heart disease. Patient has been monitoring blood pressure at home with average readings of 135/85. No shortness of breath or edema. Current medication: Lisinopril 10mg.' },
+  { id: 3, patient: 'Kevin Brooks', age: 27, date: getRelativeDate(0), time: '02:00 PM', status: 'cancelled', type: 'Allergy Consultation', notes: "Appointment cancelled by patient. Noted as 'personal emergency'. Need to reschedule for the following week. Patient mentioned seasonal allergies earlier this month." },
 ]
 
 export const timeSlots = {

@@ -103,7 +103,7 @@ export default function ForgotPassword() {
           <p className="text-center text-sm text-navy-muted mb-8 mt-6">
             Remember your password? <Link to="/login" className="text-primary font-semibold hover:underline">Sign In</Link>
           </p>
-          <p className="text-center text-xs text-outline mb-4">© 2024 MEDNEXUS. Secure, HIPAA compliant platform.</p>
+          <p className="text-center text-xs text-outline mb-4">© {new Date().getFullYear()} MEDNEXUS. Secure, HIPAA compliant platform.</p>
         </div>
       </div>
     </div>

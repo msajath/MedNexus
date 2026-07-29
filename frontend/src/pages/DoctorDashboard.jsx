@@ -8,8 +8,10 @@ import Footer from '../components/Footer'
 export default function DoctorDashboard() {
   const { user } = useAuth()
   const [appointments, setAppointments] = useState([])
-  const [currentMonth] = useState('May 2024')
-  const days = Array.from({ length: 31 }, (_, i) => i + 1)
+  const now = new Date()
+  const [currentMonth] = useState(now.toLocaleString('default', { month: 'long', year: 'numeric' }))
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
   useEffect(() => {
