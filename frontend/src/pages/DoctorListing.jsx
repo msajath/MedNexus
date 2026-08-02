@@ -17,17 +17,6 @@ export default function DoctorListing() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  useEffect(() => {
-    fetchDoctors()
-  }, [])
-
-  useEffect(() => {
-    const spec = queryParams.get('specialty')
-    if (spec && spec !== specialty) {
-      setSpecialty(spec)
-    }
-  }, [queryParams])
-
   const fetchDoctors = async () => {
     try {
       const response = await fetch('http://localhost:5000/api/doctors')
@@ -44,6 +33,11 @@ export default function DoctorListing() {
     }
   }
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchDoctors()
+  }, [])
+
   const filtered = doctors.filter((d) => {
     // Search string matching
     const searchLower = search.toLowerCase()
@@ -53,10 +47,7 @@ export default function DoctorListing() {
       (d.location && d.location.toLowerCase().includes(searchLower))
 
     // Specialty matching with mapping for variations (e.g. Cardiology -> Cardiologist)
-    let matchesSpec = false;
-    if (specialty === 'All Specialties') {
-      matchesSpec = true;
-    } else {
+    const matchesSpec = specialty === 'All Specialties' ? true : (() => {
       const dSpec = d.specialty.toLowerCase();
       const fSpec = specialty.toLowerCase();
       const map = {
@@ -69,8 +60,8 @@ export default function DoctorListing() {
         'general physician': 'general physician'
       };
       const searchKey = map[fSpec] || fSpec;
-      matchesSpec = dSpec.includes(searchKey);
-    }
+      return dSpec.includes(searchKey);
+    })()
 
     // Location matching
     const matchesLoc = location === 'All Locations' || (d.location && d.location.toLowerCase().includes(location.toLowerCase()))

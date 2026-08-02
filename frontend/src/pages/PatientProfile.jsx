@@ -23,22 +23,23 @@ export default function PatientProfile() {
   const fileInputRef = useRef(null)
 
   useEffect(() => {
-    if (user) {
-      const nameParts = (user.name || '').split(' ')
-      setFormData({
-        firstName: nameParts[0] || '',
-        lastName: nameParts.slice(1).join(' ') || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        dob: user.dob || '',
-        gender: user.gender || 'Other',
-        bloodType: user.bloodType || 'Unknown',
-        address: user.address || ''
-      })
-      // Load existing avatar from user data
-      if (user.avatar) {
-        setProfilePicture(user.avatar)
-      }
+    if (!user) return
+
+    const nameParts = (user.name || '').split(' ')
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFormData({
+      firstName: nameParts[0] || '',
+      lastName: nameParts.slice(1).join(' ') || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      dob: user.dob || '',
+      gender: user.gender || 'Other',
+      bloodType: user.bloodType || 'Unknown',
+      address: user.address || ''
+    })
+    // Load existing avatar from user data
+    if (user.avatar) {
+      setProfilePicture(user.avatar)
     }
   }, [user])
 

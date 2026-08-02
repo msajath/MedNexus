@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import Sidebar from '../components/Sidebar'
 
 export default function Messages() {
-  const { user } = useAuth()
+  useAuth()
   const [messages] = useState([
     {
       id: 1,

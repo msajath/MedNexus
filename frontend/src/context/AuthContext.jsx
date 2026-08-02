@@ -7,16 +7,6 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Check if user is already logged in (token exists)
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      fetchCurrentUser(token)
-    } else {
-      setLoading(false)
-    }
-  }, [])
-
   const fetchCurrentUser = async (token) => {
     try {
       const response = await fetch('http://localhost:5000/api/auth/me', {
@@ -39,6 +29,17 @@ export function AuthProvider({ children }) {
       setLoading(false)
     }
   }
+
+  // Check if user is already logged in (token exists)
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchCurrentUser(token)
+    } else {
+      setLoading(false)
+    }
+  }, [])
 
   const login = async (email, password) => {
     setError(null)

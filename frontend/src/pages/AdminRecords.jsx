@@ -21,8 +21,6 @@ export default function AdminRecords() {
 
   const TYPES = ['All', 'Prescription', 'Lab Report', 'Diagnosis', 'Vaccination', 'Imaging', 'Discharge Summary', 'Other']
 
-  useEffect(() => { fetchRecords() }, [])
-
   const fetchRecords = async () => {
     try {
       const token = localStorage.getItem('token')
@@ -37,6 +35,11 @@ export default function AdminRecords() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchRecords()
+  }, [])
 
   const filtered = records.filter(r => {
     const matchType = typeFilter === 'All' || r.type === typeFilter

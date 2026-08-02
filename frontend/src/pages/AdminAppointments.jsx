@@ -17,8 +17,6 @@ export default function AdminAppointments() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [updating, setUpdating] = useState(null)
 
-  useEffect(() => { fetchAppointments() }, [])
-
   const fetchAppointments = async () => {
     try {
       const token = localStorage.getItem('token')
@@ -33,6 +31,11 @@ export default function AdminAppointments() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchAppointments()
+  }, [])
 
   const updateStatus = async (id, status) => {
     setUpdating(id)

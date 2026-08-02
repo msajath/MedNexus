@@ -32,10 +32,6 @@ export default function BookAppointment() {
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [bookedSlots, setBookedSlots] = useState([])
 
-  useEffect(() => {
-    fetchDoctor()
-  }, [id])
-
   const fetchDoctor = async () => {
     try {
       const response = await fetch(`http://localhost:5000/api/doctors/${id}`)
@@ -50,6 +46,11 @@ export default function BookAppointment() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchDoctor()
+  }, [id])
 
   const today = new Date()
   const days = Array.from({ length: 14 }, (_, i) => {

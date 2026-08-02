@@ -70,38 +70,16 @@ router.get('/', async (req, res) => {
 });
 
 // ──────────────────────────────────────────────
-// @route   GET /api/doctors/:id
-// @desc    Get single doctor profile
+// @route   GET /api/doctors/specialties/list
+// @desc    Get all unique specialties
 // @access  Public
+// NOTE: This route MUST be defined before /:id to avoid
+//       Express matching "specialties" as an id parameter.
 // ──────────────────────────────────────────────
-router.get('/:id', async (req, res) => {
+router.get('/specialties/list', async (req, res) => {
   try {
-    const doctor = await Doctor.findById(req.params.id).populate('user', 'name email avatar');
-
-    if (!doctor) {
-      return res.status(404).json({ success: false, message: 'Doctor not found' });
-    }
-
-    res.json({
-      success: true,
-      doctor: {
-        id: doctor._id,
-        name: doctor.user.name,
-        email: doctor.user.email,
-        specialty: doctor.specialty,
-        fee: doctor.fee,
-        rating: doctor.rating,
-        reviews: doctor.reviews,
-        experience: doctor.experience,
-        location: doctor.location,
-        available: doctor.available,
-        languages: doctor.languages,
-        bio: doctor.bio,
-        education: doctor.education,
-        experienceHistory: doctor.experienceHistory,
-        avatar: doctor.user.avatar,
-      },
-    });
+    const specialties = await Doctor.distinct('specialty');
+    res.json({ success: true, specialties: ['All Specialties', ...specialties] });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -137,14 +115,38 @@ router.put('/profile', protect, authorize('doctor'), async (req, res) => {
 });
 
 // ──────────────────────────────────────────────
-// @route   GET /api/doctors/specialties/list
-// @desc    Get all unique specialties
+// @route   GET /api/doctors/:id
+// @desc    Get single doctor profile
 // @access  Public
 // ──────────────────────────────────────────────
-router.get('/specialties/list', async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const specialties = await Doctor.distinct('specialty');
-    res.json({ success: true, specialties: ['All Specialties', ...specialties] });
+    const doctor = await Doctor.findById(req.params.id).populate('user', 'name email avatar');
+
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    res.json({
+      success: true,
+      doctor: {
+        id: doctor._id,
+        name: doctor.user.name,
+        email: doctor.user.email,
+        specialty: doctor.specialty,
+        fee: doctor.fee,
+        rating: doctor.rating,
+        reviews: doctor.reviews,
+        experience: doctor.experience,
+        location: doctor.location,
+        available: doctor.available,
+        languages: doctor.languages,
+        bio: doctor.bio,
+        education: doctor.education,
+        experienceHistory: doctor.experienceHistory,
+        avatar: doctor.user.avatar,
+      },
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

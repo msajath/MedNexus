@@ -15,8 +15,6 @@ export default function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState('all')
   const [deleting, setDeleting] = useState(null)
 
-  useEffect(() => { fetchUsers() }, [])
-
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token')
@@ -31,6 +29,11 @@ export default function AdminUsers() {
       setLoading(false)
     }
   }
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => {
+    fetchUsers()
+  }, [])
 
   const handleDelete = async (userId, userName) => {
     if (!window.confirm(`Are you sure you want to delete ${userName}? This action cannot be undone.`)) return

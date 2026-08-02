@@ -33,35 +33,36 @@ export default function DoctorProfileSettings() {
   const [pwMessage, setPwMessage] = useState({ type: '', text: '' })
 
   useEffect(() => {
-    if (user) {
-      const nameParts = (user.name || '').split(' ')
-      // Handle "Dr." prefix
-      let fName = nameParts[0] || ''
-      let lName = nameParts.slice(1).join(' ') || ''
-      if (fName === 'Dr.' && nameParts.length > 1) {
-        fName = nameParts[0] + ' ' + nameParts[1];
-        lName = nameParts.slice(2).join(' ') || '';
-      }
+    if (!user) return
 
-      setFormData({
-        firstName: fName,
-        lastName: lName,
-        email: user.email || '',
-        phone: user.phone || '',
-        dob: user.dob || '',
-        gender: user.gender || 'Other',
-        bloodType: user.bloodType || 'Unknown',
-        address: user.address || '',
-        // Doctor specific
-        specialty: user.doctorProfile?.specialty || 'General Practice',
-        fee: user.doctorProfile?.fee || 100,
-        experience: user.doctorProfile?.experience || '1+ Years',
-        location: user.doctorProfile?.location || '',
-        bio: user.doctorProfile?.bio || ''
-      })
-      if (user.avatar) {
-        setProfilePicture(user.avatar)
-      }
+    const nameParts = (user.name || '').split(' ')
+    // Handle "Dr." prefix
+    let fName = nameParts[0] || ''
+    let lName = nameParts.slice(1).join(' ') || ''
+    if (fName === 'Dr.' && nameParts.length > 1) {
+      fName = nameParts[0] + ' ' + nameParts[1]
+      lName = nameParts.slice(2).join(' ') || ''
+    }
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFormData({
+      firstName: fName,
+      lastName: lName,
+      email: user.email || '',
+      phone: user.phone || '',
+      dob: user.dob || '',
+      gender: user.gender || 'Other',
+      bloodType: user.bloodType || 'Unknown',
+      address: user.address || '',
+      // Doctor specific
+      specialty: user.doctorProfile?.specialty || 'General Practice',
+      fee: user.doctorProfile?.fee || 100,
+      experience: user.doctorProfile?.experience || '1+ Years',
+      location: user.doctorProfile?.location || '',
+      bio: user.doctorProfile?.bio || ''
+    })
+    if (user.avatar) {
+      setProfilePicture(user.avatar)
     }
   }, [user])
 
@@ -145,7 +146,7 @@ export default function DoctorProfileSettings() {
       } else {
         setPwMessage({ type: 'error', text: data.message || 'Error updating password.' })
       }
-    } catch (err) {
+    } catch {
       setPwMessage({ type: 'error', text: 'An error occurred.' })
     } finally {
       setPwSaving(false)

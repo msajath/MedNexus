@@ -11,10 +11,6 @@ export default function PatientDashboard() {
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchAppointments()
-  }, [])
-
   const fetchAppointments = async () => {
     try {
       const token = localStorage.getItem('token')
@@ -33,6 +29,11 @@ export default function PatientDashboard() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchAppointments()
+  }, [])
 
   const recentAppts = appointments.slice(0, 3)
 

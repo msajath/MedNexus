@@ -12,10 +12,6 @@ export default function MyAppointments() {
   const tabs = ['all', 'confirmed', 'pending', 'cancelled']
   const navigate = useNavigate()
 
-  useEffect(() => {
-    fetchAppointments()
-  }, [])
-
   const fetchAppointments = async () => {
     try {
       const token = localStorage.getItem('token')
@@ -35,6 +31,11 @@ export default function MyAppointments() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchAppointments()
+  }, [])
 
   const handleCancel = async (apptId) => {
     if (!window.confirm('Are you sure you want to cancel this appointment?')) return

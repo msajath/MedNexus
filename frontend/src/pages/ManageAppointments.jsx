@@ -9,10 +9,6 @@ export default function ManageAppointments() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  useEffect(() => {
-    fetchAppointments()
-  }, [])
-
   const fetchAppointments = async () => {
     try {
       const token = localStorage.getItem('token')
@@ -32,6 +28,11 @@ export default function ManageAppointments() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchAppointments()
+  }, [])
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-surface">

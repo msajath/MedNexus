@@ -4,15 +4,16 @@ import { expect, test, vi, beforeEach } from 'vitest';
 import AdminDashboard from '../pages/AdminDashboard';
 import { AuthProvider } from '../context/AuthContext';
 
-global.fetch = vi.fn();
+const fetchMock = vi.fn();
+global.fetch = fetchMock;
 
 beforeEach(() => {
-  global.fetch.mockReset();
+  fetchMock.mockReset();
 });
 
 test('renders AdminDashboard stats', async () => {
   // Mock the admin stats endpoint
-  global.fetch.mockResolvedValueOnce({
+  fetchMock.mockResolvedValueOnce({
     ok: true,
     json: async () => ({
       success: true,

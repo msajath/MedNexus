@@ -44,7 +44,8 @@ export default function Navbar() {
 
   // Close dropdown on route change
   useEffect(() => {
-    setDropdownOpen(false)
+    const timeoutId = window.setTimeout(() => setDropdownOpen(false), 0)
+    return () => window.clearTimeout(timeoutId)
   }, [location.pathname])
 
   const handleLogout = () => {

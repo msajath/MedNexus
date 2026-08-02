@@ -48,10 +48,6 @@ export default function MedicalRecords() {
   const [message, setMessage] = useState({ type: '', text: '' })
   const [selectedRecord, setSelectedRecord] = useState(null)
 
-  useEffect(() => {
-    fetchRecords()
-  }, [])
-
   const fetchRecords = async () => {
     try {
       const token = localStorage.getItem('token')
@@ -66,6 +62,11 @@ export default function MedicalRecords() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchRecords()
+  }, [])
 
   const handleAddMedication = () => {
     if (!medName.trim()) return
@@ -101,7 +102,7 @@ export default function MedicalRecords() {
       } else {
         setMessage({ type: 'error', text: data.message })
       }
-    } catch (err) {
+    } catch {
       setMessage({ type: 'error', text: 'Error saving record' })
     } finally {
       setIsSaving(false)

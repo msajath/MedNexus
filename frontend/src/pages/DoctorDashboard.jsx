@@ -14,10 +14,6 @@ export default function DoctorDashboard() {
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-  useEffect(() => {
-    fetchTodayAppointments()
-  }, [])
-
   const fetchTodayAppointments = async () => {
     try {
       const token = localStorage.getItem('token')
@@ -35,6 +31,11 @@ export default function DoctorDashboard() {
       console.error('Error fetching appointments:', err)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchTodayAppointments()
+  }, [])
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-surface">

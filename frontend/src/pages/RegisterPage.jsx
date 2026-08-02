@@ -10,6 +10,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [role, setRole] = useState('patient')
+  const [licenseNumber, setLicenseNumber] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
@@ -25,7 +26,8 @@ export default function RegisterPage() {
         `${firstName} ${lastName}`.trim(),
         email,
         password,
-        role
+        role,
+        role === 'doctor' ? { licenseNumber } : {}
       )
 
       if (userData) {
@@ -113,7 +115,7 @@ export default function RegisterPage() {
             {role === 'doctor' && (
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium text-navy" htmlFor="license">Medical License Number</label>
-                <input type="text" id="license" className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" placeholder="e.g. MD123456" required />
+                <input type="text" id="license" className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" placeholder="e.g. MD123456" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} required />
               </div>
             )}
 

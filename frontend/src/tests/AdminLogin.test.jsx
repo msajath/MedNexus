@@ -5,10 +5,11 @@ import AdminLogin from '../pages/AdminLogin';
 import { AuthProvider } from '../context/AuthContext';
 
 // Mock fetch
-global.fetch = vi.fn();
+const fetchMock = vi.fn();
+global.fetch = fetchMock;
 
 beforeEach(() => {
-  global.fetch.mockReset();
+  fetchMock.mockReset();
   localStorage.clear();
 });
 
@@ -41,7 +42,7 @@ test('handles input changes', () => {
 });
 
 test('logs in admin with a single login request', async () => {
-  global.fetch.mockResolvedValue({
+  fetchMock.mockResolvedValue({
     ok: true,
     json: vi.fn().mockResolvedValue({
       token: 'mock-admin-token',
@@ -72,8 +73,8 @@ test('logs in admin with a single login request', async () => {
     expect(localStorage.getItem('token')).toBe('mock-admin-token');
   });
 
-  expect(global.fetch).toHaveBeenCalledTimes(1);
-  expect(global.fetch).toHaveBeenCalledWith(
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock).toHaveBeenCalledWith(
     'http://localhost:5000/api/auth/login',
     expect.objectContaining({
       method: 'POST',

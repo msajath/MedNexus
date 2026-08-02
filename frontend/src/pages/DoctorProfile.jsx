@@ -31,10 +31,6 @@ export default function DoctorProfile() {
   const [bookedSlots, setBookedSlots] = useState([])
   const [slotsLoading, setSlotsLoading] = useState(false)
 
-  useEffect(() => {
-    fetchDoctor()
-  }, [id])
-
   const fetchDoctor = async () => {
     try {
       const response = await fetch(`http://localhost:5000/api/doctors/${id}`)
@@ -56,6 +52,11 @@ export default function DoctorProfile() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchDoctor()
+  }, [id])
 
   const today = new Date()
   const days = Array.from({ length: 7 }, (_, i) => {

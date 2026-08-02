@@ -9,8 +9,6 @@ export default function AdminDoctors() {
   const [selected, setSelected] = useState(null)
   const [showPassword, setShowPassword] = useState({}) // track which doctors have pw visible
 
-  useEffect(() => { fetchDoctors() }, [])
-
   const fetchDoctors = async () => {
     try {
       const token = localStorage.getItem('token')
@@ -25,6 +23,11 @@ export default function AdminDoctors() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchDoctors()
+  }, [])
 
   const handleDelete = async (userId, name) => {
     if (!window.confirm(`Delete Dr. ${name}? This cannot be undone.`)) return

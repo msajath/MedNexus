@@ -8,10 +8,6 @@ export default function SetAvailability() {
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    fetchAvailability()
-  }, [])
-
   const fetchAvailability = async () => {
     try {
       const token = localStorage.getItem('token')
@@ -64,6 +60,11 @@ export default function SetAvailability() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchAvailability()
+  }, [])
 
   const toggleDay = (idx) => {
     const updated = [...schedule]

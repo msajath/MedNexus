@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import StatCard from '../components/StatCard'
-import StatusBadge from '../components/StatusBadge'
 import Footer from '../components/Footer'
 import { specialties } from '../data/mockData'
 
@@ -20,10 +19,6 @@ export default function AdminDashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
   const [createdCredentials, setCreatedCredentials] = useState(null) // Store new doctor credentials
-
-  useEffect(() => {
-    fetchAdminStats()
-  }, [])
 
   const fetchAdminStats = async () => {
     try {
@@ -57,6 +52,10 @@ export default function AdminDashboard() {
     }
   }
 
+  useEffect(() => {
+    fetchAdminStats()
+  }, [])
+
   const handleAddDoctor = async (e) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -82,7 +81,7 @@ export default function AdminDashboard() {
       } else {
         setMessage({ type: 'error', text: data.message || 'Error adding doctor' })
       }
-    } catch (err) {
+    } catch {
       setMessage({ type: 'error', text: 'An error occurred' })
     } finally {
       setIsSubmitting(false)
