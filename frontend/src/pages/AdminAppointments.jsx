@@ -135,7 +135,7 @@ export default function AdminAppointments() {
                     <tr key={appt._id} className="border-b border-surface-container-high hover:bg-surface transition-colors">
                       <td className="p-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-light to-primary text-white flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden">
+                          <div className="w-8 h-8 rounded-full bg-linear-to-br from-primary-light to-primary text-white flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden">
                             {appt.patient?.avatar ? (
                               <img src={appt.patient.avatar} alt="" className="w-full h-full object-cover" />
                             ) : (

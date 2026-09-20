@@ -146,7 +146,7 @@ export default function DoctorProfile() {
       <div className="min-h-screen flex flex-col">
         <Navbar />
         <main className="flex-1">
-          <div className="max-w-[1280px] mx-auto px-6 py-16 text-center">
+          <div className="max-w-7xl mx-auto px-6 py-16 text-center">
             <p>Loading doctor profile...</p>
           </div>
         </main>
@@ -159,7 +159,7 @@ export default function DoctorProfile() {
       <div className="min-h-screen flex flex-col">
         <Navbar />
         <main className="flex-1">
-          <div className="max-w-[1280px] mx-auto px-6 py-16 text-center">
+          <div className="max-w-7xl mx-auto px-6 py-16 text-center">
             <p className="text-red-500">Error: {error || 'Doctor not found'}</p>
             <button onClick={() => navigate('/doctors')} className="mt-4 px-6 py-2.5 bg-primary text-white text-sm font-semibold rounded-full hover:bg-primary-dark transition-colors">
               Back to Doctors
@@ -176,7 +176,7 @@ export default function DoctorProfile() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1 py-8" id="doctor-profile">
-        <div className="max-w-[1000px] mx-auto px-4">
+        <div className="max-w-250 mx-auto px-4">
           {booked ? (
             <div className="text-center py-16 px-8 bg-white rounded-xl shadow-sm border border-slate-200 animate-fade-in-up">
               <span className="material-icons-outlined text-[64px] text-success mb-4">check_circle</span>
@@ -187,7 +187,7 @@ export default function DoctorProfile() {
             <>
               {/* Doctor Header Card */}
               <div className="flex flex-col md:flex-row bg-white rounded-xl overflow-hidden shadow-[0_4px_10px_rgba(0,0,0,0.05)] border border-slate-200 mb-8">
-                <div className="w-full md:w-[280px] h-[300px] md:h-auto bg-[#5a66ff] flex justify-center items-end shrink-0">
+                <div className="w-full md:w-70 h-75 md:h-auto bg-[#5a66ff] flex justify-center items-end shrink-0">
                   <img src={docImage} alt={doctor.name} className="w-full h-full object-cover object-bottom" />
                 </div>
                 <div className="p-6 md:p-10 flex-1">
@@ -219,7 +219,7 @@ export default function DoctorProfile() {
                   {days.map((d, i) => (
                     <button 
                       key={i} 
-                      className={`flex flex-col items-center justify-center min-w-[64px] h-[80px] rounded-full border transition-all ${selectedDate === i ? 'bg-[#5a66ff] border-[#5a66ff] text-white' : 'bg-white border-slate-200 hover:border-[#5a66ff] text-navy'}`} 
+                      className={`flex flex-col items-center justify-center min-w-16 h-20 rounded-full border transition-all ${selectedDate === i ? 'bg-[#5a66ff] border-[#5a66ff] text-white' : 'bg-white border-slate-200 hover:border-[#5a66ff] text-navy'}`}
                       onClick={() => handleDateSelect(i)}
                     >
                       <span className={`text-xs font-semibold mb-1 ${selectedDate === i ? 'text-white' : 'text-slate-500'}`}>{d.toLocaleDateString('en', { weekday: 'short' }).toUpperCase()}</span>

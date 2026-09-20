@@ -70,7 +70,7 @@ export default function DoctorDashboard() {
               {appointments.length > 0 ? (
                 appointments.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-4 p-4 px-5 bg-white rounded-xl shadow-sm border border-outline-variant">
-                    <div className="text-sm font-semibold text-primary min-w-[80px]">{item.time || 'TBD'}</div>
+                    <div className="text-sm font-semibold text-primary min-w-20">{item.time || 'TBD'}</div>
                     <div className="flex-1">
                       <h4 className="text-sm font-semibold text-navy">{item.patient?.name || 'Patient'}</h4>
                       <p className="text-xs text-outline mt-1">{item.type || 'Consultation'}</p>

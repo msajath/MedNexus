@@ -4,9 +4,9 @@ import { assets } from '../assets/assets'
 export default function Footer() {
   return (
     <footer className="bg-surface border-t border-outline-variant text-navy-muted pt-12 pb-6" id="main-footer">
-      <div className="max-w-[1280px] mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row justify-between items-start pb-8 border-b border-outline-variant gap-6 md:gap-0">
-          <div className="max-w-[300px]">
+          <div className="max-w-75">
             <Link to="/" className="flex items-center mb-3">
               <img src={assets.logo} alt="MEDNEXUS Logo" className="w-36" />
             </Link>

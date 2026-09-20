@@ -136,7 +136,7 @@ export default function BookAppointment() {
       <div className="min-h-screen flex flex-col">
         <Navbar />
         <main className="flex-1 py-8 md:py-12">
-          <div className="max-w-[1280px] mx-auto px-6 text-center">
+          <div className="max-w-7xl mx-auto px-6 text-center">
             <p>Loading...</p>
           </div>
         </main>
@@ -149,7 +149,7 @@ export default function BookAppointment() {
       <div className="min-h-screen flex flex-col">
         <Navbar />
         <main className="flex-1 py-8 md:py-12">
-          <div className="max-w-[1280px] mx-auto px-6 text-center">
+          <div className="max-w-7xl mx-auto px-6 text-center">
             <p className="text-red-500">Error: {error || 'Doctor not found'}</p>
             <button onClick={() => navigate('/doctors')} className="mt-4 px-6 py-2.5 bg-primary text-white text-sm font-semibold rounded-full hover:bg-primary-dark transition-colors">
               Back to Doctors
@@ -164,7 +164,7 @@ export default function BookAppointment() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1 py-8 md:py-12" id="book-appointment">
-        <div className="max-w-[1280px] mx-auto px-6">
+        <div className="max-w-7xl mx-auto px-6">
           {booked ? (
             <div className="text-center py-16 px-8 bg-white rounded-xl shadow-sm border border-slate-200 mt-12 animate-fade-in-up">
               <span className="material-icons-outlined text-[64px] text-success mb-4">check_circle</span>
@@ -175,7 +175,7 @@ export default function BookAppointment() {
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
               <div className="flex flex-col gap-6">
                 <div className="flex flex-col lg:flex-row items-start lg:items-center gap-5 p-6 bg-white rounded-xl shadow-sm border border-slate-200">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary-light to-primary text-white flex items-center justify-center font-bold text-2xl shrink-0">
+                  <div className="w-20 h-20 rounded-full bg-linear-to-br from-primary-light to-primary text-white flex items-center justify-center font-bold text-2xl shrink-0">
                     {doctor.name.split(' ').slice(1).map(n => n[0]).join('')}
                   </div>
                   <div className="flex-1">
@@ -205,7 +205,7 @@ export default function BookAppointment() {
                     {days.map((d, i) => (
                       <button 
                         key={i} 
-                        className={`flex flex-col items-center gap-1 p-3 px-4 rounded-xl border-[1.5px] min-w-[72px] transition-all cursor-pointer ${selectedDate === i ? 'bg-primary border-primary text-white' : 'bg-white border-outline-variant text-navy hover:border-primary hover:text-primary'}`} 
+                        className={`flex flex-col items-center gap-1 p-3 px-4 rounded-xl border-[1.5px] min-w-18 transition-all cursor-pointer ${selectedDate === i ? 'bg-primary border-primary text-white' : 'bg-white border-outline-variant text-navy hover:border-primary hover:text-primary'}`}
                         onClick={() => handleDateSelect(i)}
                       >
                         <span className={`text-xs font-medium ${selectedDate === i ? 'text-white' : 'text-navy-muted'}`}>{d.toLocaleDateString('en', { weekday: 'short' })}</span>
@@ -265,7 +265,7 @@ export default function BookAppointment() {
               </div>
 
               <div>
-                <div className="p-6 bg-white rounded-xl shadow-sm border border-slate-200 sticky top-[100px]">
+                <div className="p-6 bg-white rounded-xl shadow-sm border border-slate-200 sticky top-25">
                   <h3 className="text-xl font-semibold text-navy mb-5">Booking Summary</h3>
                   <div className="flex justify-between py-3 border-b border-surface-container-high text-sm">
                     <span className="text-outline">Doctor</span>
