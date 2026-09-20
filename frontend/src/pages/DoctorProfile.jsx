@@ -99,6 +99,11 @@ export default function DoctorProfile() {
     fetchAvailableSlots(index)
   }
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchAvailableSlots(0)
+  }, [id])
+
   const handleBook = async () => {
     if (!isAuthenticated) {
       navigate('/login')

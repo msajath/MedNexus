@@ -5,6 +5,14 @@ const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
+const getLocalDateString = () => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // ──────────────────────────────────────────────
 // @route   GET /api/records/my
 // @desc    Get all medical records for the logged-in patient
@@ -42,7 +50,7 @@ router.post('/', protect, authorize('patient'), async (req, res) => {
       diagnosis: diagnosis || '',
       medications: medications || [],
       attachments: attachments || [],
-      date: date || new Date().toISOString().split('T')[0],
+      date: date || getLocalDateString(),
       addedBy: 'patient',
     });
 
@@ -115,7 +123,7 @@ router.post('/doctor-add', protect, authorize('doctor'), async (req, res) => {
       description: description || '',
       diagnosis: diagnosis || '',
       medications: medications || [],
-      date: date || new Date().toISOString().split('T')[0],
+      date: date || getLocalDateString(),
       addedBy: 'doctor',
     });
 

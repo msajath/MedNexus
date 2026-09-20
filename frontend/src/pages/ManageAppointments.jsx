@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import StatusBadge from '../components/StatusBadge'
 import Footer from '../components/Footer'
+import { formatAppointmentDate } from '../utils/date'
 
 export default function ManageAppointments() {
   const [appointments, setAppointments] = useState([])
@@ -73,7 +74,7 @@ export default function ManageAppointments() {
                     <div className="flex items-center gap-4">
                       <span className="flex items-center gap-1 text-sm text-navy-muted">
                         <span className="material-icons-outlined text-[16px]">calendar_today</span>
-                        {new Date(appt.date)?.toLocaleDateString() || appt.date} at {appt.time || 'N/A'}
+                        {formatAppointmentDate(appt.date)} at {appt.time || 'N/A'}
                       </span>
                       <StatusBadge status={appt.status} />
                     </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import StatusBadge from '../components/StatusBadge'
 import Footer from '../components/Footer'
+import { formatAppointmentDate } from '../utils/date'
 
 export default function MyAppointments() {
   const [appointments, setAppointments] = useState([])
@@ -120,7 +121,7 @@ export default function MyAppointments() {
                         </div>
                       </td>
                       <td className="p-4 px-5 text-sm text-navy border-b border-surface-container-high">{appt.doctor?.specialty || 'N/A'}</td>
-                      <td className="p-4 px-5 text-sm text-navy border-b border-surface-container-high">{new Date(appt.date)?.toLocaleDateString() || appt.date}</td>
+                      <td className="p-4 px-5 text-sm text-navy border-b border-surface-container-high">{formatAppointmentDate(appt.date)}</td>
                       <td className="p-4 px-5 text-sm text-navy border-b border-surface-container-high">{appt.time || 'N/A'}</td>
                       <td className="p-4 px-5 text-sm text-navy border-b border-surface-container-high">{appt.type || 'Consultation'}</td>
                       <td className="p-4 px-5 text-sm text-navy border-b border-surface-container-high"><StatusBadge status={appt.status} /></td>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
+import { getLocalDateString } from '../utils/date'
 
 const RECORD_TYPES = ['All', 'Prescription', 'Lab Report', 'Diagnosis', 'Vaccination', 'Imaging', 'Discharge Summary', 'Other']
 
@@ -27,7 +28,7 @@ const typeIcons = {
 const emptyForm = {
   title: '',
   type: 'Other',
-  date: new Date().toISOString().split('T')[0],
+  date: getLocalDateString(),
   description: '',
   diagnosis: '',
   medications: [],

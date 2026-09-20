@@ -23,14 +23,14 @@ export default function ContactPage() {
             <div className="bg-surface p-8 md:p-12 rounded-2xl animate-fade-in-up">
               <img src={assets.contact_image} alt="Contact Us" className="w-full h-[200px] object-cover rounded-xl mb-8 shadow-sm" />
               <h2 className="text-2xl font-semibold text-navy mb-8">Get in Touch</h2>
-              
+
               <div className="flex gap-6 mb-8">
                 <div className="w-[50px] h-[50px] rounded-full bg-[#eaf0fb] text-primary flex items-center justify-center shrink-0">
                   <span className="material-icons-outlined">location_on</span>
                 </div>
                 <div>
                   <h3 className="text-[1.1rem] font-semibold text-navy mb-1">Office Location</h3>
-                  <p className="text-base text-outline leading-relaxed">123 Health Avenue, Medical District<br/>New York, NY 10001</p>
+                  <p className="text-base text-outline leading-relaxed">123 Health Avenue, Medical District<br />Sri Lanka, SL 10034</p>
                 </div>
               </div>
 
@@ -40,7 +40,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="text-[1.1rem] font-semibold text-navy mb-1">Phone Number</h3>
-                  <p className="text-base text-outline leading-relaxed">+1 (555) 123-4567<br/>Mon-Fri 9am to 6pm</p>
+                  <p className="text-base text-outline leading-relaxed">+94 76 600 2013<br />Mon-Fri 9am to 6pm</p>
                 </div>
               </div>
 
@@ -50,7 +50,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="text-[1.1rem] font-semibold text-navy mb-1">Email Address</h3>
-                  <p className="text-base text-outline leading-relaxed">support@mednexus.com<br/>info@mednexus.com</p>
+                  <p className="text-base text-outline leading-relaxed">support@mednexus.com<br />info@mednexus.com</p>
                 </div>
               </div>
             </div>

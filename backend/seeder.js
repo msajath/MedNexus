@@ -11,6 +11,16 @@ const Availability = require('./models/Availability');
 
 dotenv.config();
 
+const getRelativeDate = (daysOffset) => {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + daysOffset);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // ──────────────────────────────────────────────
 // Seed Data (matches frontend mockData.js)
 // ──────────────────────────────────────────────
@@ -53,7 +63,7 @@ const doctorProfiles = [
       rating: 4.8,
       reviews: Math.floor(Math.random() * 200) + 50,
       experience: '4 Years',
-      location: 'New York, NY',
+      location: 'Colombo, WP',
       available: false,
       languages: ['English'],
       bio: 'Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies. Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.',
@@ -67,7 +77,7 @@ const doctorProfiles = [
       rating: 4.8,
       reviews: Math.floor(Math.random() * 200) + 50,
       experience: '3 Years',
-      location: 'Boston, MA',
+      location: 'Kandy, CP',
       available: true,
       languages: ['English'],
       bio: 'Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies. Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.',
@@ -81,7 +91,7 @@ const doctorProfiles = [
       rating: 4.8,
       reviews: Math.floor(Math.random() * 200) + 50,
       experience: '1 Years',
-      location: 'Miami, FL',
+      location: 'Galle, SP',
       available: true,
       languages: ['English'],
       bio: 'Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies. Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.',
@@ -95,7 +105,7 @@ const doctorProfiles = [
       rating: 4.8,
       reviews: Math.floor(Math.random() * 200) + 50,
       experience: '2 Years',
-      location: 'San Francisco, CA',
+      location: 'Jaffna, NP',
       available: true,
       languages: ['English'],
       bio: 'Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies. Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.',
@@ -109,7 +119,7 @@ const doctorProfiles = [
       rating: 4.8,
       reviews: Math.floor(Math.random() * 200) + 50,
       experience: '4 Years',
-      location: 'Chicago, IL',
+      location: 'Negombo, WP',
       available: false,
       languages: ['English'],
       bio: 'Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies. Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.',
@@ -123,7 +133,7 @@ const doctorProfiles = [
       rating: 4.8,
       reviews: Math.floor(Math.random() * 200) + 50,
       experience: '4 Years',
-      location: 'Houston, TX',
+      location: 'Kurunegala, NWP',
       available: true,
       languages: ['English'],
       bio: 'Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies. Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.',
@@ -137,7 +147,7 @@ const doctorProfiles = [
       rating: 4.8,
       reviews: Math.floor(Math.random() * 200) + 50,
       experience: '4 Years',
-      location: 'London, UK',
+      location: 'Gampaha, WP',
       available: true,
       languages: ['English'],
       bio: 'Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies. Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.',
@@ -151,7 +161,7 @@ const doctorProfiles = [
       rating: 4.8,
       reviews: Math.floor(Math.random() * 200) + 50,
       experience: '3 Years',
-      location: 'New York, NY',
+      location: 'Colombo, WP',
       available: true,
       languages: ['English'],
       bio: 'Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies. Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.',
@@ -165,7 +175,7 @@ const doctorProfiles = [
       rating: 4.8,
       reviews: Math.floor(Math.random() * 200) + 50,
       experience: '1 Years',
-      location: 'Boston, MA',
+      location: 'Kandy, CP',
       available: false,
       languages: ['English'],
       bio: 'Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies. Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.',
@@ -179,7 +189,7 @@ const doctorProfiles = [
       rating: 4.8,
       reviews: Math.floor(Math.random() * 200) + 50,
       experience: '2 Years',
-      location: 'Miami, FL',
+      location: 'Galle, SP',
       available: true,
       languages: ['English'],
       bio: 'Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies. Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.',
@@ -193,7 +203,7 @@ const doctorProfiles = [
       rating: 4.8,
       reviews: Math.floor(Math.random() * 200) + 50,
       experience: '4 Years',
-      location: 'San Francisco, CA',
+      location: 'Jaffna, NP',
       available: true,
       languages: ['English'],
       bio: 'Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies. Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.',
@@ -207,7 +217,7 @@ const doctorProfiles = [
       rating: 4.8,
       reviews: Math.floor(Math.random() * 200) + 50,
       experience: '4 Years',
-      location: 'Chicago, IL',
+      location: 'Negombo, WP',
       available: true,
       languages: ['English'],
       bio: 'Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies. Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.',
@@ -221,7 +231,7 @@ const doctorProfiles = [
       rating: 4.8,
       reviews: Math.floor(Math.random() * 200) + 50,
       experience: '4 Years',
-      location: 'Houston, TX',
+      location: 'Kurunegala, NWP',
       available: false,
       languages: ['English'],
       bio: 'Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies. Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.',
@@ -235,7 +245,7 @@ const doctorProfiles = [
       rating: 4.8,
       reviews: Math.floor(Math.random() * 200) + 50,
       experience: '3 Years',
-      location: 'London, UK',
+      location: 'Gampaha, WP',
       available: true,
       languages: ['English'],
       bio: 'Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies. Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.',
@@ -316,7 +326,7 @@ const seedDB = async () => {
       {
         patient: createdUsers['alex@mednexus.com']._id,
         doctor: createdDoctors['richard.james@mednexus.com']._id,
-        date: '2024-05-20',
+        date: getRelativeDate(0),
         time: '10:00 AM',
         status: 'confirmed',
         type: 'Follow-up',
@@ -325,7 +335,7 @@ const seedDB = async () => {
       {
         patient: createdUsers['alex@mednexus.com']._id,
         doctor: createdDoctors['emily.larson@mednexus.com']._id,
-        date: '2024-05-18',
+        date: getRelativeDate(-2),
         time: '2:30 PM',
         status: 'confirmed',
         type: 'Consultation',
@@ -334,7 +344,7 @@ const seedDB = async () => {
       {
         patient: createdUsers['alex@mednexus.com']._id,
         doctor: createdDoctors['sarah.patel@mednexus.com']._id,
-        date: '2024-05-15',
+        date: getRelativeDate(-5),
         time: '11:00 AM',
         status: 'cancelled',
         type: 'Check-up',
@@ -343,7 +353,7 @@ const seedDB = async () => {
       {
         patient: createdUsers['alex@mednexus.com']._id,
         doctor: createdDoctors['christopher.lee@mednexus.com']._id,
-        date: '2024-05-22',
+        date: getRelativeDate(2),
         time: '9:00 AM',
         status: 'pending',
         type: 'New Consultation',
@@ -352,7 +362,7 @@ const seedDB = async () => {
       {
         patient: createdUsers['alex@mednexus.com']._id,
         doctor: createdDoctors['richard.james@mednexus.com']._id,
-        date: '2024-05-25',
+        date: getRelativeDate(5),
         time: '3:00 PM',
         status: 'confirmed',
         type: 'Follow-up',
@@ -362,7 +372,7 @@ const seedDB = async () => {
       {
         patient: createdUsers['sarah.miller@email.com']._id,
         doctor: createdDoctors['jennifer.garcia@mednexus.com']._id,
-        date: '2024-05-20',
+        date: getRelativeDate(0),
         time: '09:00 AM',
         status: 'confirmed',
         type: 'General Check-up',
@@ -371,7 +381,7 @@ const seedDB = async () => {
       {
         patient: createdUsers['john.davis@email.com']._id,
         doctor: createdDoctors['jennifer.garcia@mednexus.com']._id,
-        date: '2024-05-20',
+        date: getRelativeDate(0),
         time: '10:30 AM',
         status: 'confirmed',
         type: 'Follow-up',
@@ -380,7 +390,7 @@ const seedDB = async () => {
       {
         patient: createdUsers['emily.clark@email.com']._id,
         doctor: createdDoctors['jennifer.garcia@mednexus.com']._id,
-        date: '2024-05-20',
+        date: getRelativeDate(0),
         time: '02:00 PM',
         status: 'cancelled',
         type: 'Consultation',

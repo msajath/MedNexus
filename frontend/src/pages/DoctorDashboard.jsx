@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import Sidebar from '../components/Sidebar'
 import StatCard from '../components/StatCard'
 import Footer from '../components/Footer'
+import { getLocalDateString } from '../utils/date'
 
 export default function DoctorDashboard() {
   const { user } = useAuth()
@@ -13,6 +14,8 @@ export default function DoctorDashboard() {
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getDay()
+  const calendarOffset = (firstDayOfMonth + 6) % 7
 
   const fetchTodayAppointments = async () => {
     try {
@@ -25,7 +28,8 @@ export default function DoctorDashboard() {
       if (response.ok) {
         const data = await response.json()
         const appts = data.appointments || data || []
-        setAppointments(appts.slice(0, 5)) // Show first 5
+        const today = getLocalDateString()
+        setAppointments(appts.filter((appointment) => appointment.date === today).slice(0, 5))
       }
     } catch (err) {
       console.error('Error fetching appointments:', err)
@@ -89,9 +93,9 @@ export default function DoctorDashboard() {
                 {weekDays.map((d) => (<span key={d} className="text-center text-xs font-semibold text-outline p-1">{d}</span>))}
               </div>
               <div className="grid grid-cols-7 gap-1">
-                {[0, 0, 0].map((_, i) => (<span key={`empty-${i}`} className="text-center p-2 text-sm invisible"></span>))}
+                {Array.from({ length: calendarOffset }, (_, i) => (<span key={`empty-${i}`} className="text-center p-2 text-sm invisible"></span>))}
                 {days.map((d) => (
-                  <span key={d} className={`text-center p-2 text-sm rounded-lg cursor-pointer transition-colors relative ${d === 20 ? 'bg-primary text-white font-semibold' : 'text-navy hover:bg-teal-50'} ${[5, 12, 20, 25].includes(d) ? "after:content-[''] after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:rounded-full " + (d === 20 ? "after:bg-white" : "after:bg-primary") : ""}`}>{d}</span>
+                  <span key={d} className={`text-center p-2 text-sm rounded-lg cursor-pointer transition-colors relative ${d === now.getDate() ? 'bg-primary text-white font-semibold' : 'text-navy hover:bg-teal-50'}`}>{d}</span>
                 ))}
               </div>
             </div>

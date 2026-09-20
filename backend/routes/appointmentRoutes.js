@@ -1,9 +1,35 @@
 const express = require('express');
 const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
+const Availability = require('../models/Availability');
 const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
+
+const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const timeToMinutes = (time) => {
+  const match = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return null;
+  let hours = Number(match[1]) % 12;
+  if (match[3].toUpperCase() === 'PM') hours += 12;
+  return hours * 60 + Number(match[2]);
+};
+
+const isWithinSchedule = (date, time, schedule) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  const [year, month, day] = date.split('-').map(Number);
+  const dateValue = new Date(year, month - 1, day);
+  if (dateValue.getFullYear() !== year || dateValue.getMonth() !== month - 1 || dateValue.getDate() !== day) return false;
+
+  const daySchedule = schedule.find((item) => item.day === dayNames[dateValue.getDay()]);
+  const appointmentMinutes = timeToMinutes(time);
+  if (!daySchedule?.enabled || appointmentMinutes === null) return false;
+
+  const [startHours, startMinutes] = daySchedule.start.split(':').map(Number);
+  const [endHours, endMinutes] = daySchedule.end.split(':').map(Number);
+  return appointmentMinutes >= startHours * 60 + startMinutes && appointmentMinutes < endHours * 60 + endMinutes;
+};
 
 // ──────────────────────────────────────────────
 // @route   POST /api/appointments
@@ -23,6 +49,20 @@ router.post('/', protect, authorize('patient'), async (req, res) => {
     // Prevent booking when doctor is marked unavailable
     if (doctor.available === false) {
       return res.status(400).json({ success: false, message: 'Doctor is currently not available for booking' });
+    }
+
+    const availability = await Availability.findOne({ doctor: doctorId });
+    const defaultSchedule = [
+      { day: 'Monday', enabled: true, start: '09:00', end: '17:00' },
+      { day: 'Tuesday', enabled: true, start: '09:00', end: '17:00' },
+      { day: 'Wednesday', enabled: true, start: '10:00', end: '16:00' },
+      { day: 'Thursday', enabled: true, start: '09:00', end: '17:00' },
+      { day: 'Friday', enabled: true, start: '09:00', end: '14:00' },
+      { day: 'Saturday', enabled: false, start: '00:00', end: '00:00' },
+      { day: 'Sunday', enabled: false, start: '00:00', end: '00:00' },
+    ];
+    if (!isWithinSchedule(date, time, availability?.schedule || defaultSchedule)) {
+      return res.status(400).json({ success: false, message: 'The selected time is outside the doctor\'s availability' });
     }
 
     // Check if slot is already booked
@@ -108,8 +148,12 @@ router.get('/my', protect, async (req, res) => {
       } else {
         return {
           id: appt._id,
-          patient: appt.patient?.name || 'Unknown Patient',
-          age: 0, // would come from patient profile in real app
+          patient: {
+            _id: appt.patient?._id,
+            name: appt.patient?.name || 'Unknown Patient',
+            email: appt.patient?.email,
+            phone: appt.patient?.phone,
+          },
           date: appt.date,
           time: appt.time,
           status: appt.status,

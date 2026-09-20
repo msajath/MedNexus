@@ -1,25 +1,28 @@
 export const doctors = [
-  { id: 1, _id: 'doc1', name: 'Dr. Richard James', avatar: '/images/doc1.png', specialty: 'General physician', fee: 50, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '4 Years', location: 'New York, NY', available: false, languages: ['English'] },
-  { id: 2, _id: 'doc2', name: 'Dr. Emily Larson', avatar: '/images/doc2.png', specialty: 'Gynecologist', fee: 60, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '3 Years', location: 'Boston, MA', available: true, languages: ['English'] },
-  { id: 3, _id: 'doc3', name: 'Dr. Sarah Patel', avatar: '/images/doc3.png', specialty: 'Dermatologist', fee: 30, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '1 Years', location: 'Miami, FL', available: true, languages: ['English'] },
-  { id: 4, _id: 'doc4', name: 'Dr. Christopher Lee', avatar: '/images/doc4.png', specialty: 'Pediatricians', fee: 40, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '2 Years', location: 'San Francisco, CA', available: true, languages: ['English'] },
-  { id: 5, _id: 'doc5', name: 'Dr. Jennifer Garcia', avatar: '/images/doc5.png', specialty: 'Neurologist', fee: 50, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '4 Years', location: 'Chicago, IL', available: false, languages: ['English'] },
-  { id: 6, _id: 'doc6', name: 'Dr. Andrew Williams', avatar: '/images/doc6.png', specialty: 'Neurologist', fee: 50, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '4 Years', location: 'Houston, TX', available: true, languages: ['English'] },
-  { id: 7, _id: 'doc7', name: 'Dr. Christopher Davis', avatar: '/images/doc7.png', specialty: 'General physician', fee: 50, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '4 Years', location: 'London, UK', available: true, languages: ['English'] },
-  { id: 8, _id: 'doc8', name: 'Dr. Timothy White', avatar: '/images/doc8.png', specialty: 'Gynecologist', fee: 60, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '3 Years', location: 'New York, NY', available: true, languages: ['English'] },
-  { id: 9, _id: 'doc9', name: 'Dr. Ava Mitchell', avatar: '/images/doc9.png', specialty: 'Dermatologist', fee: 30, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '1 Years', location: 'Boston, MA', available: false, languages: ['English'] },
-  { id: 10, _id: 'doc10', name: 'Dr. Jeffrey King', avatar: '/images/doc10.png', specialty: 'Pediatricians', fee: 40, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '2 Years', location: 'Miami, FL', available: true, languages: ['English'] },
-  { id: 11, _id: 'doc11', name: 'Dr. Zoe Kelly', avatar: '/images/doc11.png', specialty: 'Neurologist', fee: 50, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '4 Years', location: 'San Francisco, CA', available: true, languages: ['English'] },
-  { id: 12, _id: 'doc12', name: 'Dr. Patrick Harris', avatar: '/images/doc12.png', specialty: 'Neurologist', fee: 50, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '4 Years', location: 'Chicago, IL', available: true, languages: ['English'] },
-  { id: 13, _id: 'doc13', name: 'Dr. Chloe Evans', avatar: '/images/doc13.png', specialty: 'General physician', fee: 50, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '4 Years', location: 'Houston, TX', available: false, languages: ['English'] },
-  { id: 14, _id: 'doc14', name: 'Dr. Ryan Martinez', avatar: '/images/doc14.png', specialty: 'Gynecologist', fee: 60, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '3 Years', location: 'London, UK', available: true, languages: ['English'] },
-  { id: 15, _id: 'doc15', name: 'Dr. Amelia Hill', avatar: '/images/doc15.png', specialty: 'Dermatologist', fee: 30, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '1 Years', location: 'New York, NY', available: true, languages: ['English'] },
+  { id: 1, _id: 'doc1', name: 'Dr. Richard James', avatar: '/images/doc1.png', specialty: 'General physician', fee: 50, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '4 Years', location: 'Colombo, WP', available: false, languages: ['English'] },
+  { id: 2, _id: 'doc2', name: 'Dr. Emily Larson', avatar: '/images/doc2.png', specialty: 'Gynecologist', fee: 60, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '3 Years', location: 'Kandy, CP', available: true, languages: ['English'] },
+  { id: 3, _id: 'doc3', name: 'Dr. Sarah Patel', avatar: '/images/doc3.png', specialty: 'Dermatologist', fee: 30, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '1 Years', location: 'Galle, SP', available: true, languages: ['English'] },
+  { id: 4, _id: 'doc4', name: 'Dr. Christopher Lee', avatar: '/images/doc4.png', specialty: 'Pediatricians', fee: 40, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '2 Years', location: 'Jaffna, NP', available: true, languages: ['English'] },
+  { id: 5, _id: 'doc5', name: 'Dr. Jennifer Garcia', avatar: '/images/doc5.png', specialty: 'Neurologist', fee: 50, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '4 Years', location: 'Negombo, WP', available: false, languages: ['English'] },
+  { id: 6, _id: 'doc6', name: 'Dr. Andrew Williams', avatar: '/images/doc6.png', specialty: 'Neurologist', fee: 50, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '4 Years', location: 'Kurunegala, NWP', available: true, languages: ['English'] },
+  { id: 7, _id: 'doc7', name: 'Dr. Christopher Davis', avatar: '/images/doc7.png', specialty: 'General physician', fee: 50, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '4 Years', location: 'Gampaha, WP', available: true, languages: ['English'] },
+  { id: 8, _id: 'doc8', name: 'Dr. Timothy White', avatar: '/images/doc8.png', specialty: 'Gynecologist', fee: 60, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '3 Years', location: 'Colombo, WP', available: true, languages: ['English'] },
+  { id: 9, _id: 'doc9', name: 'Dr. Ava Mitchell', avatar: '/images/doc9.png', specialty: 'Dermatologist', fee: 30, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '1 Years', location: 'Kandy, CP', available: false, languages: ['English'] },
+  { id: 10, _id: 'doc10', name: 'Dr. Jeffrey King', avatar: '/images/doc10.png', specialty: 'Pediatricians', fee: 40, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '2 Years', location: 'Galle, SP', available: true, languages: ['English'] },
+  { id: 11, _id: 'doc11', name: 'Dr. Zoe Kelly', avatar: '/images/doc11.png', specialty: 'Neurologist', fee: 50, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '4 Years', location: 'Jaffna, NP', available: true, languages: ['English'] },
+  { id: 12, _id: 'doc12', name: 'Dr. Patrick Harris', avatar: '/images/doc12.png', specialty: 'Neurologist', fee: 50, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '4 Years', location: 'Negombo, WP', available: true, languages: ['English'] },
+  { id: 13, _id: 'doc13', name: 'Dr. Chloe Evans', avatar: '/images/doc13.png', specialty: 'General physician', fee: 50, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '4 Years', location: 'Kurunegala, NWP', available: false, languages: ['English'] },
+  { id: 14, _id: 'doc14', name: 'Dr. Ryan Martinez', avatar: '/images/doc14.png', specialty: 'Gynecologist', fee: 60, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '3 Years', location: 'Gampaha, WP', available: true, languages: ['English'] },
+  { id: 15, _id: 'doc15', name: 'Dr. Amelia Hill', avatar: '/images/doc15.png', specialty: 'Dermatologist', fee: 30, rating: 4.8, reviews: Math.floor(Math.random() * 200) + 50, experience: '1 Years', location: 'Anuradhapura, NCP', available: true, languages: ['English'] },
 ]
 // Helper to generate dates relative to today
 const getRelativeDate = (daysOffset) => {
   const d = new Date()
   d.setDate(d.getDate() + daysOffset)
-  return d.toISOString().split('T')[0]
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 export const appointments = [

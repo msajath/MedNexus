@@ -6,6 +6,50 @@ const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
+const defaultSchedule = [
+  { day: 'Monday', enabled: true, start: '09:00', end: '17:00' },
+  { day: 'Tuesday', enabled: true, start: '09:00', end: '17:00' },
+  { day: 'Wednesday', enabled: true, start: '10:00', end: '16:00' },
+  { day: 'Thursday', enabled: true, start: '09:00', end: '17:00' },
+  { day: 'Friday', enabled: true, start: '09:00', end: '14:00' },
+  { day: 'Saturday', enabled: false, start: '00:00', end: '00:00' },
+  { day: 'Sunday', enabled: false, start: '00:00', end: '00:00' },
+];
+
+const timeToMinutes = (time) => {
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
+const minutesToTime = (minutes) => {
+  const hours = Math.floor(minutes / 60);
+  const minutesPart = minutes % 60;
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12;
+  return `${String(displayHours).padStart(2, '0')}:${String(minutesPart).padStart(2, '0')} ${period}`;
+};
+
+const getSlotsForSchedule = (schedule) => {
+  const slots = { morning: [], afternoon: [], evening: [] };
+  const start = timeToMinutes(schedule.start);
+  const end = timeToMinutes(schedule.end);
+
+  for (let minutes = start; minutes < end; minutes += 30) {
+    const slot = minutesToTime(minutes);
+    const period = minutes < 12 * 60 ? 'morning' : minutes < 16 * 60 ? 'afternoon' : 'evening';
+    slots[period].push(slot);
+  }
+
+  return slots;
+};
+
+const isValidDate = (date) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  const [year, month, day] = date.split('-').map(Number);
+  const dateValue = new Date(year, month - 1, day);
+  return dateValue.getFullYear() === year && dateValue.getMonth() === month - 1 && dateValue.getDate() === day;
+};
+
 // ──────────────────────────────────────────────
 // @route   PUT /api/availability
 // @desc    Set/update doctor's weekly availability
@@ -55,6 +99,10 @@ router.get('/slots/:doctorId/:date', async (req, res) => {
   try {
     const { doctorId, date } = req.params;
 
+    if (!isValidDate(date)) {
+      return res.status(400).json({ success: false, message: 'Date must be in YYYY-MM-DD format' });
+    }
+
     // Determine day of week from date (use UTC-safe parsing for YYYY-MM-DD)
     const dateParts = date.split('-');
     const dateObj = new Date(
@@ -67,21 +115,14 @@ router.get('/slots/:doctorId/:date', async (req, res) => {
     // Get doctor's availability
     const availability = await Availability.findOne({ doctor: doctorId });
 
-    let daySchedule;
-    if (availability) {
-      daySchedule = availability.schedule.find((s) => s.day === dayOfWeek);
-    }
+    const schedule = availability?.schedule || defaultSchedule;
+    const daySchedule = schedule.find((s) => s.day === dayOfWeek);
 
     if (!daySchedule || !daySchedule.enabled) {
       return res.json({ success: true, slots: { morning: [], afternoon: [], evening: [] }, bookedSlots: [] });
     }
 
-    // Generate 30-min slots within the doctor's hours
-    const allSlots = {
-      morning: ['08:00 AM', '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM'],
-      afternoon: ['12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM'],
-      evening: ['04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM', '06:00 PM', '06:30 PM'],
-    };
+    const allSlots = getSlotsForSchedule(daySchedule);
 
     // Query existing appointments for this doctor on this date
     // that are not cancelled (i.e., pending or confirmed)
@@ -110,16 +151,6 @@ router.get('/:doctorId', async (req, res) => {
     const availability = await Availability.findOne({ doctor: req.params.doctorId });
 
     if (!availability) {
-      // Return default schedule if none set
-      const defaultSchedule = [
-        { day: 'Monday', enabled: true, start: '09:00', end: '17:00' },
-        { day: 'Tuesday', enabled: true, start: '09:00', end: '17:00' },
-        { day: 'Wednesday', enabled: true, start: '10:00', end: '16:00' },
-        { day: 'Thursday', enabled: true, start: '09:00', end: '17:00' },
-        { day: 'Friday', enabled: true, start: '09:00', end: '14:00' },
-        { day: 'Saturday', enabled: false, start: '10:00', end: '13:00' },
-        { day: 'Sunday', enabled: false, start: '', end: '' },
-      ];
       return res.json({ success: true, schedule: defaultSchedule });
     }
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
-import StatusBadge from '../components/StatusBadge'
+import { formatAppointmentDate } from '../utils/date'
 
 const statusColors = {
   pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
@@ -153,7 +153,7 @@ export default function AdminAppointments() {
                         <p className="text-xs text-navy-muted">{appt.doctor?.specialty}</p>
                       </td>
                       <td className="p-4">
-                        <p className="text-navy">{appt.date}</p>
+                        <p className="text-navy">{formatAppointmentDate(appt.date)}</p>
                         <p className="text-xs text-navy-muted">{appt.time}</p>
                       </td>
                       <td className="p-4">
