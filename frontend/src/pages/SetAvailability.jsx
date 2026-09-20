@@ -22,6 +22,7 @@ export default function SetAvailability() {
 
       // Fetch availability for this doctor
       const response = await fetch(`http://localhost:5000/api/availability/${doctorId}`, {
+        cache: 'no-store',
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -84,6 +85,7 @@ export default function SetAvailability() {
       const token = localStorage.getItem('token')
       const response = await fetch('http://localhost:5000/api/availability', {
         method: 'PUT',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -91,6 +93,8 @@ export default function SetAvailability() {
         body: JSON.stringify({ schedule: schedule })
       })
       if (!response.ok) throw new Error('Failed to save availability')
+      const data = await response.json()
+      setSchedule(data.schedule || schedule)
       alert('Availability updated successfully!')
     } catch (err) {
       console.error('Error saving availability:', err)

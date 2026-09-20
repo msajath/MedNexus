@@ -13,7 +13,6 @@ export default function DoctorListing() {
   const [search, setSearch] = useState('')
   const [specialty, setSpecialty] = useState(queryParams.get('specialty') || 'All Specialties')
   const [location, setLocation] = useState('All Locations')
-  const [availability, setAvailability] = useState('Availability')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -66,16 +65,7 @@ export default function DoctorListing() {
     // Location matching
     const matchesLoc = location === 'All Locations' || (d.location && d.location.toLowerCase().includes(location.toLowerCase()))
     
-    // Availability matching
-    let matchesAvail = true;
-    if (availability === 'Available Today') {
-      matchesAvail = d.available === true;
-    } else if (availability === 'This Week') {
-      // Assuming 'This Week' means anyone generally available
-      matchesAvail = d.available === true;
-    }
-
-    return matchesSearch && matchesSpec && matchesLoc && matchesAvail
+    return matchesSearch && matchesSpec && matchesLoc
   })
 
   // Get unique locations from data for the dropdown
@@ -102,11 +92,6 @@ export default function DoctorListing() {
               </select>
               <select className="flex-1 p-3 px-4 border-[1.5px] border-slate-300 rounded-lg text-base text-on-surface bg-white outline-none focus:border-primary transition-colors" value={location} onChange={(e) => setLocation(e.target.value)} id="location-filter">
                 {uniqueLocations.map((loc) => (<option key={loc} value={loc}>{loc}</option>))}
-              </select>
-              <select className="flex-1 p-3 px-4 border-[1.5px] border-slate-300 rounded-lg text-base text-on-surface bg-white outline-none focus:border-primary transition-colors" value={availability} onChange={(e) => setAvailability(e.target.value)}>
-                <option value="Availability">Availability</option>
-                <option value="Available Today">Available Today</option>
-                <option value="This Week">This Week</option>
               </select>
             </div>
           </div>

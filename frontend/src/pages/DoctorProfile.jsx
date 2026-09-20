@@ -68,9 +68,14 @@ export default function DoctorProfile() {
   const fetchAvailableSlots = async (dateIndex) => {
     setSlotsLoading(true)
     setSelectedSlot(null)
+    setTimeSlots([])
+    setUnavailableSlots([])
+    setBookedSlots([])
     try {
       const dateStr = formatDate(days[dateIndex])
-      const response = await fetch(`http://localhost:5000/api/availability/slots/${id}/${dateStr}`)
+      const response = await fetch(`http://localhost:5000/api/availability/slots/${id}/${dateStr}`, {
+        cache: 'no-store',
+      })
       if (response.ok) {
         const data = await response.json()
         if (data.success && data.slots) {
@@ -91,6 +96,8 @@ export default function DoctorProfile() {
           ])
           setBookedSlots(data.bookedSlots || [])
         }
+      } else {
+        setTimeSlots([])
       }
     } catch (err) {
       console.error('Error fetching available slots:', err)
@@ -259,7 +266,6 @@ export default function DoctorProfile() {
                           title={isBooked ? 'Already booked' : isUnavailable ? 'Doctor unavailable at this time' : `Select ${time}`}
                         >
                           {time}
-                          {(isBooked || isUnavailable) && <span className="ml-1 text-[10px] no-underline">{isBooked ? 'Booked' : 'Unavailable'}</span>}
                         </button>
                       )
                     })

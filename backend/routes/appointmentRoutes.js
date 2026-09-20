@@ -46,11 +46,6 @@ router.post('/', protect, authorize('patient'), async (req, res) => {
       return res.status(404).json({ success: false, message: 'Doctor not found' });
     }
 
-    // Prevent booking when doctor is marked unavailable
-    if (doctor.available === false) {
-      return res.status(400).json({ success: false, message: 'Doctor is currently not available for booking' });
-    }
-
     const availability = await Availability.findOne({ doctor: doctorId });
     const defaultSchedule = [
       { day: 'Monday', enabled: true, start: '09:00', end: '17:00' },

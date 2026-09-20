@@ -36,10 +36,6 @@ export default function DoctorCard({ doctor, index = 0 }) {
             />
           </div>
           <div className="p-5 flex flex-col items-start bg-white flex-1">
-            <div className={`flex items-center gap-1.5 text-xs font-semibold mb-2 ${doctor.available ? 'text-emerald-500' : 'text-red-500'}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${doctor.available ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-              {doctor.available ? 'Available' : 'Not Available'}
-            </div>
             <h3 className="text-[1.1rem] font-semibold text-slate-800 mb-1">{doctor.name}</h3>
             <p className="text-[0.85rem] text-slate-500 font-normal">{doctor.specialty}</p>
           </div>
