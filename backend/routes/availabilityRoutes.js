@@ -34,7 +34,7 @@ const getSlotsForSchedule = (schedule) => {
   const start = timeToMinutes(schedule.start);
   const end = timeToMinutes(schedule.end);
 
-  for (let minutes = start; minutes < end; minutes += 30) {
+  for (let minutes = start; minutes <= end; minutes += 30) {
     const slot = minutesToTime(minutes);
     const period = minutes < 12 * 60 ? 'morning' : minutes < 16 * 60 ? 'afternoon' : 'evening';
     slots[period].push(slot);

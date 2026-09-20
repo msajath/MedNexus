@@ -28,7 +28,7 @@ const isWithinSchedule = (date, time, schedule) => {
 
   const [startHours, startMinutes] = daySchedule.start.split(':').map(Number);
   const [endHours, endMinutes] = daySchedule.end.split(':').map(Number);
-  return appointmentMinutes >= startHours * 60 + startMinutes && appointmentMinutes < endHours * 60 + endMinutes;
+  return appointmentMinutes >= startHours * 60 + startMinutes && appointmentMinutes <= endHours * 60 + endMinutes;
 };
 
 // ──────────────────────────────────────────────
