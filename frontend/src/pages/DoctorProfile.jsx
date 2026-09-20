@@ -13,9 +13,6 @@ const formatDate = (d) => {
   return `${year}-${month}-${day}`
 }
 
-// Fallback time slots
-const defaultTimeSlots = ['04:30 PM', '05:00 PM', '05:30 PM', '06:00 PM', '06:30 PM', '07:00 PM', '07:30 PM', '08:00 PM']
-
 export default function DoctorProfile() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -27,8 +24,9 @@ export default function DoctorProfile() {
   const [selectedDate, setSelectedDate] = useState(0) // Index of selected day
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [booked, setBooked] = useState(false)
-  const [timeSlots, setTimeSlots] = useState(defaultTimeSlots)
+  const [timeSlots, setTimeSlots] = useState([])
   const [bookedSlots, setBookedSlots] = useState([])
+  const [unavailableSlots, setUnavailableSlots] = useState([])
   const [slotsLoading, setSlotsLoading] = useState(false)
 
   const fetchDoctor = async () => {
@@ -56,6 +54,7 @@ export default function DoctorProfile() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDoctor()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const today = new Date()
@@ -79,15 +78,24 @@ export default function DoctorProfile() {
           const allSlots = [
             ...(data.slots.morning || []),
             ...(data.slots.afternoon || []),
-            ...(data.slots.evening || [])
+            ...(data.slots.evening || []),
+            ...(data.unavailableSlots?.morning || []),
+            ...(data.unavailableSlots?.afternoon || []),
+            ...(data.unavailableSlots?.evening || []),
           ]
-          setTimeSlots(allSlots.length > 0 ? allSlots : defaultTimeSlots)
+          setTimeSlots(allSlots)
+          setUnavailableSlots([
+            ...(data.unavailableSlots?.morning || []),
+            ...(data.unavailableSlots?.afternoon || []),
+            ...(data.unavailableSlots?.evening || []),
+          ])
           setBookedSlots(data.bookedSlots || [])
         }
       }
     } catch (err) {
       console.error('Error fetching available slots:', err)
-      setTimeSlots(defaultTimeSlots)
+      setTimeSlots([])
+      setUnavailableSlots([])
       setBookedSlots([])
     } finally {
       setSlotsLoading(false)
@@ -102,6 +110,7 @@ export default function DoctorProfile() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAvailableSlots(0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const handleBook = async () => {
@@ -234,21 +243,23 @@ export default function DoctorProfile() {
                   ) : (
                     timeSlots.map(time => {
                       const isBooked = bookedSlots.includes(time)
+                      const isUnavailable = unavailableSlots.includes(time)
                       return (
                         <button 
                           key={time} 
-                          disabled={isBooked}
+                          disabled={isBooked || isUnavailable}
                           className={`px-6 py-2.5 rounded-full border text-sm transition-all ${
-                            isBooked
-                              ? 'bg-red-50 border-red-200 text-red-400 cursor-not-allowed line-through'
+                              isBooked || isUnavailable
+                              ? 'bg-red-50 border-dashed border-red-300 text-red-500 cursor-not-allowed line-through'
                               : selectedSlot === time
                                 ? 'bg-[#5a66ff] border-[#5a66ff] text-white'
                                 : 'bg-white border-slate-200 text-slate-500 hover:border-[#5a66ff] hover:text-[#5a66ff]'
                           }`}
-                          onClick={() => !isBooked && setSelectedSlot(time)}
-                          title={isBooked ? 'Already booked' : `Select ${time}`}
+                          onClick={() => !isBooked && !isUnavailable && setSelectedSlot(time)}
+                          title={isBooked ? 'Already booked' : isUnavailable ? 'Doctor unavailable at this time' : `Select ${time}`}
                         >
                           {time}
+                          {(isBooked || isUnavailable) && <span className="ml-1 text-[10px] no-underline">{isBooked ? 'Booked' : 'Unavailable'}</span>}
                         </button>
                       )
                     })

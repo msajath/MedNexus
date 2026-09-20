@@ -43,6 +43,23 @@ const getSlotsForSchedule = (schedule) => {
   return slots;
 };
 
+const getAllSlots = () => {
+  const slots = { morning: [], afternoon: [], evening: [] };
+  for (let minutes = 8 * 60; minutes < 20 * 60; minutes += 30) {
+    const slot = minutesToTime(minutes);
+    const period = minutes < 12 * 60 ? 'morning' : minutes < 16 * 60 ? 'afternoon' : 'evening';
+    slots[period].push(slot);
+  }
+  return slots;
+};
+
+const subtractSlots = (allSlots, availableSlots) => Object.fromEntries(
+  Object.entries(allSlots).map(([period, slots]) => [
+    period,
+    slots.filter((slot) => !availableSlots[period].includes(slot)),
+  ])
+);
+
 const isValidDate = (date) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
   const [year, month, day] = date.split('-').map(Number);
@@ -117,12 +134,18 @@ router.get('/slots/:doctorId/:date', async (req, res) => {
 
     const schedule = availability?.schedule || defaultSchedule;
     const daySchedule = schedule.find((s) => s.day === dayOfWeek);
+    const allSlots = getAllSlots();
 
     if (!daySchedule || !daySchedule.enabled) {
-      return res.json({ success: true, slots: { morning: [], afternoon: [], evening: [] }, bookedSlots: [] });
+      return res.json({
+        success: true,
+        slots: { morning: [], afternoon: [], evening: [] },
+        unavailableSlots: allSlots,
+        bookedSlots: [],
+      });
     }
 
-    const allSlots = getSlotsForSchedule(daySchedule);
+    const availableSlots = getSlotsForSchedule(daySchedule);
 
     // Query existing appointments for this doctor on this date
     // that are not cancelled (i.e., pending or confirmed)
@@ -135,7 +158,12 @@ router.get('/slots/:doctorId/:date', async (req, res) => {
     // Collect already-booked time slots
     const bookedSlots = existingAppointments.map((appt) => appt.time);
 
-    res.json({ success: true, slots: allSlots, bookedSlots });
+    res.json({
+      success: true,
+      slots: availableSlots,
+      unavailableSlots: subtractSlots(allSlots, availableSlots),
+      bookedSlots,
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

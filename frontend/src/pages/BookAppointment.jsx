@@ -3,12 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 
-// Fallback slots used when API returns nothing
-const fallbackSlots = {
-  morning: ['08:00 AM', '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM'],
-  afternoon: ['12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM'],
-  evening: ['04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM', '06:00 PM', '06:30 PM'],
-}
+const emptySlots = { morning: [], afternoon: [], evening: [] }
 
 // Helper to format a Date as YYYY-MM-DD
 const formatDate = (d) => {
@@ -28,9 +23,10 @@ export default function BookAppointment() {
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [activeTab, setActiveTab] = useState('morning')
   const [booked, setBooked] = useState(false)
-  const [availableSlots, setAvailableSlots] = useState(fallbackSlots)
+  const [availableSlots, setAvailableSlots] = useState(emptySlots)
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [bookedSlots, setBookedSlots] = useState([])
+  const [unavailableSlots, setUnavailableSlots] = useState(emptySlots)
 
   const fetchDoctor = async () => {
     try {
@@ -50,6 +46,7 @@ export default function BookAppointment() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDoctor()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const today = new Date()
@@ -70,18 +67,22 @@ export default function BookAppointment() {
         const data = await response.json()
         if (data.success && data.slots) {
           setAvailableSlots(data.slots)
+          setUnavailableSlots(data.unavailableSlots || emptySlots)
           setBookedSlots(data.bookedSlots || [])
         } else {
-          setAvailableSlots(fallbackSlots)
+          setAvailableSlots(emptySlots)
+          setUnavailableSlots(emptySlots)
           setBookedSlots([])
         }
       } else {
-        setAvailableSlots(fallbackSlots)
+        setAvailableSlots(emptySlots)
+        setUnavailableSlots(emptySlots)
         setBookedSlots([])
       }
     } catch (err) {
       console.error('Error fetching available slots:', err)
-      setAvailableSlots(fallbackSlots)
+      setAvailableSlots(emptySlots)
+      setUnavailableSlots(emptySlots)
       setBookedSlots([])
     } finally {
       setSlotsLoading(false)
@@ -234,28 +235,29 @@ export default function BookAppointment() {
                     <div className="text-center py-6 text-navy-muted text-sm">Loading available slots...</div>
                   ) : selectedDate === null ? (
                     <div className="text-center py-6 text-navy-muted text-sm">Please select a date first to see available slots</div>
-                  ) : (availableSlots[activeTab] || []).length === 0 ? (
+                  ) : (availableSlots[activeTab] || []).length === 0 && (unavailableSlots[activeTab] || []).length === 0 ? (
                     <div className="text-center py-6 text-navy-muted text-sm">No slots available for this time period</div>
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {(availableSlots[activeTab] || []).map((slot) => {
+                      {[...(availableSlots[activeTab] || []), ...(unavailableSlots[activeTab] || [])].map((slot) => {
                         const isBooked = bookedSlots.includes(slot)
+                        const isUnavailable = unavailableSlots[activeTab]?.includes(slot)
                         return (
                           <button 
                             key={slot} 
-                            disabled={isBooked}
+                            disabled={isBooked || isUnavailable}
                             className={`p-3 rounded-xl border-[1.5px] text-sm font-medium transition-all ${
-                              isBooked
-                                ? 'bg-red-50 border-red-200 text-red-400 cursor-not-allowed line-through'
+                              isBooked || isUnavailable
+                                ? 'bg-red-50 border-dashed border-red-300 text-red-500 cursor-not-allowed line-through'
                                 : selectedSlot === slot
                                   ? 'bg-primary border-primary text-white cursor-pointer'
                                   : 'bg-white border-outline-variant text-navy hover:border-primary hover:text-primary cursor-pointer'
                             }`} 
-                            onClick={() => !isBooked && setSelectedSlot(slot)}
-                            title={isBooked ? 'This slot is already booked' : `Select ${slot}`}
+                            onClick={() => !isBooked && !isUnavailable && setSelectedSlot(slot)}
+                            title={isBooked ? 'This slot is already booked' : isUnavailable ? 'Doctor unavailable at this time' : `Select ${slot}`}
                           >
                             {slot}
-                            {isBooked && <span className="block text-[10px] mt-0.5 no-underline" style={{textDecoration: 'none'}}>Unavailable</span>}
+                            {(isBooked || isUnavailable) && <span className="block text-[10px] mt-0.5 no-underline" style={{textDecoration: 'none'}}>{isBooked ? 'Booked' : 'Unavailable'}</span>}
                           </button>
                         )
                       })}
