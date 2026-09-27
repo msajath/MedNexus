@@ -30,7 +30,7 @@ export default function BookAppointment() {
 
   const fetchDoctor = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/doctors/${id}`)
+      const response = await fetch(`/api/doctors/${id}`)
       if (!response.ok) throw new Error('Doctor not found')
       const data = await response.json()
       setDoctor(data.doctor || data)
@@ -62,7 +62,7 @@ export default function BookAppointment() {
     setSelectedSlot(null) // Reset selected slot when date changes
     try {
       const dateStr = formatDate(days[dateIndex])
-      const response = await fetch(`http://localhost:5000/api/availability/slots/${id}/${dateStr}`, {
+      const response = await fetch(`/api/availability/slots/${id}/${dateStr}`, {
         cache: 'no-store',
       })
       if (response.ok) {
@@ -104,7 +104,7 @@ export default function BookAppointment() {
 
     try {
       const dateStr = formatDate(days[selectedDate])
-      const response = await fetch('http://localhost:5000/api/appointments', {
+      const response = await fetch('/api/appointments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
