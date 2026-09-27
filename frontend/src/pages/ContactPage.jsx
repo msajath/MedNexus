@@ -13,7 +13,7 @@ export default function ContactPage() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1 py-16 md:py-24" id="contact-page">
-        <div className="max-w-[1280px] mx-auto px-4 md:px-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="text-center mb-16 animate-fade-in-up">
             <h1 className="text-4xl md:text-5xl font-bold text-navy mb-4">Contact Us</h1>
             <p className="text-lg text-navy-muted">We're here to help. Get in touch with our support team.</p>
@@ -21,11 +21,11 @@ export default function ContactPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
             <div className="bg-surface p-8 md:p-12 rounded-2xl animate-fade-in-up">
-              <img src={assets.contact_image} alt="Contact Us" className="w-full h-[200px] object-cover rounded-xl mb-8 shadow-sm" />
+              <img src={assets.contact_image} alt="Contact Us" className="w-full h-50 object-cover rounded-xl mb-8 shadow-sm" />
               <h2 className="text-2xl font-semibold text-navy mb-8">Get in Touch</h2>
 
               <div className="flex gap-6 mb-8">
-                <div className="w-[50px] h-[50px] rounded-full bg-[#eaf0fb] text-primary flex items-center justify-center shrink-0">
+                <div className="w-12.5 h-12.5 rounded-full bg-[#eaf0fb] text-primary flex items-center justify-center shrink-0">
                   <span className="material-icons-outlined">location_on</span>
                 </div>
                 <div>
@@ -35,7 +35,7 @@ export default function ContactPage() {
               </div>
 
               <div className="flex gap-6 mb-8">
-                <div className="w-[50px] h-[50px] rounded-full bg-[#eaf0fb] text-primary flex items-center justify-center shrink-0">
+                <div className="w-12.5 h-12.5 rounded-full bg-[#eaf0fb] text-primary flex items-center justify-center shrink-0">
                   <span className="material-icons-outlined">phone</span>
                 </div>
                 <div>
@@ -45,7 +45,7 @@ export default function ContactPage() {
               </div>
 
               <div className="flex gap-6">
-                <div className="w-[50px] h-[50px] rounded-full bg-[#eaf0fb] text-primary flex items-center justify-center shrink-0">
+                <div className="w-12.5 h-12.5 rounded-full bg-[#eaf0fb] text-primary flex items-center justify-center shrink-0">
                   <span className="material-icons-outlined">email</span>
                 </div>
                 <div>
@@ -74,7 +74,7 @@ export default function ContactPage() {
                   <label htmlFor="message" className="text-sm font-medium text-navy">Message</label>
                   <textarea id="message" className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-surface-container-lowest focus:border-primary focus:shadow-[0_0_0_3px_rgba(8,145,178,0.15)] transition-all outline-none placeholder-outline" rows="5" placeholder="Your message here..." required></textarea>
                 </div>
-                <button type="submit" className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary-dark hover:-translate-y-[1px] hover:shadow-md transition-all">Send Message</button>
+                <button type="submit" className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary-dark hover:-translate-y-px hover:shadow-md transition-all">Send Message</button>
               </form>
             </div>
           </div>
