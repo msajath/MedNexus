@@ -61,7 +61,7 @@ export default function PatientProfile() {
     setMessage({ type: '', text: '' })
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('http://localhost:5000/api/auth/profile', {
+      const response = await fetch('/api/auth/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -97,7 +97,7 @@ export default function PatientProfile() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-surface">
       <Sidebar />
-      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 md:ml-64 transition-all duration-300" id="patient-profile">
+      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 lg:ml-64 transition-all duration-300" id="patient-profile">
         <div className="mb-6">
           <h1 className="text-3xl font-semibold text-navy">Patient Profile</h1>
           <p className="mt-2 text-base text-navy-muted">Update your personal information and security settings.</p>
