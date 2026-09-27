@@ -7,9 +7,6 @@ const errorHandler = require('./middleware/errorHandler');
 // Load environment variables
 dotenv.config();
 
-// Connect to MongoDB
-connectDB();
-
 const app = express();
 
 // ──────────────────────────────────────────────
@@ -31,6 +28,8 @@ app.use('/api/appointments', require('./routes/appointmentRoutes'));
 app.use('/api/availability', require('./routes/availabilityRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/records', require('./routes/medicalRecordRoutes'));
+app.use('/api/contact', require('./routes/contactRoutes'));
+app.use('/api/messages', require('./routes/messageRoutes'));
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -47,12 +46,22 @@ app.use(errorHandler);
 // ──────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`
+const startServer = async () => {
+  try {
+    await connectDB();
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`
   ╔══════════════════════════════════════════╗
   ║   🏥  MEDNEXUS API Server               ║
   ║   🚀  Running on port ${PORT}              ║
   ║   📡  http://localhost:${PORT}/api/health  ║
   ╚══════════════════════════════════════════╝
   `);
-});
+    });
+  } catch (error) {
+    console.error('❌ Server startup failed:', error.message);
+    process.exit(1);
+  }
+};
+
+startServer();
