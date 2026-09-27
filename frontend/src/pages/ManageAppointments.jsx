@@ -13,7 +13,7 @@ export default function ManageAppointments() {
   const fetchAppointments = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('http://localhost:5000/api/appointments/my', {
+      const response = await fetch('/api/appointments/my', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -38,7 +38,7 @@ export default function ManageAppointments() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-surface">
       <Sidebar />
-      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 md:ml-64 transition-all duration-300" id="manage-appointments">
+      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 lg:ml-64 transition-all duration-300" id="manage-appointments">
         <div className="mb-6">
           <h1 className="text-3xl font-semibold text-navy">Manage Appointments</h1>
           <p className="mt-2 text-base text-navy-muted">Review and update your upcoming patient consultations.</p>
