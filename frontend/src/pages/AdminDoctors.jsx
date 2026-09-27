@@ -12,7 +12,7 @@ export default function AdminDoctors() {
   const fetchDoctors = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/admin/doctors-detail', {
+      const res = await fetch('/api/admin/doctors-detail', {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
@@ -33,7 +33,7 @@ export default function AdminDoctors() {
     if (!window.confirm(`Delete Dr. ${name}? This cannot be undone.`)) return
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`http://localhost:5000/api/admin/users/${userId}`, {
+      const res = await fetch(`/api/admin/users/${userId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -47,7 +47,7 @@ export default function AdminDoctors() {
   const handleVerify = async (userId) => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`http://localhost:5000/api/admin/verify-doctor/${userId}`, {
+      const res = await fetch(`/api/admin/verify-doctor/${userId}`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -76,7 +76,7 @@ export default function AdminDoctors() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-surface">
       <Sidebar />
-      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 md:ml-64 transition-all duration-300" id="admin-doctors">
+      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 lg:ml-64 transition-all duration-300" id="admin-doctors">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-semibold text-navy">Manage Doctors</h1>
