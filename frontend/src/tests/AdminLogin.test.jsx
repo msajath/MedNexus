@@ -6,7 +6,7 @@ import { AuthProvider } from '../context/AuthContext';
 
 // Mock fetch
 const fetchMock = vi.fn();
-global.fetch = fetchMock;
+globalThis.fetch = fetchMock;
 
 beforeEach(() => {
   fetchMock.mockReset();
@@ -75,7 +75,7 @@ test('logs in admin with a single login request', async () => {
 
   expect(fetchMock).toHaveBeenCalledTimes(1);
   expect(fetchMock).toHaveBeenCalledWith(
-    'http://localhost:5000/api/auth/login',
+    '/api/auth/login',
     expect.objectContaining({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
