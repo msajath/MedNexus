@@ -3,7 +3,10 @@ const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const Appointment = require('../models/Appointment');
 const Availability = require('../models/Availability');
+const MedicalRecord = require('../models/MedicalRecord');
+const Message = require('../models/Message');
 const { protect, authorize } = require('../middleware/auth');
+const validateObjectId = require('../middleware/validateObjectId');
 
 const router = express.Router();
 
@@ -70,7 +73,7 @@ router.get('/users', async (req, res) => {
 // @desc    Verify/approve a doctor account
 // @access  Private (admin only)
 // ──────────────────────────────────────────────
-router.put('/verify-doctor/:userId', async (req, res) => {
+router.put('/verify-doctor/:userId', validateObjectId('userId'), async (req, res) => {
   try {
     const user = await User.findById(req.params.userId);
 
@@ -187,7 +190,7 @@ router.get('/doctors-detail', async (req, res) => {
 // @desc    Get a doctor's profile, earnings, appointments, and patients
 // @access  Private (admin only)
 // ──────────────────────────────────────────────
-router.get('/doctors/:userId', async (req, res) => {
+router.get('/doctors/:userId', validateObjectId('userId'), async (req, res) => {
   try {
     const doctor = await Doctor.findOne({ user: req.params.userId })
       .populate('user', 'name email phone avatar isVerified createdAt');
@@ -246,7 +249,7 @@ router.get('/doctors/:userId', async (req, res) => {
 // @desc    Delete a user account
 // @access  Private (admin only)
 // ──────────────────────────────────────────────
-router.delete('/users/:userId', async (req, res) => {
+router.delete('/users/:userId', validateObjectId('userId'), async (req, res) => {
   try {
     const user = await User.findById(req.params.userId);
 
@@ -254,15 +257,27 @@ router.delete('/users/:userId', async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    // Also delete doctor profile if applicable
+    let doctor = null;
     if (user.role === 'doctor') {
-      await Doctor.deleteOne({ user: user._id });
+      doctor = await Doctor.findOne({ user: user._id });
     }
 
-    // Delete user's appointments
-    await Appointment.deleteMany({
-      $or: [{ patient: user._id }],
-    });
+    const appointmentFilter = [{ patient: user._id }];
+    const recordFilter = [{ patient: user._id }];
+
+    if (doctor) {
+      appointmentFilter.push({ doctor: doctor._id });
+      recordFilter.push({ doctor: doctor._id });
+      await Availability.deleteMany({ doctor: doctor._id });
+    }
+
+    await Appointment.deleteMany({ $or: appointmentFilter });
+    await MedicalRecord.deleteMany({ $or: recordFilter });
+    await Message.deleteMany({ recipient: user._id });
+
+    if (doctor) {
+      await Doctor.deleteOne({ _id: doctor._id });
+    }
 
     await User.findByIdAndDelete(user._id);
 
@@ -343,9 +358,12 @@ router.get('/appointments', async (req, res) => {
 // @desc    Admin update appointment status
 // @access  Private (admin only)
 // ──────────────────────────────────────────────
-router.put('/appointments/:id/status', async (req, res) => {
+router.put('/appointments/:id/status', validateObjectId('id'), async (req, res) => {
   try {
     const { status } = req.body;
+    if (!['confirmed', 'cancelled', 'completed'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
     const appointment = await Appointment.findByIdAndUpdate(
       req.params.id,
       { status },
@@ -365,7 +383,6 @@ router.put('/appointments/:id/status', async (req, res) => {
 // ──────────────────────────────────────────────
 router.get('/records', async (req, res) => {
   try {
-    const MedicalRecord = require('../models/MedicalRecord');
     const records = await MedicalRecord.find()
       .populate('patient', 'name email')
       .populate({ path: 'doctor', populate: { path: 'user', select: 'name' } })
