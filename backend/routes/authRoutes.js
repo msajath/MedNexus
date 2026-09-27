@@ -333,43 +333,42 @@ router.post(
         return res.status(429).json({ success: false, message: 'Too many requests from this IP address. Try again later.' });
       }
 
-      const user = await User.findOne({ email: req.body.email });
+      const user = await User.findOne({ email: req.body.email.toLowerCase() });
       if (!user) {
-        return res.status(404).json({ success: false, message: 'No account found with this email address' });
+        return res.json({
+          success: true,
+          message: 'If an account exists for that email, a reset code has been sent',
+        });
       }
 
-      const temporaryPassword = crypto.randomBytes(6).toString('base64url').slice(0, 10);
-
-      user.password = temporaryPassword;
-      user.resetPasswordToken = null;
-      user.resetPasswordExpire = null;
+      const resetCode = user.generateResetToken();
       await user.save();
 
       await sendMail({
         to: user.email,
-        subject: 'Your MEDNEXUS temporary password',
+        subject: 'Your MEDNEXUS password reset code',
         text: [
           `Hello ${user.name},`,
           '',
           'We received a request to reset your password.',
-          `Your temporary password is: ${temporaryPassword}`,
+          `Your reset code is: ${resetCode}`,
           '',
-          'Sign in with this password and change it as soon as possible.',
+          'This code expires in 30 minutes.',
           '',
           'If you did not request this change, please contact support immediately.',
         ].join('\n'),
         html: `
           <p>Hello ${user.name},</p>
           <p>We received a request to reset your password.</p>
-          <p><strong>Your temporary password is:</strong> <code>${temporaryPassword}</code></p>
-          <p>Sign in with this password and change it as soon as possible.</p>
+          <p><strong>Your reset code is:</strong> <code>${resetCode}</code></p>
+          <p>This code expires in 30 minutes.</p>
           <p>If you did not request this change, please contact support immediately.</p>
         `,
       });
 
       res.json({
         success: true,
-        message: 'A temporary password has been sent to your email address',
+        message: 'If an account exists for that email, a reset code has been sent',
       });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
