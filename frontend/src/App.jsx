@@ -1,33 +1,43 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { AnimatePresence } from 'framer-motion'
 
 // Public Pages
-import HomePage from './pages/HomePage'
-import LoginPage from './pages/LoginPage'
-import RegisterPage from './pages/RegisterPage'
-import DoctorListing from './pages/DoctorListing'
-import DoctorProfile from './pages/DoctorProfile'
-import AboutPage from './pages/AboutPage'
-import ContactPage from './pages/ContactPage'
-import ForgotPassword from './pages/ForgotPassword'
+const HomePage = lazy(() => import('./pages/HomePage'))
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const RegisterPage = lazy(() => import('./pages/RegisterPage'))
+const DoctorListing = lazy(() => import('./pages/DoctorListing'))
+const DoctorProfile = lazy(() => import('./pages/DoctorProfile'))
+const AboutPage = lazy(() => import('./pages/AboutPage'))
+const ContactPage = lazy(() => import('./pages/ContactPage'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 
 // Protected Pages
-import BookAppointment from './pages/BookAppointment'
-import MyAppointments from './pages/MyAppointments'
-import PatientProfile from './pages/PatientProfile'
-import DoctorDashboard from './pages/DoctorDashboard'
-import ManageAppointments from './pages/ManageAppointments'
-import SetAvailability from './pages/SetAvailability'
-import AdminDashboard from './pages/AdminDashboard'
-import Messages from './pages/Messages'
-import DoctorProfileSettings from './pages/DoctorProfileSettings'
-import MedicalRecords from './pages/MedicalRecords'
-import AdminLogin from './pages/AdminLogin'
-import AdminAppointments from './pages/AdminAppointments'
-import AdminRecords from './pages/AdminRecords'
-import AdminUsers from './pages/AdminUsers'
-import AdminDoctors from './pages/AdminDoctors'
+const BookAppointment = lazy(() => import('./pages/BookAppointment'))
+const MyAppointments = lazy(() => import('./pages/MyAppointments'))
+const PatientProfile = lazy(() => import('./pages/PatientProfile'))
+const DoctorDashboard = lazy(() => import('./pages/DoctorDashboard'))
+const ManageAppointments = lazy(() => import('./pages/ManageAppointments'))
+const SetAvailability = lazy(() => import('./pages/SetAvailability'))
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
+const Messages = lazy(() => import('./pages/Messages'))
+const DoctorProfileSettings = lazy(() => import('./pages/DoctorProfileSettings'))
+const MedicalRecords = lazy(() => import('./pages/MedicalRecords'))
+const AdminLogin = lazy(() => import('./pages/AdminLogin'))
+const AdminAppointments = lazy(() => import('./pages/AdminAppointments'))
+const AdminRecords = lazy(() => import('./pages/AdminRecords'))
+const AdminUsers = lazy(() => import('./pages/AdminUsers'))
+const AdminDoctors = lazy(() => import('./pages/AdminDoctors'))
+
+const LoadingScreen = () => (
+  <div className="min-h-screen flex items-center justify-center bg-surface">
+    <div className="text-center">
+      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+      <p className="text-navy-muted text-sm">Loading...</p>
+    </div>
+  </div>
+)
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, isAuthenticated, loading } = useAuth()
@@ -82,8 +92,9 @@ export default function App() {
   const location = useLocation()
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
+    <Suspense fallback={<LoadingScreen />}>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
         {/* Public Routes */}
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />
@@ -159,8 +170,8 @@ export default function App() {
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </AnimatePresence>
+        </Routes>
+      </AnimatePresence>
+    </Suspense>
   )
 }
-
