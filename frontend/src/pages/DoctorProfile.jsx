@@ -31,7 +31,7 @@ export default function DoctorProfile() {
 
   const fetchDoctor = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/doctors/${id}`)
+      const response = await fetch(`/api/doctors/${id}`)
       if (!response.ok) {
         if (response.status === 404) {
           setError('Doctor not found')
@@ -73,7 +73,7 @@ export default function DoctorProfile() {
     setBookedSlots([])
     try {
       const dateStr = formatDate(days[dateIndex])
-      const response = await fetch(`http://localhost:5000/api/availability/slots/${id}/${dateStr}`, {
+      const response = await fetch(`/api/availability/slots/${id}/${dateStr}`, {
         cache: 'no-store',
       })
       if (response.ok) {
@@ -133,7 +133,7 @@ export default function DoctorProfile() {
 
     try {
       const dateStr = formatDate(days[selectedDate])
-      const response = await fetch('http://localhost:5000/api/appointments', {
+      const response = await fetch('/api/appointments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
