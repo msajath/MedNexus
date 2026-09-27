@@ -12,7 +12,7 @@ export default function HomePage() {
   useEffect(() => {
     const fetchTopDoctors = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/doctors')
+        const response = await fetch('/api/doctors')
         if (response.ok) {
           const data = await response.json()
           setTopDoctors((data.doctors || data || []).slice(0, 4))
