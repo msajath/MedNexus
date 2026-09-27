@@ -3,6 +3,7 @@ const Availability = require('../models/Availability');
 const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
 const { protect, authorize } = require('../middleware/auth');
+const validateObjectId = require('../middleware/validateObjectId');
 
 const router = express.Router();
 
@@ -112,7 +113,7 @@ router.put('/', protect, authorize('doctor'), async (req, res) => {
 // NOTE: This route MUST be defined before /:doctorId to avoid
 //       Express matching "slots" as a doctorId parameter.
 // ──────────────────────────────────────────────
-router.get('/slots/:doctorId/:date', async (req, res) => {
+router.get('/slots/:doctorId/:date', validateObjectId('doctorId'), async (req, res) => {
   try {
     const { doctorId, date } = req.params;
 
@@ -174,7 +175,7 @@ router.get('/slots/:doctorId/:date', async (req, res) => {
 // @desc    Get a doctor's weekly availability
 // @access  Public
 // ──────────────────────────────────────────────
-router.get('/:doctorId', async (req, res) => {
+router.get('/:doctorId', validateObjectId('doctorId'), async (req, res) => {
   try {
     const availability = await Availability.findOne({ doctor: req.params.doctorId });
 
