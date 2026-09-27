@@ -2,6 +2,7 @@ const express = require('express');
 const MedicalRecord = require('../models/MedicalRecord');
 const Doctor = require('../models/Doctor');
 const { protect, authorize } = require('../middleware/auth');
+const validateObjectId = require('../middleware/validateObjectId');
 
 const router = express.Router();
 
@@ -65,7 +66,7 @@ router.post('/', protect, authorize('patient'), async (req, res) => {
 // @desc    Delete a medical record (patient can delete own records)
 // @access  Private (patient)
 // ──────────────────────────────────────────────
-router.delete('/:id', protect, authorize('patient'), async (req, res) => {
+router.delete('/:id', protect, authorize('patient'), validateObjectId('id'), async (req, res) => {
   try {
     const record = await MedicalRecord.findById(req.params.id);
 
@@ -89,7 +90,7 @@ router.delete('/:id', protect, authorize('patient'), async (req, res) => {
 // @desc    Get medical records for a specific patient (doctor view)
 // @access  Private (doctor)
 // ──────────────────────────────────────────────
-router.get('/patient/:patientId', protect, authorize('doctor'), async (req, res) => {
+router.get('/patient/:patientId', protect, authorize('doctor'), validateObjectId('patientId'), async (req, res) => {
   try {
     const records = await MedicalRecord.find({ patient: req.params.patientId })
       .sort({ date: -1 });
