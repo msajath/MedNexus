@@ -20,7 +20,7 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/admin/users', {
+      const res = await fetch('/api/admin/users', {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
@@ -42,7 +42,7 @@ export default function AdminUsers() {
     setDeleting(userId)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`http://localhost:5000/api/admin/users/${userId}`, {
+      const res = await fetch(`/api/admin/users/${userId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -59,7 +59,7 @@ export default function AdminUsers() {
   const handleVerifyDoctor = async (userId) => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`http://localhost:5000/api/admin/verify-doctor/${userId}`, {
+      const res = await fetch(`/api/admin/verify-doctor/${userId}`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -76,7 +76,7 @@ export default function AdminUsers() {
     setDoctorLoading(true)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`http://localhost:5000/api/admin/doctors/${doctor._id}`, {
+      const res = await fetch(`/api/admin/doctors/${doctor._id}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
@@ -107,7 +107,7 @@ export default function AdminUsers() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-surface">
       <Sidebar />
-      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 md:ml-64 transition-all duration-300" id="admin-users">
+      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 lg:ml-64 transition-all duration-300" id="admin-users">
         <div className="mb-8">
           <h1 className="text-3xl font-semibold text-navy">All Users</h1>
           <p className="mt-1 text-base text-navy-muted">Manage all registered patients, doctors, and admins.</p>
