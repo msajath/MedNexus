@@ -105,12 +105,12 @@ describe('Auth Routes', () => {
   });
 
   describe('POST /api/auth/forgot-password', () => {
-    it('should generate and save a temporary password for an existing user', async () => {
+    it('should generate and save a password reset code for an existing user', async () => {
       const mockUser = {
         _id: '123',
         name: 'Test Patient',
         email: 'test@test.com',
-        password: 'old-password',
+        generateResetToken: jest.fn().mockReturnValue('123456'),
         save: jest.fn().mockResolvedValue(true),
       };
 
@@ -122,8 +122,8 @@ describe('Auth Routes', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.message).toBe('A temporary password has been sent to your email address');
-      expect(mockUser.password).not.toBe('old-password');
+      expect(res.body.message).toBe('If an account exists for that email, a reset code has been sent');
+      expect(mockUser.generateResetToken).toHaveBeenCalled();
       expect(mockUser.save).toHaveBeenCalled();
     });
   });
