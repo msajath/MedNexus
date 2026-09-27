@@ -24,7 +24,7 @@ export default function AdminRecords() {
   const fetchRecords = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/admin/records', {
+      const res = await fetch('/api/admin/records', {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
@@ -55,7 +55,7 @@ export default function AdminRecords() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-surface">
       <Sidebar />
-      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 md:ml-64 transition-all duration-300" id="admin-records">
+      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 lg:ml-64 transition-all duration-300" id="admin-records">
         <div className="mb-8">
           <h1 className="text-3xl font-semibold text-navy">Medical Records</h1>
           <p className="mt-1 text-base text-navy-muted">View all patient medical records across the platform.</p>
