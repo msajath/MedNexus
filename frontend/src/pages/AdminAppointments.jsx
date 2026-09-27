@@ -20,7 +20,7 @@ export default function AdminAppointments() {
   const fetchAppointments = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/admin/appointments', {
+      const res = await fetch('/api/admin/appointments', {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
@@ -41,7 +41,7 @@ export default function AdminAppointments() {
     setUpdating(id)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`http://localhost:5000/api/admin/appointments/${id}/status`, {
+      const res = await fetch(`/api/admin/appointments/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status })
@@ -78,7 +78,7 @@ export default function AdminAppointments() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-surface">
       <Sidebar />
-      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 md:ml-64 transition-all duration-300" id="admin-appointments">
+      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 lg:ml-64 transition-all duration-300" id="admin-appointments">
         <div className="mb-8">
           <h1 className="text-3xl font-semibold text-navy">All Appointments</h1>
           <p className="mt-1 text-base text-navy-muted">Monitor and manage all appointments across the platform.</p>
