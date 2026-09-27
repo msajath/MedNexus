@@ -16,7 +16,7 @@ export default function MyAppointments() {
   const fetchAppointments = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('http://localhost:5000/api/appointments/my', {
+      const response = await fetch('/api/appointments/my', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -42,7 +42,7 @@ export default function MyAppointments() {
     if (!window.confirm('Are you sure you want to cancel this appointment?')) return
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`http://localhost:5000/api/appointments/${apptId}/cancel`, {
+      const response = await fetch(`/api/appointments/${apptId}/cancel`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -64,7 +64,7 @@ export default function MyAppointments() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-surface">
       <Sidebar />
-      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 md:ml-64 transition-all duration-300" id="my-appointments">
+      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 lg:ml-64 transition-all duration-300" id="my-appointments">
         <div className="mb-6">
           <h1 className="text-3xl font-semibold text-navy">My Appointments</h1>
           <p className="mt-2 text-base text-navy-muted">Manage your upcoming and past consultations with healthcare professionals.</p>
