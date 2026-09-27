@@ -71,6 +71,12 @@ export default function AdminDashboard() {
         body: JSON.stringify(newDoctor)
       })
       const data = await response.json()
+      if (response.status === 401) {
+        localStorage.removeItem('token')
+        setMessage({ type: 'error', text: 'Your admin session has expired. Please sign in again.' })
+        setTimeout(() => { window.location.href = '/admin/login' }, 800)
+        return
+      }
       if (response.ok) {
         // Save credentials to show to admin
         setCreatedCredentials({ name: newDoctor.name, email: newDoctor.email, password: newDoctor.password })

@@ -14,6 +14,8 @@ export default function AdminUsers() {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [deleting, setDeleting] = useState(null)
+  const [selectedDoctor, setSelectedDoctor] = useState(null)
+  const [doctorLoading, setDoctorLoading] = useState(false)
 
   const fetchUsers = async () => {
     try {
@@ -30,8 +32,8 @@ export default function AdminUsers() {
     }
   }
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchUsers()
   }, [])
 
@@ -66,6 +68,23 @@ export default function AdminUsers() {
       }
     } catch (err) {
       console.error(err)
+    }
+  }
+
+  const openDoctorDetails = async (doctor) => {
+    setSelectedDoctor({ ...doctor, loading: true })
+    setDoctorLoading(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`http://localhost:5000/api/admin/doctors/${doctor._id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (res.ok) setSelectedDoctor(data.doctor)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setDoctorLoading(false)
     }
   }
 
@@ -125,7 +144,7 @@ export default function AdminUsers() {
             />
           </div>
           <div className="flex gap-2">
-            {Object.entries(counts).map(([key, count]) => (
+            {Object.entries({ all: counts.all, doctor: counts.doctor, patient: counts.patient }).map(([key, count]) => (
               <button
                 key={key}
                 onClick={() => setRoleFilter(key)}
@@ -166,7 +185,16 @@ export default function AdminUsers() {
                             {u.avatar ? <img src={u.avatar} alt="" className="w-full h-full object-cover" /> : u.name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                           </div>
                           <div>
-                            <p className="font-semibold text-navy">{u.name}</p>
+                            {u.role === 'doctor' ? (
+                              <button
+                                onClick={() => openDoctorDetails(u)}
+                                className="font-semibold text-primary hover:text-primary-dark hover:underline text-left"
+                              >
+                                {u.name}
+                              </button>
+                            ) : (
+                              <p className="font-semibold text-navy">{u.name}</p>
+                            )}
                             <p className="text-xs text-navy-muted">{u.email}</p>
                           </div>
                         </div>
@@ -214,6 +242,84 @@ export default function AdminUsers() {
             </div>
             <div className="p-4 border-t border-surface-container-high text-xs text-navy-muted">
               Showing {filtered.length} of {users.length} users
+            </div>
+          </div>
+        )}
+
+        {selectedDoctor && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setSelectedDoctor(null)}>
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-start justify-between p-6 border-b border-outline-variant">
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary-light to-primary text-white flex items-center justify-center font-bold overflow-hidden">
+                    {selectedDoctor.avatar ? <img src={selectedDoctor.avatar} alt="" className="w-full h-full object-cover" /> : selectedDoctor.name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold text-navy">{selectedDoctor.name}</h2>
+                    <p className="text-sm text-navy-muted">{selectedDoctor.specialty} · {selectedDoctor.email}</p>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedDoctor(null)} className="text-outline hover:text-navy" aria-label="Close doctor details">
+                  <span className="material-icons-outlined">close</span>
+                </button>
+              </div>
+
+              {doctorLoading ? (
+                <div className="p-12 text-center text-navy-muted">Loading doctor details...</div>
+              ) : (
+                <div className="p-6 flex flex-col gap-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      ['Earnings', `$${(selectedDoctor.earnings || 0).toLocaleString()}`],
+                      ['Appointments', selectedDoctor.totalAppointments || 0],
+                      ['Completed', selectedDoctor.completedAppointments || 0],
+                      ['Patients', selectedDoctor.totalPatients || 0],
+                    ].map(([label, value]) => (
+                      <div key={label} className="p-4 bg-surface rounded-xl border border-outline-variant">
+                        <p className="text-xs text-navy-muted">{label}</p>
+                        <p className="text-xl font-bold text-navy mt-1">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <section>
+                    <h3 className="font-semibold text-navy mb-3">Patients Consulted</h3>
+                    {selectedDoctor.patients?.length ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {selectedDoctor.patients.map(patient => (
+                          <div key={patient._id} className="p-3 border border-outline-variant rounded-lg">
+                            <p className="font-medium text-navy">{patient.name}</p>
+                            <p className="text-xs text-navy-muted">{patient.email}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : <p className="text-sm text-navy-muted">No patients have booked this doctor yet.</p>}
+                  </section>
+
+                  <section>
+                    <h3 className="font-semibold text-navy mb-3">Appointment History</h3>
+                    {selectedDoctor.appointments?.length ? (
+                      <div className="overflow-x-auto border border-outline-variant rounded-lg">
+                        <table className="w-full text-sm">
+                          <thead className="bg-surface-container-low">
+                            <tr><th className="text-left p-3">Patient</th><th className="text-left p-3">Date</th><th className="text-left p-3">Status</th><th className="text-left p-3">Fee</th></tr>
+                          </thead>
+                          <tbody>
+                            {selectedDoctor.appointments.map(appointment => (
+                              <tr key={appointment._id} className="border-t border-outline-variant">
+                                <td className="p-3">{appointment.patient?.name || 'Unknown'}</td>
+                                <td className="p-3">{appointment.date} {appointment.time}</td>
+                                <td className="p-3 capitalize">{appointment.status}</td>
+                                <td className="p-3">{['confirmed', 'completed'].includes(appointment.status) ? `$${selectedDoctor.fee}` : '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : <p className="text-sm text-navy-muted">No appointments recorded.</p>}
+                  </section>
+                </div>
+              )}
             </div>
           </div>
         )}

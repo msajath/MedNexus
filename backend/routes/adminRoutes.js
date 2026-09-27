@@ -183,6 +183,65 @@ router.get('/doctors-detail', async (req, res) => {
 });
 
 // ──────────────────────────────────────────────
+// @route   GET /api/admin/doctors/:userId
+// @desc    Get a doctor's profile, earnings, appointments, and patients
+// @access  Private (admin only)
+// ──────────────────────────────────────────────
+router.get('/doctors/:userId', async (req, res) => {
+  try {
+    const doctor = await Doctor.findOne({ user: req.params.userId })
+      .populate('user', 'name email phone avatar isVerified createdAt');
+
+    if (!doctor || !doctor.user) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    const appointments = await Appointment.find({ doctor: doctor._id })
+      .populate('patient', 'name email phone avatar createdAt')
+      .sort({ date: -1, time: -1 });
+
+    const earningAppointments = appointments.filter((appointment) =>
+      ['confirmed', 'completed'].includes(appointment.status)
+    );
+    const patients = [...new Map(
+      appointments
+        .filter((appointment) => appointment.patient)
+        .map((appointment) => [String(appointment.patient._id), appointment.patient])
+    ).values()];
+
+    res.json({
+      success: true,
+      doctor: {
+        id: doctor._id,
+        userId: doctor.user._id,
+        name: doctor.user.name,
+        email: doctor.user.email,
+        phone: doctor.user.phone,
+        avatar: doctor.user.avatar,
+        isVerified: doctor.user.isVerified,
+        joinedDate: doctor.user.createdAt,
+        specialty: doctor.specialty,
+        fee: doctor.fee,
+        experience: doctor.experience,
+        location: doctor.location,
+        bio: doctor.bio,
+        rating: doctor.rating,
+        reviews: doctor.reviews,
+        available: doctor.available,
+        totalAppointments: appointments.length,
+        completedAppointments: appointments.filter((appointment) => appointment.status === 'completed').length,
+        totalPatients: patients.length,
+        earnings: earningAppointments.length * doctor.fee,
+        patients,
+        appointments,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ──────────────────────────────────────────────
 // @route   DELETE /api/admin/users/:userId
 // @desc    Delete a user account
 // @access  Private (admin only)
