@@ -167,7 +167,7 @@ export default function DoctorProfileSettings() {
             
             {/* Header / Avatar */}
             <div className="flex flex-col sm:flex-row items-center sm:text-left text-center gap-5 p-6 bg-white rounded-xl shadow-sm border border-outline-variant">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary-light to-primary text-white flex items-center justify-center font-bold text-2xl shrink-0 overflow-hidden">
+              <div className="w-20 h-20 rounded-full bg-linear-to-br from-primary-light to-primary text-white flex items-center justify-center font-bold text-2xl shrink-0 overflow-hidden">
                 {profilePicture ? (
                   <img src={profilePicture} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
