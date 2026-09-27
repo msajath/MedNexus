@@ -12,7 +12,7 @@ export default function SetAvailability() {
     try {
       const token = localStorage.getItem('token')
       // First, get the current user's doctor ID
-      const userResponse = await fetch('http://localhost:5000/api/auth/me', {
+      const userResponse = await fetch('/api/auth/me', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -21,7 +21,7 @@ export default function SetAvailability() {
       const doctorId = userData.user?.doctorProfile?._id || userData.user?._id || userData._id
 
       // Fetch availability for this doctor
-      const response = await fetch(`http://localhost:5000/api/availability/${doctorId}`, {
+      const response = await fetch(`/api/availability/${doctorId}`, {
         cache: 'no-store',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -83,7 +83,7 @@ export default function SetAvailability() {
     setSaving(true)
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('http://localhost:5000/api/availability', {
+      const response = await fetch('/api/availability', {
         method: 'PUT',
         cache: 'no-store',
         headers: {
@@ -107,7 +107,7 @@ export default function SetAvailability() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-surface">
       <Sidebar />
-      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 md:ml-64 transition-all duration-300" id="set-availability">
+      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 lg:ml-64 transition-all duration-300" id="set-availability">
         <div className="mb-6">
           <h1 className="text-3xl font-semibold text-navy">Set Availability</h1>
           <p className="mt-2 text-base text-navy-muted">Configure your weekly consulting hours. Patients will only be able to book appointments during these designated windows.</p>
