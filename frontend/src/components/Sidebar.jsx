@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { assets } from '../assets/assets'
@@ -28,16 +29,23 @@ const adminLinks = [
 export default function Sidebar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   const links = user?.role === 'doctor' ? doctorLinks : user?.role === 'admin' ? adminLinks : patientLinks
 
   const handleLogout = () => {
+    setMobileOpen(false)
     logout()
     navigate('/')
   }
 
   return (
-    <aside className="fixed top-0 left-0 w-[260px] h-screen bg-gradient-to-b from-[#f0fdfa] via-[#ecfeff] to-[#f0f9ff] border-r border-outline-variant flex flex-col z-50 overflow-y-auto max-lg:-translate-x-full max-lg:transition-transform max-lg:duration-300" id="dashboard-sidebar">
+    <>
+      <button type="button" className="fixed top-4 left-4 z-[60] lg:hidden w-11 h-11 rounded-xl bg-white border border-outline-variant shadow-md flex items-center justify-center text-navy" onClick={() => setMobileOpen((open) => !open)} aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={mobileOpen}>
+        <span className="material-icons-outlined">{mobileOpen ? 'close' : 'menu'}</span>
+      </button>
+      {mobileOpen && <button type="button" className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation menu" />}
+      <aside className={`fixed top-0 left-0 w-[260px] h-screen bg-gradient-to-b from-[#f0fdfa] via-[#ecfeff] to-[#f0f9ff] border-r border-outline-variant flex flex-col z-50 overflow-y-auto transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`} id="dashboard-sidebar">
       <div className="p-6 border-b border-outline-variant">
         <Link to="/" className="flex items-center">
           <img src={assets.logo} alt="MEDNEXUS Logo" className="w-36" />
@@ -71,6 +79,8 @@ export default function Sidebar() {
               if (link.comingSoon) {
                 e.preventDefault();
                 alert(`${link.label} feature coming soon!`);
+              } else {
+                setMobileOpen(false)
               }
             }}
           >
@@ -91,6 +101,7 @@ export default function Sidebar() {
           <span>Logout</span>
         </button>
       </div>
-    </aside>
+      </aside>
+    </>
   )
 }
