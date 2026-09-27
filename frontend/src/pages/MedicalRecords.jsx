@@ -52,7 +52,7 @@ export default function MedicalRecords() {
   const fetchRecords = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/records/my', {
+      const res = await fetch('/api/records/my', {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
@@ -88,7 +88,7 @@ export default function MedicalRecords() {
     setIsSaving(true)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/records', {
+      const res = await fetch('/api/records', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(formData)
@@ -114,7 +114,7 @@ export default function MedicalRecords() {
     if (!window.confirm('Delete this medical record?')) return
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`http://localhost:5000/api/records/${id}`, {
+      const res = await fetch(`/api/records/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -139,7 +139,7 @@ export default function MedicalRecords() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-surface">
       <Sidebar />
-      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 md:ml-64 transition-all duration-300" id="medical-records">
+      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 lg:ml-64 transition-all duration-300" id="medical-records">
         
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
