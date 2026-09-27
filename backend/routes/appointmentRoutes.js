@@ -3,6 +3,7 @@ const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
 const Availability = require('../models/Availability');
 const { protect, authorize } = require('../middleware/auth');
+const validateObjectId = require('../middleware/validateObjectId');
 
 const router = express.Router();
 
@@ -169,7 +170,7 @@ router.get('/my', protect, async (req, res) => {
 // @desc    Cancel an appointment (patient shortcut)
 // @access  Private
 // ──────────────────────────────────────────────
-router.put('/:id/cancel', protect, async (req, res) => {
+router.put('/:id/cancel', protect, validateObjectId('id'), async (req, res) => {
   try {
     const appointment = await Appointment.findById(req.params.id);
     if (!appointment) {
@@ -195,12 +196,16 @@ router.put('/:id/cancel', protect, async (req, res) => {
 // @desc    Update appointment status (confirm/cancel)
 // @access  Private
 // ──────────────────────────────────────────────
-router.put('/:id/status', protect, async (req, res) => {
+router.put('/:id/status', protect, validateObjectId('id'), async (req, res) => {
   try {
     const { status } = req.body;
 
     if (!['confirmed', 'cancelled', 'completed'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
+
+    if (req.user.role === 'patient' && status !== 'cancelled') {
+      return res.status(403).json({ success: false, message: 'Patients may only cancel their appointments' });
     }
 
     const appointment = await Appointment.findById(req.params.id);
