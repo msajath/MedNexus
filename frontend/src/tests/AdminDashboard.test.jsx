@@ -5,7 +5,7 @@ import AdminDashboard from '../pages/AdminDashboard';
 import { AuthProvider } from '../context/AuthContext';
 
 const fetchMock = vi.fn();
-global.fetch = fetchMock;
+globalThis.fetch = fetchMock;
 
 beforeEach(() => {
   fetchMock.mockReset();
