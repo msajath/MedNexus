@@ -1,4 +1,4 @@
-const { execSync } = require('child_process');
+import { execSync } from 'node:child_process';
 try {
   const result = execSync('git status', { encoding: 'utf-8' });
   console.log(result);
