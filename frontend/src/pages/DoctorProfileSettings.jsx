@@ -84,7 +84,7 @@ export default function DoctorProfileSettings() {
     setMessage({ type: '', text: '' })
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('http://localhost:5000/api/auth/profile', {
+      const response = await fetch('/api/auth/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -133,7 +133,7 @@ export default function DoctorProfileSettings() {
     setPwMessage({ type: '', text: '' })
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/auth/password', {
+      const res = await fetch('/api/auth/password', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword })
@@ -156,7 +156,7 @@ export default function DoctorProfileSettings() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-surface">
       <Sidebar />
-      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 md:ml-64 transition-all duration-300" id="doctor-profile-settings">
+      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 lg:ml-64 transition-all duration-300" id="doctor-profile-settings">
         <div className="mb-6">
           <h1 className="text-3xl font-semibold text-navy">Doctor Profile</h1>
           <p className="mt-2 text-base text-navy-muted">Update your personal and professional information.</p>
