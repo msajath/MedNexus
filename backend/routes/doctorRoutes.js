@@ -2,6 +2,7 @@ const express = require('express');
 const Doctor = require('../models/Doctor');
 const User = require('../models/User');
 const { protect, authorize } = require('../middleware/auth');
+const validateObjectId = require('../middleware/validateObjectId');
 
 const router = express.Router();
 
@@ -119,7 +120,7 @@ router.put('/profile', protect, authorize('doctor'), async (req, res) => {
 // @desc    Get single doctor profile
 // @access  Public
 // ──────────────────────────────────────────────
-router.get('/:id', async (req, res) => {
+router.get('/:id', validateObjectId('id'), async (req, res) => {
   try {
     const doctor = await Doctor.findById(req.params.id).populate('user', 'name email avatar');
 
