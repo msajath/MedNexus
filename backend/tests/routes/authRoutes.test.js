@@ -127,4 +127,27 @@ describe('Auth Routes', () => {
       expect(mockUser.save).toHaveBeenCalled();
     });
   });
+
+  describe('POST /api/auth/reset-password', () => {
+    it('should accept a valid reset code and save the new password', async () => {
+      const mockUser = {
+        password: 'old-password',
+        resetPasswordToken: 'stored-token',
+        resetPasswordExpire: new Date(Date.now() + 60_000),
+        save: jest.fn().mockResolvedValue(true),
+      };
+      User.findOne.mockResolvedValue(mockUser);
+
+      const res = await request(app)
+        .post('/api/auth/reset-password')
+        .send({ email: 'test@test.com', resetCode: '123456', newPassword: 'new-password' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(mockUser.password).toBe('new-password');
+      expect(mockUser.resetPasswordToken).toBeNull();
+      expect(mockUser.resetPasswordExpire).toBeNull();
+      expect(mockUser.save).toHaveBeenCalled();
+    });
+  });
 });

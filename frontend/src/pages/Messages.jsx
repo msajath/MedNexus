@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import Sidebar from '../components/Sidebar'
+import { useAuth } from '../context/AuthContext'
 
 export default function Messages() {
+  const { user } = useAuth()
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -9,12 +11,19 @@ export default function Messages() {
   useEffect(() => {
     const loadMessages = async () => {
       try {
-        const response = await fetch('/api/messages', {
+        const endpoint = user?.role === 'admin' ? '/api/admin/contact-messages' : '/api/messages'
+        const response = await fetch(endpoint, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         })
         const data = await response.json()
         if (!response.ok) throw new Error(data.message || 'Unable to load messages')
-        setMessages(data.messages || [])
+        const normalizedMessages = (data.messages || []).map((message) => user?.role === 'admin' ? {
+          ...message,
+          senderName: `${message.name} (${message.email})`,
+          body: message.message,
+          read: message.status !== 'new',
+        } : message)
+        setMessages(normalizedMessages)
       } catch (requestError) {
         setError(requestError.message)
       } finally {
@@ -23,15 +32,22 @@ export default function Messages() {
     }
 
     loadMessages()
-  }, [])
+  }, [user?.role])
 
   const markAsRead = async (message) => {
     if (message.read) return
 
     try {
-      const response = await fetch(`/api/messages/${message._id}/read`, {
+      const endpoint = user?.role === 'admin'
+        ? `/api/admin/contact-messages/${message._id}/status`
+        : `/api/messages/${message._id}/read`
+      const response = await fetch(endpoint, {
         method: 'PUT',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          ...(user?.role === 'admin' && { 'Content-Type': 'application/json' }),
+        },
+        ...(user?.role === 'admin' && { body: JSON.stringify({ status: 'in-progress' }) }),
       })
       if (!response.ok) throw new Error('Unable to mark message as read')
       setMessages((current) => current.map((item) => item._id === message._id ? { ...item, read: true } : item))

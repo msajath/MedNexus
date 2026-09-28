@@ -106,32 +106,39 @@ router.get('/patient/:patientId', protect, authorize('doctor'), validateObjectId
 // @desc    Doctor adds a record to a patient
 // @access  Private (doctor)
 // ──────────────────────────────────────────────
-router.post('/doctor-add', protect, authorize('doctor'), async (req, res) => {
-  try {
-    const { patientId, title, type, description, diagnosis, medications, date, appointmentId } = req.body;
+router.post(
+  '/doctor-add',
+  protect,
+  authorize('doctor'),
+  validateObjectId('patientId', { source: 'body' }),
+  validateObjectId('appointmentId', { source: 'body', optional: true }),
+  async (req, res) => {
+    try {
+      const { patientId, title, type, description, diagnosis, medications, date, appointmentId } = req.body;
 
-    const doctorProfile = await Doctor.findOne({ user: req.user._id });
-    if (!doctorProfile) {
-      return res.status(404).json({ success: false, message: 'Doctor profile not found' });
+      const doctorProfile = await Doctor.findOne({ user: req.user._id });
+      if (!doctorProfile) {
+        return res.status(404).json({ success: false, message: 'Doctor profile not found' });
+      }
+
+      const record = await MedicalRecord.create({
+        patient: patientId,
+        doctor: doctorProfile._id,
+        appointment: appointmentId || null,
+        title,
+        type: type || 'Diagnosis',
+        description: description || '',
+        diagnosis: diagnosis || '',
+        medications: medications || [],
+        date: date || getLocalDateString(),
+        addedBy: 'doctor',
+      });
+
+      res.status(201).json({ success: true, record });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
     }
-
-    const record = await MedicalRecord.create({
-      patient: patientId,
-      doctor: doctorProfile._id,
-      appointment: appointmentId || null,
-      title,
-      type: type || 'Diagnosis',
-      description: description || '',
-      diagnosis: diagnosis || '',
-      medications: medications || [],
-      date: date || getLocalDateString(),
-      addedBy: 'doctor',
-    });
-
-    res.status(201).json({ success: true, record });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+  },
+);
 
 module.exports = router;

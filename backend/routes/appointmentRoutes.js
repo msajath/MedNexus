@@ -37,7 +37,7 @@ const isWithinSchedule = (date, time, schedule) => {
 // @desc    Book a new appointment
 // @access  Private (patient only)
 // ──────────────────────────────────────────────
-router.post('/', protect, authorize('patient'), async (req, res) => {
+router.post('/', protect, authorize('patient'), validateObjectId('doctorId', { source: 'body' }), async (req, res) => {
   try {
     const { doctorId, date, time, type, notes, symptoms } = req.body;
 

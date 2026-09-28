@@ -5,6 +5,7 @@ const Appointment = require('../models/Appointment');
 const Availability = require('../models/Availability');
 const MedicalRecord = require('../models/MedicalRecord');
 const Message = require('../models/Message');
+const ContactMessage = require('../models/ContactMessage');
 const { protect, authorize } = require('../middleware/auth');
 const validateObjectId = require('../middleware/validateObjectId');
 
@@ -333,6 +334,31 @@ router.get('/recent-activity', async (req, res) => {
     res.json({ success: true, activity: activity.slice(0, 10) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Contact form inbox for administrators
+router.get('/contact-messages', async (req, res) => {
+  try {
+    const messages = await ContactMessage.find().sort({ createdAt: -1 });
+    res.json({ success: true, count: messages.length, messages });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/contact-messages/:id/status', validateObjectId('id'), async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['new', 'in-progress', 'resolved'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid contact message status' });
+    }
+
+    const message = await ContactMessage.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    if (!message) return res.status(404).json({ success: false, message: 'Contact message not found' });
+    return res.json({ success: true, message });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 
