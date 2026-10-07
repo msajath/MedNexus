@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const mongoose = require('mongoose');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -12,12 +13,21 @@ const app = express();
 // ──────────────────────────────────────────────
 // Middleware
 // ──────────────────────────────────────────────
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+  : ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'];
+
 app.use(cors({
-  origin: true,
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    return callback(new Error('Blocked by CORS policy'));
+  },
   credentials: true,
 }));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ──────────────────────────────────────────────
 // API Routes
@@ -36,6 +46,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'MEDNEXUS API is running', timestamp: new Date().toISOString() });
 });
 
+app.get('/api/ready', (req, res) => {
+  const ready = mongoose.connection.readyState === 1;
+  res.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'unavailable' });
+});
+
 // ──────────────────────────────────────────────
 // Error Handler (must be after routes)
 // ──────────────────────────────────────────────
@@ -49,7 +64,7 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
     await connectDB();
-    app.listen(PORT, '0.0.0.0', () => {
+    const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`
   ╔══════════════════════════════════════════╗
   ║   🏥  MEDNEXUS API Server               ║
@@ -58,10 +73,31 @@ const startServer = async () => {
   ╚══════════════════════════════════════════╝
   `);
     });
+    const shutdown = () => {
+      const deadline = setTimeout(() => process.exit(1), 25000);
+      deadline.unref();
+      server.close(async () => {
+        try {
+          await mongoose.disconnect();
+          clearTimeout(deadline);
+          process.exit(0);
+        } catch (error) {
+          console.error('Shutdown failed:', error.message);
+          process.exit(1);
+        }
+      });
+    };
+    process.once('SIGTERM', shutdown);
+    process.once('SIGINT', shutdown);
+    return server;
   } catch (error) {
     console.error('❌ Server startup failed:', error.message);
     process.exit(1);
   }
 };
 
-startServer();
+if (process.env.NODE_ENV !== 'test' && require.main === module) {
+  startServer();
+}
+
+module.exports = { app, startServer };

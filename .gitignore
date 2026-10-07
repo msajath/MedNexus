@@ -3,6 +3,12 @@ node_modules/
 
 # Environment variables
 .env
+.env.*
+!.env.example
+coverage/
+.vite/
+backups/
+*.archive.gz
 
 # Build output
 dist/
