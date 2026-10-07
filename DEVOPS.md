@@ -56,19 +56,21 @@ the cluster's network access. Never put a MongoDB URI in the Vite frontend.
 
 ## CI and releases
 
-GitHub Actions runs backend tests, MongoDB-backed integration tests, frontend
-tests/lint/build, then a full Compose
+GitHub Actions runs backend tests and production dependency audits,
+MongoDB-backed integration tests, frontend tests/lint/build, then a full Compose
 smoke test including database readiness, the API proxy and SPA deep links. Pushes
 to main/master or `v*` tags publish both tested images to GHCR with immutable
-`sha-<full-commit-sha>` tags. PRs and dev pushes never publish. Enable Actions and
+`sha-<full-commit-sha>` tags. PRs and dev pushes never publish. This workflow
+publishes images; it does not deploy to a server. Enable Actions and
 allow the workflow token to write packages. Dependabot checks npm, Docker and
 Actions weekly. Configure branch protection to require both component checks and
-`containers`, and require reviews before merging.
+`backend-integration` and `containers`, and require reviews before merging.
 
 ## Server deployment
 
-Provision a Docker host and copy `docker-compose.yml` and a filled root `.env` to
-a restricted directory. Set `BACKEND_IMAGE` and `FRONTEND_IMAGE` to GHCR images
+Provision a Docker host and copy `docker-compose.yml`, `infra/mongo/init-app-user.js`
+at the same relative path, and a filled root `.env` to a restricted directory.
+Set `BACKEND_IMAGE` and `FRONTEND_IMAGE` to GHCR images
 from the same tested commit. For private packages, authenticate Docker to GHCR
 using a token with read:packages. Do not put that token in this repository.
 
@@ -79,6 +81,25 @@ docker compose ps
 curl --fail http://127.0.0.1:8080/api/ready
 ```
 
+For an Atlas-backed host, copy `docker-compose.atlas.yml` and create an ignored
+`.env.atlas` from `.env.atlas.example`. Set `ATLAS_MONGO_URI` to the URI for the
+`medibook` database, `JWT_SECRET` to a separate random secret, and both image
+references to the same tested commit. Add the host's outbound IP to the Atlas
+access list and give its database user only the required access. Then run:
+
+```sh
+docker compose --env-file .env.atlas -f docker-compose.atlas.yml config --quiet
+docker compose --env-file .env.atlas -f docker-compose.atlas.yml pull
+docker compose --env-file .env.atlas -f docker-compose.atlas.yml up --no-build --detach --wait
+curl --fail http://127.0.0.1:8080/api/ready
+```
+
+The Atlas file runs only backend and frontend containers. `backend/.env` is
+used for native development and is not loaded by either Compose deployment.
+The backend creates required indexes and removes legacy plaintext doctor
+credentials on startup, so test this migration against a restored staging copy
+and take a backup before applying it to existing patient data.
+
 Keep `HTTP_BIND=127.0.0.1` and place a host HTTPS reverse proxy in front of port
 8080. Configure a domain, TLS certificate, firewall and `ALLOWED_ORIGINS` with
 the exact HTTPS origin. Set SMTP variables to enable password reset emails;
@@ -87,8 +108,9 @@ deployment, create the first administrator with `ADMIN_EMAIL` and
 `npm run bootstrap-admin` in the backend environment. For Compose, run
 `docker compose exec -e ADMIN_EMAIL=admin@example.com backend npm run bootstrap-admin`
 after startup, substituting the real administrator address. Then use Forgot
-Password to set its password. Production bootstrap requires SMTP. Never run
-the demo seeder in production.
+Password to set its password. For Atlas, use the same `--env-file` and `-f`
+arguments shown above with that `exec` command. Production bootstrap requires
+SMTP. Never run the demo seeder in production.
 This repository does not provision a cloud account, domain or TLS certificate.
 Choose the hosting provider before adding provider-specific infrastructure or CD
 credentials. Validate SMTP delivery, TLS, restore, and clinical access policy on

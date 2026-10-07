@@ -29,6 +29,7 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ matrix.component }}/package-lock.json
       - run: npm ci
+      - run: npm audit --omit=dev --audit-level=moderate
       - run: npm test
       - if: matrix.component == 'frontend'
         run: npm run lint
@@ -76,6 +77,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose config --quiet
+      - name: Validate Atlas Compose configuration
+        env:
+          ATLAS_MONGO_URI: mongodb+srv://ci_app:ci-only-password@example.mongodb.net/medibook
+          ALLOWED_ORIGINS: https://example.test
+        run: docker compose -f docker-compose.atlas.yml config --quiet
       - run: docker compose up --build --detach --wait --wait-timeout 180
       - name: Verify SPA and proxied API
         run: |

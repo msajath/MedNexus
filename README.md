@@ -16,6 +16,8 @@ health checks, logs, and database backup/restore.
 The browser calls `/api`; only the backend connects to MongoDB. Docker Compose
 creates a restricted MongoDB application account on a new database volume.
 For an existing volume, follow the migration steps in [DEVOPS.md](DEVOPS.md).
+To deploy the container stack with MongoDB Atlas instead, use
+`docker-compose.atlas.yml` and `.env.atlas.example` as described there.
 
 ## Native development
 

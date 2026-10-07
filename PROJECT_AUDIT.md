@@ -26,8 +26,7 @@ Added route tests and a MongoDB-backed integration suite for authorization,
 concurrent booking, deactivation, and email uniqueness. The integration suite and
 container startup remain unverified locally because no MongoDB service or Docker
 daemon is running on this machine. CI is configured to run those checks, but its
-result has not been observed. The local test/build status is recorded in
-`runtime-validation-report.md` and should be rerun after the final changes.
+result has not been observed. Local tests and builds should be rerun after changes.
 
 **Current decision:** Do not use real patient data yet. A live database and
 staging deployment still need verification, including index migration on existing

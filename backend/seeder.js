@@ -27,7 +27,7 @@ const getRelativeDate = (daysOffset) => {
 const seedPassword = process.env.SEED_PASSWORD || crypto.randomBytes(24).toString('base64url');
 
 // ──────────────────────────────────────────────
-// Seed Data (matches frontend mockData.js)
+// Seed data for local development only.
 // ──────────────────────────────────────────────
 
 const users = [
