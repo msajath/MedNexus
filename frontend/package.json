@@ -17,7 +17,7 @@
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-parallax-tilt": "^1.7.333",
-    "react-router-dom": "^7.18.0",
+    "react-router-dom": "^7.18.4",
     "tailwindcss": "^4.3.1"
   },
   "devDependencies": {
