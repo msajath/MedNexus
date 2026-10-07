@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
+import { API_BASE } from '../config'
 
 export default function AdminDoctors() {
   const [doctors, setDoctors] = useState([])
@@ -11,7 +12,7 @@ export default function AdminDoctors() {
   const fetchDoctors = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('/api/admin/doctors-detail', {
+      const res = await fetch(`${API_BASE}/api/admin/doctors-detail`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
@@ -32,7 +33,7 @@ export default function AdminDoctors() {
     if (!window.confirm(`Deactivate Dr. ${name}? Their clinical history will be retained.`)) return
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`/api/admin/users/${userId}`, {
+      const res = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -46,7 +47,7 @@ export default function AdminDoctors() {
   const handleVerify = async (userId) => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`/api/admin/verify-doctor/${userId}`, {
+      const res = await fetch(`${API_BASE}/api/admin/verify-doctor/${userId}`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       })

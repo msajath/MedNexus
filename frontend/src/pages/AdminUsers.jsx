@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
+import { API_BASE } from '../config'
 
 const roleColors = {
   patient: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -20,7 +21,7 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('/api/admin/users', {
+      const res = await fetch(`${API_BASE}/api/admin/users`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
@@ -42,7 +43,7 @@ export default function AdminUsers() {
     setDeleting(userId)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`/api/admin/users/${userId}`, {
+      const res = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -59,7 +60,7 @@ export default function AdminUsers() {
   const handleVerifyDoctor = async (userId) => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`/api/admin/verify-doctor/${userId}`, {
+      const res = await fetch(`${API_BASE}/api/admin/verify-doctor/${userId}`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -76,7 +77,7 @@ export default function AdminUsers() {
     setDoctorLoading(true)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`/api/admin/doctors/${doctor._id}`, {
+      const res = await fetch(`${API_BASE}/api/admin/doctors/${doctor._id}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()

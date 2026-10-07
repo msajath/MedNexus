@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar'
 import StatCard from '../components/StatCard'
 import StatusBadge from '../components/StatusBadge'
 import Footer from '../components/Footer'
+import { API_BASE } from '../config'
 
 export default function PatientDashboard() {
   const { user } = useAuth()
@@ -14,7 +15,7 @@ export default function PatientDashboard() {
   const fetchAppointments = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/appointments/my', {
+      const response = await fetch(`${API_BASE}/api/appointments/my`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

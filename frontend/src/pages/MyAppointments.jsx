@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar'
 import StatusBadge from '../components/StatusBadge'
 import Footer from '../components/Footer'
 import { formatAppointmentDate } from '../utils/date'
+import { API_BASE } from '../config'
 
 export default function MyAppointments() {
   const [appointments, setAppointments] = useState([])
@@ -16,7 +17,7 @@ export default function MyAppointments() {
   const fetchAppointments = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/appointments/my', {
+      const response = await fetch(`${API_BASE}/api/appointments/my`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -42,7 +43,7 @@ export default function MyAppointments() {
     if (!window.confirm('Are you sure you want to cancel this appointment?')) return
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`/api/appointments/${apptId}/cancel`, {
+      const response = await fetch(`${API_BASE}/api/appointments/${apptId}/cancel`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       })

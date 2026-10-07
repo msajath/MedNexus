@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar'
 import StatusBadge from '../components/StatusBadge'
 import Footer from '../components/Footer'
 import { formatAppointmentDate } from '../utils/date'
+import { API_BASE } from '../config'
 
 export default function ManageAppointments() {
   const [appointments, setAppointments] = useState([])
@@ -16,7 +17,7 @@ export default function ManageAppointments() {
     setUpdatingId(id)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`/api/appointments/${id}/status`, {
+      const res = await fetch(`${API_BASE}/api/appointments/${id}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -37,7 +38,7 @@ export default function ManageAppointments() {
   const fetchAppointments = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/appointments/my', {
+      const response = await fetch(`${API_BASE}/api/appointments/my`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { assets } from '../assets/assets'
+import { API_BASE } from '../config'
 
 export default function ContactPage() {
   const [loading, setLoading] = useState(false)
@@ -14,7 +15,7 @@ export default function ContactPage() {
     const form = e.currentTarget
 
     try {
-      const response = await fetch('/api/contact', {
+      const response = await fetch(`${API_BASE}/api/contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(Object.fromEntries(new FormData(form))),

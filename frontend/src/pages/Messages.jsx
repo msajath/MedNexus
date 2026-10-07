@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Sidebar from '../components/Sidebar'
 import { useAuth } from '../context/AuthContext'
+import { API_BASE } from '../config'
 
 export default function Messages() {
   const { user } = useAuth()
@@ -11,7 +12,7 @@ export default function Messages() {
   useEffect(() => {
     const loadMessages = async () => {
       try {
-        const endpoint = user?.role === 'admin' ? '/api/admin/contact-messages' : '/api/messages'
+        const endpoint = user?.role === 'admin' ? `${API_BASE}/api/admin/contact-messages` : `${API_BASE}/api/messages`
         const response = await fetch(endpoint, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         })
@@ -39,8 +40,8 @@ export default function Messages() {
 
     try {
       const endpoint = user?.role === 'admin'
-        ? `/api/admin/contact-messages/${message._id}/status`
-        : `/api/messages/${message._id}/read`
+        ? `${API_BASE}/api/admin/contact-messages//status`
+        : `${API_BASE}/api/messages//read`
       const response = await fetch(endpoint, {
         method: 'PUT',
         headers: {

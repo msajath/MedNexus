@@ -5,6 +5,7 @@ import Footer from '../components/Footer'
 import DoctorCard from '../components/DoctorCard'
 import { assets, specialityData } from '../assets/assets'
 import { motion } from 'framer-motion'
+import { API_BASE } from '../config'
 
 export default function HomePage() {
   const [topDoctors, setTopDoctors] = useState([])
@@ -12,7 +13,7 @@ export default function HomePage() {
   useEffect(() => {
     const fetchTopDoctors = async () => {
       try {
-        const response = await fetch('/api/doctors')
+        const response = await fetch(`${API_BASE}/api/doctors`)
         if (response.ok) {
           const data = await response.json()
           setTopDoctors((data.doctors || data || []).slice(0, 4))

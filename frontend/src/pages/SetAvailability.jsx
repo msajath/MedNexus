@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
+import { API_BASE } from '../config'
 
 export default function SetAvailability() {
   const [schedule, setSchedule] = useState([])
@@ -12,7 +13,7 @@ export default function SetAvailability() {
     try {
       const token = localStorage.getItem('token')
       // First, get the current user's doctor ID
-      const userResponse = await fetch('/api/auth/me', {
+      const userResponse = await fetch(`${API_BASE}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -21,7 +22,7 @@ export default function SetAvailability() {
       const doctorId = userData.user?.doctorProfile?._id || userData.user?._id || userData._id
 
       // Fetch availability for this doctor
-      const response = await fetch(`/api/availability/${doctorId}`, {
+      const response = await fetch(`${API_BASE}/api/availability/${doctorId}`, {
         cache: 'no-store',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -83,7 +84,7 @@ export default function SetAvailability() {
     setSaving(true)
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/availability', {
+      const response = await fetch(`${API_BASE}/api/availability`, {
         method: 'PUT',
         cache: 'no-store',
         headers: {

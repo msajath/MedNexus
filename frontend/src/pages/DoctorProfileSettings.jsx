@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
 import { specialties } from '../data/mockData'
+import { API_BASE } from '../config'
 
 export default function DoctorProfileSettings() {
   const { user, setUser } = useAuth()
@@ -84,7 +85,7 @@ export default function DoctorProfileSettings() {
     setMessage({ type: '', text: '' })
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/auth/profile', {
+      const response = await fetch(`${API_BASE}/api/auth/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -133,7 +134,7 @@ export default function DoctorProfileSettings() {
     setPwMessage({ type: '', text: '' })
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('/api/auth/password', {
+      const res = await fetch(`${API_BASE}/api/auth/password`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword })

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { assets } from '../assets/assets'
+import { API_BASE } from '../config'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
@@ -19,7 +20,7 @@ export default function ForgotPassword() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/auth/forgot-password', {
+      const response = await fetch(`${API_BASE}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -52,7 +53,7 @@ export default function ForgotPassword() {
 
     setLoading(true)
     try {
-      const response = await fetch('/api/auth/reset-password', {
+      const response = await fetch(`${API_BASE}/api/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, resetCode, newPassword }),

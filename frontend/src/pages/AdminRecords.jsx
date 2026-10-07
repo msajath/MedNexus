@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
+import { API_BASE } from '../config'
 
 const typeColors = {
   Prescription: 'bg-blue-50 text-blue-700',
@@ -24,7 +25,7 @@ export default function AdminRecords() {
   const fetchRecords = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('/api/admin/records', {
+      const res = await fetch(`${API_BASE}/api/admin/records`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()

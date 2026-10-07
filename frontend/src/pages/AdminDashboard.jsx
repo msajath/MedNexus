@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar'
 import StatCard from '../components/StatCard'
 import Footer from '../components/Footer'
 import { specialties } from '../data/mockData'
+import { API_BASE } from '../config'
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -23,7 +24,7 @@ export default function AdminDashboard() {
   const fetchAdminStats = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/admin/stats', {
+      const response = await fetch(`${API_BASE}/api/admin/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -63,7 +64,7 @@ export default function AdminDashboard() {
     setMessage({ type: '', text: '' })
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/admin/doctors', {
+      const response = await fetch(`${API_BASE}/api/admin/doctors`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

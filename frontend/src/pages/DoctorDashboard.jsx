@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar'
 import StatCard from '../components/StatCard'
 import Footer from '../components/Footer'
 import { getLocalDateString } from '../utils/date'
+import { API_BASE } from '../config'
 
 export default function DoctorDashboard() {
   const { user } = useAuth()
@@ -26,7 +27,7 @@ export default function DoctorDashboard() {
   const fetchTodayAppointments = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/appointments/my', {
+      const response = await fetch(`${API_BASE}/api/appointments/my`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

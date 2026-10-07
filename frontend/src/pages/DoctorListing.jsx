@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import DoctorCard from '../components/DoctorCard'
 import { specialties } from '../data/mockData'
+import { API_BASE } from '../config'
 
 export default function DoctorListing() {
   const locationObj = useLocation()
@@ -18,7 +19,7 @@ export default function DoctorListing() {
 
   const fetchDoctors = async () => {
     try {
-      const response = await fetch('/api/doctors')
+      const response = await fetch(`${API_BASE}/api/doctors`)
       if (!response.ok) throw new Error('Failed to fetch doctors')
       const data = await response.json()
       setDoctors(data.doctors || data || [])

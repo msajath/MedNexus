@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import { API_BASE } from '../config'
 
 const emptySlots = { morning: [], afternoon: [], evening: [] }
 
@@ -30,7 +31,7 @@ export default function BookAppointment() {
 
   const fetchDoctor = async () => {
     try {
-      const response = await fetch(`/api/doctors/${id}`)
+      const response = await fetch(`${API_BASE}/api/doctors/${id}`)
       if (!response.ok) throw new Error('Doctor not found')
       const data = await response.json()
       setDoctor(data.doctor || data)
@@ -62,7 +63,7 @@ export default function BookAppointment() {
     setSelectedSlot(null) // Reset selected slot when date changes
     try {
       const dateStr = formatDate(days[dateIndex])
-      const response = await fetch(`/api/availability/slots/${id}/${dateStr}`, {
+      const response = await fetch(`${API_BASE}/api/availability/slots/${id}/${dateStr}`, {
         cache: 'no-store',
       })
       if (response.ok) {
@@ -104,7 +105,7 @@ export default function BookAppointment() {
 
     try {
       const dateStr = formatDate(days[selectedDate])
-      const response = await fetch('/api/appointments', {
+      const response = await fetch(`${API_BASE}/api/appointments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

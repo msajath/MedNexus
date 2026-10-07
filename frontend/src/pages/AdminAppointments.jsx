@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
 import { formatAppointmentDate } from '../utils/date'
+import { API_BASE } from '../config'
 
 const statusColors = {
   pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
@@ -20,7 +21,7 @@ export default function AdminAppointments() {
   const fetchAppointments = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('/api/admin/appointments', {
+      const res = await fetch(`${API_BASE}/api/admin/appointments`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
@@ -41,7 +42,7 @@ export default function AdminAppointments() {
     setUpdating(id)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`/api/admin/appointments/${id}/status`, {
+      const res = await fetch(`${API_BASE}/api/admin/appointments/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status })

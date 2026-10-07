@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { assets } from '../assets/assets'
+import { API_BASE } from '../config'
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('')
@@ -22,7 +23,7 @@ export default function AdminLogin() {
     setError('')
     setLoading(true)
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),

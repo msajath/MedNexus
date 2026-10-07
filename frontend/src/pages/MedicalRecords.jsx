@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
 import { getLocalDateString } from '../utils/date'
+import { API_BASE } from '../config'
 
 const RECORD_TYPES = ['All', 'Prescription', 'Lab Report', 'Diagnosis', 'Vaccination', 'Imaging', 'Discharge Summary', 'Other']
 
@@ -53,7 +54,7 @@ export default function MedicalRecords() {
   const fetchRecords = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('/api/records/my', {
+      const res = await fetch(`${API_BASE}/api/records/my`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
@@ -89,7 +90,7 @@ export default function MedicalRecords() {
     setIsSaving(true)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('/api/records', {
+      const res = await fetch(`${API_BASE}/api/records`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(formData)
@@ -115,7 +116,7 @@ export default function MedicalRecords() {
     if (!window.confirm('Delete this medical record?')) return
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`/api/records/${id}`, {
+      const res = await fetch(`${API_BASE}/api/records/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })

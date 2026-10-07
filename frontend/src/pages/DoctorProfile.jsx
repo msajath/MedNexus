@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { assets } from '../assets/assets'
+import { API_BASE } from '../config'
 
 // Helper to format a Date as YYYY-MM-DD
 const formatDate = (d) => {
@@ -31,7 +32,7 @@ export default function DoctorProfile() {
 
   const fetchDoctor = async () => {
     try {
-      const response = await fetch(`/api/doctors/${id}`)
+      const response = await fetch(`${API_BASE}/api/doctors/${id}`)
       if (!response.ok) {
         if (response.status === 404) {
           setError('Doctor not found')
@@ -73,7 +74,7 @@ export default function DoctorProfile() {
     setBookedSlots([])
     try {
       const dateStr = formatDate(days[dateIndex])
-      const response = await fetch(`/api/availability/slots/${id}/${dateStr}`, {
+      const response = await fetch(`${API_BASE}/api/availability/slots/${id}/${dateStr}`, {
         cache: 'no-store',
       })
       if (response.ok) {
@@ -133,7 +134,7 @@ export default function DoctorProfile() {
 
     try {
       const dateStr = formatDate(days[selectedDate])
-      const response = await fetch('/api/appointments', {
+      const response = await fetch(`${API_BASE}/api/appointments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

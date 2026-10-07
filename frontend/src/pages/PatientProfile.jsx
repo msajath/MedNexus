@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
+import { API_BASE } from '../config'
 
 export default function PatientProfile() {
   const { user, setUser } = useAuth()
@@ -61,7 +62,7 @@ export default function PatientProfile() {
     setMessage({ type: '', text: '' })
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/auth/profile', {
+      const response = await fetch(`${API_BASE}/api/auth/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
