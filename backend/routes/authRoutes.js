@@ -40,8 +40,8 @@ function isRateLimited(key, { windowMs, max }) {
 }
 
 // Helper: Generate JWT
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+const generateToken = (user) => {
+  return jwt.sign({ id: user._id, version: user.tokenVersion || 0 }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE,
   });
 };
@@ -97,7 +97,7 @@ router.post(
       }
 
       // Generate token
-      const token = generateToken(user._id);
+      const token = generateToken(user);
 
       res.status(201).json({
         success: true,
@@ -142,7 +142,7 @@ router.post(
 
       // Find user and include password field
       const user = await User.findOne({ email }).select('+password');
-      if (!user) {
+      if (!user || user.isActive === false) {
         return res.status(401).json({ success: false, message: 'Invalid email or password' });
       }
 
@@ -153,7 +153,7 @@ router.post(
       }
 
       // Generate token
-      const token = generateToken(user._id);
+      const token = generateToken(user);
 
       // If doctor, fetch doctor-specific info
       let doctorInfo = null;
@@ -315,6 +315,7 @@ router.put(
       }
 
       user.password = req.body.newPassword;
+      user.tokenVersion = (user.tokenVersion || 0) + 1;
       await user.save();
 
       // If doctor, mark credentials changed
@@ -362,7 +363,7 @@ router.post(
         return res.status(503).json({ success: false, message: 'Password reset email is unavailable' });
       }
 
-      const user = await User.findOne({ email });
+      const user = await User.findOne({ email, isActive: { $ne: false } });
       if (!user) {
         return res.json({
           success: true,
@@ -438,6 +439,7 @@ router.post(
 
       const user = await User.findOne({
         email,
+        isActive: { $ne: false },
         resetPasswordToken: hashedCode,
         resetPasswordExpire: { $gt: Date.now() },
       });
@@ -448,6 +450,7 @@ router.post(
 
       // Set new password
       user.password = newPassword;
+      user.tokenVersion = (user.tokenVersion || 0) + 1;
       user.resetPasswordToken = null;
       user.resetPasswordExpire = null;
       await user.save();

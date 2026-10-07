@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const Appointment = require('../models/Appointment');
@@ -21,14 +22,15 @@ router.use(protect, authorize('admin'));
 // ──────────────────────────────────────────────
 router.get('/stats', async (req, res) => {
   try {
-    const totalUsers = await User.countDocuments();
-    const totalDoctors = await User.countDocuments({ role: 'doctor' });
-    const totalPatients = await User.countDocuments({ role: 'patient' });
+    const active = { isActive: { $ne: false } };
+    const totalUsers = await User.countDocuments(active);
+    const totalDoctors = await User.countDocuments({ ...active, role: 'doctor' });
+    const totalPatients = await User.countDocuments({ ...active, role: 'patient' });
     const totalAppointments = await Appointment.countDocuments();
     const monthlyAppointments = await Appointment.countDocuments({
       createdAt: { $gte: new Date(new Date().setDate(1)) }, // from 1st of current month
     });
-    const pendingApprovals = await User.countDocuments({ role: 'doctor', isVerified: false });
+    const pendingApprovals = await User.countDocuments({ ...active, role: 'doctor', isVerified: false });
 
     // Calculate revenue (sum of all confirmed appointment fees)
     const confirmedAppointments = await Appointment.find({ status: 'confirmed' }).populate('doctor');
@@ -59,7 +61,7 @@ router.get('/stats', async (req, res) => {
 router.get('/users', async (req, res) => {
   try {
     const { role } = req.query;
-    let query = {};
+    let query = { isActive: { $ne: false } };
     if (role) query.role = role;
 
     const users = await User.find(query).select('-password').sort({ createdAt: -1 });
@@ -82,7 +84,7 @@ router.put('/verify-doctor/:userId', validateObjectId('userId'), async (req, res
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    if (user.role !== 'doctor') {
+    if (user.role !== 'doctor' || user.isActive === false) {
       return res.status(400).json({ success: false, message: 'User is not a doctor' });
     }
 
@@ -102,7 +104,11 @@ router.put('/verify-doctor/:userId', validateObjectId('userId'), async (req, res
 // ──────────────────────────────────────────────
 router.post('/doctors', async (req, res) => {
   try {
-    const { name, email, password, specialty, fee } = req.body;
+    const { name, specialty, fee } = req.body;
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    if (!name || !/^\S+@\S+\.\S+$/.test(email)) {
+      return res.status(400).json({ success: false, message: 'Name and valid email are required' });
+    }
 
     // 1. Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -114,7 +120,8 @@ router.post('/doctors', async (req, res) => {
     const user = await User.create({
       name,
       email,
-      password,
+      // The doctor sets their own password through the reset flow.
+      password: crypto.randomBytes(32).toString('hex'),
       role: 'doctor',
       isVerified: true // Pre-verified since admin is adding them
     });
@@ -124,7 +131,6 @@ router.post('/doctors', async (req, res) => {
       user: user._id,
       specialty: specialty || 'General Practice',
       fee: fee || 100,
-      tempPassword: password, // Store initial password so admin can view it
     });
 
     // 4. Create default Availability
@@ -143,7 +149,12 @@ router.post('/doctors', async (req, res) => {
       schedule: defaultAvailability
     });
 
-    res.status(201).json({ success: true, message: 'Doctor added successfully', user, doctor });
+    res.status(201).json({
+      success: true,
+      message: 'Doctor added. Ask them to set a password using Forgot Password.',
+      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      doctor: { id: doctor._id, specialty: doctor.specialty },
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -157,9 +168,9 @@ router.post('/doctors', async (req, res) => {
 router.get('/doctors-detail', async (req, res) => {
   try {
     const doctors = await Doctor.find()
-      .populate('user', 'name email phone avatar isVerified createdAt');
+      .populate('user', 'name email phone avatar isVerified isActive createdAt');
 
-    const result = doctors.map(doc => ({
+    const result = doctors.filter(doc => doc.user && doc.user.isActive !== false).map(doc => ({
       _id: doc._id,
       userId: doc.user?._id,
       name: doc.user?.name,
@@ -176,7 +187,6 @@ router.get('/doctors-detail', async (req, res) => {
       rating: doc.rating,
       reviews: doc.reviews,
       available: doc.available,
-      tempPassword: doc.tempPassword,
       credentialsChanged: doc.credentialsChanged,
     }));
 
@@ -257,32 +267,25 @@ router.delete('/users/:userId', validateObjectId('userId'), async (req, res) => 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
+    if (user.role === 'admin') {
+      return res.status(403).json({ success: false, message: 'Admin accounts cannot be deactivated here' });
+    }
+    if (user.isActive === false) {
+      return res.json({ success: true, message: 'Account already deactivated' });
+    }
 
-    let doctor = null;
+    user.isActive = false;
+    await user.save();
+
     if (user.role === 'doctor') {
-      doctor = await Doctor.findOne({ user: user._id });
+      const doctor = await Doctor.findOne({ user: user._id });
+      if (doctor) {
+        doctor.available = false;
+        await doctor.save();
+      }
     }
 
-    const appointmentFilter = [{ patient: user._id }];
-    const recordFilter = [{ patient: user._id }];
-
-    if (doctor) {
-      appointmentFilter.push({ doctor: doctor._id });
-      recordFilter.push({ doctor: doctor._id });
-      await Availability.deleteMany({ doctor: doctor._id });
-    }
-
-    await Appointment.deleteMany({ $or: appointmentFilter });
-    await MedicalRecord.deleteMany({ $or: recordFilter });
-    await Message.deleteMany({ recipient: user._id });
-
-    if (doctor) {
-      await Doctor.deleteOne({ _id: doctor._id });
-    }
-
-    await User.findByIdAndDelete(user._id);
-
-    res.json({ success: true, message: `User ${user.name} has been deleted` });
+    res.json({ success: true, message: `Account for ${user.name} deactivated; clinical history retained` });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -398,6 +401,9 @@ router.put('/appointments/:id/status', validateObjectId('id'), async (req, res) 
     if (!appointment) return res.status(404).json({ success: false, message: 'Appointment not found' });
     res.json({ success: true, appointment });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ success: false, message: 'This time slot is already booked' });
+    }
     res.status(500).json({ success: false, message: error.message });
   }
 });

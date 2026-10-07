@@ -2,19 +2,37 @@ const express = require('express');
 const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
 const Availability = require('../models/Availability');
+const User = require('../models/User');
 const { protect, authorize } = require('../middleware/auth');
 const validateObjectId = require('../middleware/validateObjectId');
 
 const router = express.Router();
 
 const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const cancellableStatuses = new Set(['pending', 'confirmed']);
+const allowedTransitions = {
+  pending: new Set(['confirmed', 'cancelled']),
+  confirmed: new Set(['completed', 'cancelled']),
+  cancelled: new Set(),
+  completed: new Set(),
+};
 
 const timeToMinutes = (time) => {
+  if (typeof time !== 'string') return null;
   const match = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if (!match) return null;
+  if (!match || Number(match[1]) < 1 || Number(match[1]) > 12 || Number(match[2]) > 59) return null;
   let hours = Number(match[1]) % 12;
   if (match[3].toUpperCase() === 'PM') hours += 12;
   return hours * 60 + Number(match[2]);
+};
+
+const isFutureSlot = (date, time) => {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
+    timeZone: process.env.CLINIC_TIME_ZONE || 'Asia/Colombo',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date()).filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]));
+  const today = `${parts.year}-${parts.month}-${parts.day}`;
+  return date > today || (date === today && timeToMinutes(time) > Number(parts.hour) * 60 + Number(parts.minute));
 };
 
 const isWithinSchedule = (date, time, schedule) => {
@@ -29,7 +47,8 @@ const isWithinSchedule = (date, time, schedule) => {
 
   const [startHours, startMinutes] = daySchedule.start.split(':').map(Number);
   const [endHours, endMinutes] = daySchedule.end.split(':').map(Number);
-  return appointmentMinutes >= startHours * 60 + startMinutes && appointmentMinutes <= endHours * 60 + endMinutes;
+  return appointmentMinutes >= startHours * 60 + startMinutes &&
+    appointmentMinutes + 30 <= endHours * 60 + endMinutes && appointmentMinutes % 30 === 0;
 };
 
 // ──────────────────────────────────────────────
@@ -46,6 +65,10 @@ router.post('/', protect, authorize('patient'), validateObjectId('doctorId', { s
     if (!doctor) {
       return res.status(404).json({ success: false, message: 'Doctor not found' });
     }
+    const doctorUser = await User.findById(doctor.user);
+    if (!doctorUser || doctorUser.isActive === false || doctorUser.isVerified !== true || doctor.available === false) {
+      return res.status(404).json({ success: false, message: 'Doctor is unavailable' });
+    }
 
     const availability = await Availability.findOne({ doctor: doctorId });
     const defaultSchedule = [
@@ -59,6 +82,9 @@ router.post('/', protect, authorize('patient'), validateObjectId('doctorId', { s
     ];
     if (!isWithinSchedule(date, time, availability?.schedule || defaultSchedule)) {
       return res.status(400).json({ success: false, message: 'The selected time is outside the doctor\'s availability' });
+    }
+    if (!isFutureSlot(date, time)) {
+      return res.status(400).json({ success: false, message: 'Choose a future appointment time' });
     }
 
     // Check if slot is already booked
@@ -93,6 +119,9 @@ router.post('/', protect, authorize('patient'), validateObjectId('doctorId', { s
 
     res.status(201).json({ success: true, appointment: populated });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ success: false, message: 'This time slot is already booked' });
+    }
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -183,6 +212,10 @@ router.put('/:id/cancel', protect, validateObjectId('id'), async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
+    if (!cancellableStatuses.has(appointment.status)) {
+      return res.status(409).json({ success: false, message: 'Only pending or confirmed appointments can be cancelled' });
+    }
+
     appointment.status = 'cancelled';
     await appointment.save();
     res.json({ success: true, appointment });
@@ -223,11 +256,21 @@ router.put('/:id/status', protect, validateObjectId('id'), async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to update this appointment' });
     }
 
+    if (!allowedTransitions[appointment.status]?.has(status)) {
+      return res.status(409).json({
+        success: false,
+        message: `Cannot change an appointment from ${appointment.status} to ${status}`,
+      });
+    }
+
     appointment.status = status;
     await appointment.save();
 
     res.json({ success: true, appointment });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ success: false, message: 'This time slot is already booked' });
+    }
     res.status(500).json({ success: false, message: error.message });
   }
 });

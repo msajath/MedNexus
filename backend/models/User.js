@@ -27,6 +27,8 @@ const userSchema = new mongoose.Schema(
       enum: ['patient', 'doctor', 'admin'],
       default: 'patient',
     },
+    isActive: { type: Boolean, default: true },
+    tokenVersion: { type: Number, default: 0 },
     phone: {
       type: String,
       default: '',

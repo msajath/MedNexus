@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 
@@ -23,36 +24,38 @@ const getRelativeDate = (daysOffset) => {
   return `${year}-${month}-${day}`;
 };
 
+const seedPassword = process.env.SEED_PASSWORD || crypto.randomBytes(24).toString('base64url');
+
 // ──────────────────────────────────────────────
 // Seed Data (matches frontend mockData.js)
 // ──────────────────────────────────────────────
 
 const users = [
   // Patients
-  { name: 'Alex Johnson', email: 'alex@mednexus.com', password: 'password123', role: 'patient', phone: '+1 (555) 123-4567' },
-  { name: 'Sarah Miller', email: 'sarah.miller@email.com', password: 'password123', role: 'patient' },
-  { name: 'John Davis', email: 'john.davis@email.com', password: 'password123', role: 'patient' },
-  { name: 'Emily Clark', email: 'emily.clark@email.com', password: 'password123', role: 'patient' },
+  { name: 'Alex Johnson', email: 'alex@mednexus.com', password: seedPassword, role: 'patient', phone: '+1 (555) 123-4567' },
+  { name: 'Sarah Miller', email: 'sarah.miller@email.com', password: seedPassword, role: 'patient' },
+  { name: 'John Davis', email: 'john.davis@email.com', password: seedPassword, role: 'patient' },
+  { name: 'Emily Clark', email: 'emily.clark@email.com', password: seedPassword, role: 'patient' },
 
   // Doctors
-  { name: 'Dr. Richard James', email: 'richard.james@mednexus.com', password: 'password123', role: 'doctor', isVerified: true, avatar: '/images/doc1.png' },
-  { name: 'Dr. Emily Larson', email: 'emily.larson@mednexus.com', password: 'password123', role: 'doctor', isVerified: true, avatar: '/images/doc2.png' },
-  { name: 'Dr. Sarah Patel', email: 'sarah.patel@mednexus.com', password: 'password123', role: 'doctor', isVerified: true, avatar: '/images/doc3.png' },
-  { name: 'Dr. Christopher Lee', email: 'christopher.lee@mednexus.com', password: 'password123', role: 'doctor', isVerified: true, avatar: '/images/doc4.png' },
-  { name: 'Dr. Jennifer Garcia', email: 'jennifer.garcia@mednexus.com', password: 'password123', role: 'doctor', isVerified: true, avatar: '/images/doc5.png' },
-  { name: 'Dr. Andrew Williams', email: 'andrew.williams@mednexus.com', password: 'password123', role: 'doctor', isVerified: true, avatar: '/images/doc6.png' },
-  { name: 'Dr. Christopher Davis', email: 'christopher.davis@mednexus.com', password: 'password123', role: 'doctor', isVerified: true, avatar: '/images/doc7.png' },
-  { name: 'Dr. Timothy White', email: 'timothy.white@mednexus.com', password: 'password123', role: 'doctor', isVerified: true, avatar: '/images/doc8.png' },
-  { name: 'Dr. Ava Mitchell', email: 'ava.mitchell@mednexus.com', password: 'password123', role: 'doctor', isVerified: true, avatar: '/images/doc9.png' },
-  { name: 'Dr. Jeffrey King', email: 'jeffrey.king@mednexus.com', password: 'password123', role: 'doctor', isVerified: true, avatar: '/images/doc10.png' },
-  { name: 'Dr. Zoe Kelly', email: 'zoe.kelly@mednexus.com', password: 'password123', role: 'doctor', isVerified: true, avatar: '/images/doc11.png' },
-  { name: 'Dr. Patrick Harris', email: 'patrick.harris@mednexus.com', password: 'password123', role: 'doctor', isVerified: true, avatar: '/images/doc12.png' },
-  { name: 'Dr. Chloe Evans', email: 'chloe.evans@mednexus.com', password: 'password123', role: 'doctor', isVerified: true, avatar: '/images/doc13.png' },
-  { name: 'Dr. Ryan Martinez', email: 'ryan.martinez@mednexus.com', password: 'password123', role: 'doctor', isVerified: true, avatar: '/images/doc14.png' },
-  { name: 'Dr. Amelia Hill', email: 'amelia.hill@mednexus.com', password: 'password123', role: 'doctor', isVerified: true, avatar: '/images/doc15.png' },
+  { name: 'Dr. Richard James', email: 'richard.james@mednexus.com', password: seedPassword, role: 'doctor', isVerified: true, avatar: '/images/doc1.png' },
+  { name: 'Dr. Emily Larson', email: 'emily.larson@mednexus.com', password: seedPassword, role: 'doctor', isVerified: true, avatar: '/images/doc2.png' },
+  { name: 'Dr. Sarah Patel', email: 'sarah.patel@mednexus.com', password: seedPassword, role: 'doctor', isVerified: true, avatar: '/images/doc3.png' },
+  { name: 'Dr. Christopher Lee', email: 'christopher.lee@mednexus.com', password: seedPassword, role: 'doctor', isVerified: true, avatar: '/images/doc4.png' },
+  { name: 'Dr. Jennifer Garcia', email: 'jennifer.garcia@mednexus.com', password: seedPassword, role: 'doctor', isVerified: true, avatar: '/images/doc5.png' },
+  { name: 'Dr. Andrew Williams', email: 'andrew.williams@mednexus.com', password: seedPassword, role: 'doctor', isVerified: true, avatar: '/images/doc6.png' },
+  { name: 'Dr. Christopher Davis', email: 'christopher.davis@mednexus.com', password: seedPassword, role: 'doctor', isVerified: true, avatar: '/images/doc7.png' },
+  { name: 'Dr. Timothy White', email: 'timothy.white@mednexus.com', password: seedPassword, role: 'doctor', isVerified: true, avatar: '/images/doc8.png' },
+  { name: 'Dr. Ava Mitchell', email: 'ava.mitchell@mednexus.com', password: seedPassword, role: 'doctor', isVerified: true, avatar: '/images/doc9.png' },
+  { name: 'Dr. Jeffrey King', email: 'jeffrey.king@mednexus.com', password: seedPassword, role: 'doctor', isVerified: true, avatar: '/images/doc10.png' },
+  { name: 'Dr. Zoe Kelly', email: 'zoe.kelly@mednexus.com', password: seedPassword, role: 'doctor', isVerified: true, avatar: '/images/doc11.png' },
+  { name: 'Dr. Patrick Harris', email: 'patrick.harris@mednexus.com', password: seedPassword, role: 'doctor', isVerified: true, avatar: '/images/doc12.png' },
+  { name: 'Dr. Chloe Evans', email: 'chloe.evans@mednexus.com', password: seedPassword, role: 'doctor', isVerified: true, avatar: '/images/doc13.png' },
+  { name: 'Dr. Ryan Martinez', email: 'ryan.martinez@mednexus.com', password: seedPassword, role: 'doctor', isVerified: true, avatar: '/images/doc14.png' },
+  { name: 'Dr. Amelia Hill', email: 'amelia.hill@mednexus.com', password: seedPassword, role: 'doctor', isVerified: true, avatar: '/images/doc15.png' },
 
   // Admin
-  { name: 'Admin User', email: 'admin@mednexus.com', password: 'password123', role: 'admin' },
+  { name: 'Admin User', email: 'admin@mednexus.com', password: seedPassword, role: 'admin' },
 ];
 
 
@@ -414,9 +417,9 @@ const seedDB = async () => {
     console.log(`   Appointments: ${appointmentData.length}`);
     console.log('══════════════════════════════════════════');
     console.log('\n🔑 Login credentials:');
-    console.log('   Patient:  alex@mednexus.com / password123');
-    console.log('   Doctor:   richard.james@mednexus.com / password123');
-    console.log('   Admin:    admin@mednexus.com / password123');
+    console.log(`   Patient:  alex@mednexus.com / ${seedPassword}`);
+    console.log(`   Doctor:   richard.james@mednexus.com / ${seedPassword}`);
+    console.log(`   Admin:    admin@mednexus.com / ${seedPassword}`);
     console.log('══════════════════════════════════════════\n');
 
     process.exit(0);
@@ -425,5 +428,9 @@ const seedDB = async () => {
     process.exit(1);
   }
 };
+
+if (process.env.NODE_ENV === 'production') {
+  throw new Error('Demo seeding is disabled in production');
+}
 
 seedDB();

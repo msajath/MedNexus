@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
     }
 
     // 1. First find all verified doctor user IDs
-    const verifiedUsers = await User.find({ role: 'doctor', isVerified: true }).select('_id');
+    const verifiedUsers = await User.find({ role: 'doctor', isVerified: true, isActive: { $ne: false } }).select('_id');
     const verifiedUserIds = verifiedUsers.map(u => u._id);
 
     // 2. Add to query
@@ -122,9 +122,9 @@ router.put('/profile', protect, authorize('doctor'), async (req, res) => {
 // ──────────────────────────────────────────────
 router.get('/:id', validateObjectId('id'), async (req, res) => {
   try {
-    const doctor = await Doctor.findById(req.params.id).populate('user', 'name email avatar');
+    const doctor = await Doctor.findById(req.params.id).populate('user', 'name email avatar isVerified isActive');
 
-    if (!doctor) {
+    if (!doctor || !doctor.user || doctor.user.isVerified !== true || doctor.user.isActive === false) {
       return res.status(404).json({ success: false, message: 'Doctor not found' });
     }
 

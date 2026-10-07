@@ -47,7 +47,7 @@ export default function LoginPage() {
           <div className="hidden md:flex flex-col gap-4">
             <div className="flex items-center gap-3 text-base text-navy"><span className="material-icons-outlined text-primary text-[20px]">check_circle</span> Instant Appointment Booking</div>
             <div className="flex items-center gap-3 text-base text-navy"><span className="material-icons-outlined text-primary text-[20px]">check_circle</span> Verified Specialists</div>
-            <div className="flex items-center gap-3 text-base text-navy"><span className="material-icons-outlined text-primary text-[20px]">check_circle</span> HIPAA Compliant Platform</div>
+            <div className="flex items-center gap-3 text-base text-navy"><span className="material-icons-outlined text-primary text-[20px]">check_circle</span> Private patient portal</div>
           </div>
         </div>
       </div>
@@ -116,14 +116,8 @@ export default function LoginPage() {
             </button>
           </form>
           <p className="text-center text-sm text-navy-muted mb-8 mt-6">Don't have an account? <Link to="/register" className="text-primary font-semibold hover:underline">Register</Link></p>
-          <p className="text-center text-xs text-outline mb-4">© {new Date().getFullYear()} MEDNEXUS. Secure, HIPAA compliant platform.</p>
+          <p className="text-center text-xs text-outline mb-4">© {new Date().getFullYear()} MEDNEXUS.</p>
 
-          <div className="text-[0.85rem] text-slate-500 bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <strong className="text-slate-700">Demo Accounts:</strong><br/>
-            <span className="block mt-1">Patient: alex@mednexus.com / password123</span>
-            <span className="block mt-1">Doctor: richard.james@mednexus.com / password123</span>
-            <span className="block mt-1">Admin: admin@mednexus.com / password123</span>
-          </div>
         </div>
       </div>
     </div>

@@ -7,7 +7,6 @@ export default function AdminDoctors() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
-  const [showPassword, setShowPassword] = useState({}) // track which doctors have pw visible
 
   const fetchDoctors = async () => {
     try {
@@ -30,7 +29,7 @@ export default function AdminDoctors() {
   }, [])
 
   const handleDelete = async (userId, name) => {
-    if (!window.confirm(`Delete Dr. ${name}? This cannot be undone.`)) return
+    if (!window.confirm(`Deactivate Dr. ${name}? Their clinical history will be retained.`)) return
     try {
       const token = localStorage.getItem('token')
       const res = await fetch(`/api/admin/users/${userId}`, {
@@ -60,9 +59,6 @@ export default function AdminDoctors() {
 
   const copyToClipboard = (text) => navigator.clipboard.writeText(text)
 
-  const toggleShowPassword = (doctorId) => {
-    setShowPassword(prev => ({ ...prev, [doctorId]: !prev[doctorId] }))
-  }
 
   const filtered = doctors.filter(d => {
     const term = search.toLowerCase()
@@ -160,25 +156,8 @@ export default function AdminDoctors() {
                       </div>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <span className="text-xs text-outline uppercase tracking-wider font-semibold">Initial Password</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-navy font-mono">
-                          {doc.tempPassword
-                            ? showPassword[doc._id] ? doc.tempPassword : '••••••••'
-                            : doc.credentialsChanged ? <span className="text-blue-500 not-italic">Changed by doctor</span> : '—'
-                          }
-                        </span>
-                        {doc.tempPassword && (
-                          <>
-                            <button onClick={(e) => { e.stopPropagation(); toggleShowPassword(doc._id) }} className="text-outline hover:text-primary shrink-0">
-                              <span className="material-icons-outlined text-[14px]">{showPassword[doc._id] ? 'visibility_off' : 'visibility'}</span>
-                            </button>
-                            <button onClick={(e) => { e.stopPropagation(); copyToClipboard(doc.tempPassword) }} className="text-outline hover:text-primary shrink-0">
-                              <span className="material-icons-outlined text-[14px]">content_copy</span>
-                            </button>
-                          </>
-                        )}
-                      </div>
+                      <span className="text-xs text-outline uppercase tracking-wider font-semibold">Password setup</span>
+                      <span className="text-xs text-navy">Doctor sets their own password</span>
                     </div>
                   </div>
                 </div>
@@ -230,27 +209,8 @@ export default function AdminDoctors() {
                           </div>
                         </div>
                         <div>
-                          <p className="text-xs text-amber-600 mb-1">Initial Password</p>
-                          <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-amber-200">
-                            <span className="font-mono text-xs text-navy">
-                              {selected.tempPassword
-                                ? showPassword[`detail_${selected._id}`] ? selected.tempPassword : '••••••••'
-                                : selected.credentialsChanged
-                                  ? 'Changed by doctor'
-                                  : 'Not set'
-                              }
-                            </span>
-                            {selected.tempPassword && (
-                              <div className="flex gap-1 ml-2">
-                                <button onClick={() => toggleShowPassword(`detail_${selected._id}`)} className="text-amber-500 hover:text-amber-700">
-                                  <span className="material-icons-outlined text-[16px]">{showPassword[`detail_${selected._id}`] ? 'visibility_off' : 'visibility'}</span>
-                                </button>
-                                <button onClick={() => copyToClipboard(selected.tempPassword)} className="text-amber-500 hover:text-amber-700">
-                                  <span className="material-icons-outlined text-[16px]">content_copy</span>
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                          <p className="text-xs text-amber-600 mb-1">Password setup</p>
+                          <p className="text-xs text-navy">Doctor uses Forgot Password to set a private password.</p>
                         </div>
                         {selected.credentialsChanged && (
                           <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">
@@ -309,7 +269,7 @@ export default function AdminDoctors() {
                         onClick={() => handleDelete(selected.userId, selected.name)}
                         className="w-full py-2.5 bg-red-50 text-red-600 border border-red-200 text-sm font-semibold rounded-xl hover:bg-red-100 transition-colors"
                       >
-                        Delete Doctor Account
+                        Deactivate Doctor Account
                       </button>
                     </div>
                   </div>

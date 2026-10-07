@@ -38,7 +38,7 @@ export default function AdminUsers() {
   }, [])
 
   const handleDelete = async (userId, userName) => {
-    if (!window.confirm(`Are you sure you want to delete ${userName}? This action cannot be undone.`)) return
+    if (!window.confirm(`Deactivate ${userName}? Their clinical history will be retained.`)) return
     setDeleting(userId)
     try {
       const token = localStorage.getItem('token')
@@ -230,7 +230,7 @@ export default function AdminUsers() {
                               onClick={() => handleDelete(u._id, u.name)}
                               className="px-2.5 py-1 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors font-medium disabled:opacity-50"
                             >
-                              {deleting === u._id ? '...' : 'Delete'}
+                              {deleting === u._id ? '...' : 'Deactivate'}
                             </button>
                           )}
                         </div>

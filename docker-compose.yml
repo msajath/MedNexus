@@ -6,8 +6,11 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:?Set MONGO_USERNAME in the root .env}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?Set MONGO_PASSWORD in the root .env}
+      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:?Set MONGO_APP_USERNAME in the root .env}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?Set MONGO_APP_PASSWORD in the root .env}
     volumes:
       - mongo_data:/data/db
+      - ./infra/mongo/init-app-user.js:/docker-entrypoint-initdb.d/init-app-user.js:ro
     healthcheck:
       test: [CMD, mongosh, --quiet, --eval, "quit(db.adminCommand('ping').ok ? 0 : 1)"]
       interval: 10s
@@ -26,8 +29,9 @@ services:
     environment:
       PORT: "5000"
       NODE_ENV: production
+      CLINIC_TIME_ZONE: ${CLINIC_TIME_ZONE:-Asia/Colombo}
       TRUST_PROXY: "1"
-      MONGO_URI: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongodb:27017/medibook?authSource=admin
+      MONGO_URI: mongodb://${MONGO_APP_USERNAME}:${MONGO_APP_PASSWORD}@mongodb:27017/medibook?authSource=medibook
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env}
       JWT_EXPIRE: ${JWT_EXPIRE:-7d}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080}

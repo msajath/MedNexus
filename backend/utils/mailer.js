@@ -31,6 +31,9 @@ const sendMail = async ({ to, subject, text, html }) => {
   const activeTransporter = getTransporter();
 
   if (!activeTransporter) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('SMTP is not configured');
+    }
     console.warn(`[mailer] SMTP not configured. Skipping email to ${to}.`);
     console.log(`
 [mailer] Subject: ${subject}

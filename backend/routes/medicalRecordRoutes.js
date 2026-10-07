@@ -1,6 +1,7 @@
 const express = require('express');
 const MedicalRecord = require('../models/MedicalRecord');
 const Doctor = require('../models/Doctor');
+const Appointment = require('../models/Appointment');
 const { protect, authorize } = require('../middleware/auth');
 const validateObjectId = require('../middleware/validateObjectId');
 
@@ -21,7 +22,7 @@ const getLocalDateString = () => {
 // ──────────────────────────────────────────────
 router.get('/my', protect, authorize('patient'), async (req, res) => {
   try {
-    const records = await MedicalRecord.find({ patient: req.user._id })
+    const records = await MedicalRecord.find({ patient: req.user._id, deletedAt: null })
       .populate({
         path: 'doctor',
         populate: { path: 'user', select: 'name avatar' },
@@ -41,7 +42,7 @@ router.get('/my', protect, authorize('patient'), async (req, res) => {
 // ──────────────────────────────────────────────
 router.post('/', protect, authorize('patient'), async (req, res) => {
   try {
-    const { title, type, description, diagnosis, medications, date, attachments } = req.body;
+    const { title, type, description, diagnosis, medications, date, attachments, isPrivate } = req.body;
 
     const record = await MedicalRecord.create({
       patient: req.user._id,
@@ -53,6 +54,7 @@ router.post('/', protect, authorize('patient'), async (req, res) => {
       attachments: attachments || [],
       date: date || getLocalDateString(),
       addedBy: 'patient',
+      isPrivate: isPrivate === true,
     });
 
     res.status(201).json({ success: true, record });
@@ -63,7 +65,7 @@ router.post('/', protect, authorize('patient'), async (req, res) => {
 
 // ──────────────────────────────────────────────
 // @route   DELETE /api/records/:id
-// @desc    Delete a medical record (patient can delete own records)
+// @desc    Soft-delete a patient-uploaded record (clinical records are immutable)
 // @access  Private (patient)
 // ──────────────────────────────────────────────
 router.delete('/:id', protect, authorize('patient'), validateObjectId('id'), async (req, res) => {
@@ -78,7 +80,15 @@ router.delete('/:id', protect, authorize('patient'), validateObjectId('id'), asy
       return res.status(403).json({ success: false, message: 'Not authorized to delete this record' });
     }
 
-    await MedicalRecord.findByIdAndDelete(req.params.id);
+    if (record.addedBy !== 'patient' || record.doctor || record.appointment) {
+      return res.status(403).json({
+        success: false,
+        message: 'Clinical records cannot be deleted. Request a correction instead.',
+      });
+    }
+
+    record.deletedAt = new Date();
+    await record.save();
     res.json({ success: true, message: 'Record deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -92,7 +102,31 @@ router.delete('/:id', protect, authorize('patient'), validateObjectId('id'), asy
 // ──────────────────────────────────────────────
 router.get('/patient/:patientId', protect, authorize('doctor'), validateObjectId('patientId'), async (req, res) => {
   try {
-    const records = await MedicalRecord.find({ patient: req.params.patientId })
+    if (req.user.isVerified !== true) {
+      return res.status(403).json({ success: false, message: 'Doctor approval is required' });
+    }
+    const doctor = await Doctor.findOne({ user: req.user._id });
+    if (!doctor) return res.status(403).json({ success: false, message: 'Doctor profile unavailable' });
+
+    const appointments = await Appointment.find({
+      doctor: doctor._id,
+      patient: req.params.patientId,
+      status: { $in: ['confirmed', 'completed'] },
+    }).select('_id');
+    if (!appointments.length) {
+      return res.status(403).json({ success: false, message: 'No treatment relationship with this patient' });
+    }
+
+    const records = await MedicalRecord.find({
+      patient: req.params.patientId,
+      deletedAt: null,
+      isPrivate: { $ne: true },
+      $or: [
+        { addedBy: 'patient' },
+        { doctor: doctor._id },
+        { appointment: { $in: appointments.map((appointment) => appointment._id) } },
+      ],
+    })
       .sort({ date: -1 });
 
     res.json({ success: true, count: records.length, records });
@@ -111,9 +145,12 @@ router.post(
   protect,
   authorize('doctor'),
   validateObjectId('patientId', { source: 'body' }),
-  validateObjectId('appointmentId', { source: 'body', optional: true }),
+  validateObjectId('appointmentId', { source: 'body' }),
   async (req, res) => {
     try {
+      if (req.user.isVerified !== true) {
+        return res.status(403).json({ success: false, message: 'Doctor approval is required' });
+      }
       const { patientId, title, type, description, diagnosis, medications, date, appointmentId } = req.body;
 
       const doctorProfile = await Doctor.findOne({ user: req.user._id });
@@ -121,10 +158,20 @@ router.post(
         return res.status(404).json({ success: false, message: 'Doctor profile not found' });
       }
 
+      const appointment = await Appointment.findOne({
+        _id: appointmentId,
+        patient: patientId,
+        doctor: doctorProfile._id,
+        status: { $in: ['confirmed', 'completed'] },
+      });
+      if (!appointment) {
+        return res.status(403).json({ success: false, message: 'A matching confirmed appointment is required' });
+      }
+
       const record = await MedicalRecord.create({
         patient: patientId,
         doctor: doctorProfile._id,
-        appointment: appointmentId || null,
+        appointment: appointmentId,
         title,
         type: type || 'Diagnosis',
         description: description || '',

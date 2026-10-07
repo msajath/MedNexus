@@ -4,11 +4,13 @@ const appointmentRoutes = require('../../routes/appointmentRoutes');
 const Appointment = require('../../models/Appointment');
 const Doctor = require('../../models/Doctor');
 const Availability = require('../../models/Availability');
+const User = require('../../models/User');
 const { protect, authorize } = require('../../middleware/auth');
 
 jest.mock('../../models/Appointment');
 jest.mock('../../models/Doctor');
 jest.mock('../../models/Availability');
+jest.mock('../../models/User');
 jest.mock('../../middleware/auth', () => ({
   protect: jest.fn((req, res, next) => {
     req.user = { _id: '507f1f77bcf86cd799439011', role: 'patient', name: 'John Doe' };
@@ -22,6 +24,12 @@ jest.mock('../../middleware/auth', () => ({
   }),
 }));
 
+const futureMonday = () => {
+  const date = new Date();
+  date.setDate(date.getDate() + 14 + ((8 - date.getDay()) % 7));
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 const app = express();
 app.use(express.json());
 app.use('/api/appointments', appointmentRoutes);
@@ -29,6 +37,7 @@ app.use('/api/appointments', appointmentRoutes);
 describe('Appointment Routes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    User.findById.mockResolvedValue({ isVerified: true, isActive: true });
 
     // Default mock auth middleware to pass through with a mock patient
     protect.mockImplementation((req, res, next) => {
@@ -54,7 +63,7 @@ describe('Appointment Routes', () => {
         .post('/api/appointments')
         .send({
           doctorId: validDoctorId,
-          date: '2026-10-12', // Monday
+          date: futureMonday(), // Monday
           time: '10:00 AM',
           type: 'Consultation',
         });
@@ -76,7 +85,7 @@ describe('Appointment Routes', () => {
         .post('/api/appointments')
         .send({
           doctorId: validDoctorId,
-          date: '2026-10-12', // Monday
+          date: futureMonday(), // Monday
           time: '04:00 PM', // outside schedule
           type: 'Consultation',
         });
@@ -94,7 +103,7 @@ describe('Appointment Routes', () => {
         .post('/api/appointments')
         .send({
           doctorId: validDoctorId,
-          date: '2026-10-12', // Monday
+          date: futureMonday(), // Monday
           time: '10:00 AM',
           type: 'Consultation',
         });
@@ -112,7 +121,7 @@ describe('Appointment Routes', () => {
         _id: '507f1f77bcf86cd799439099',
         patient: '507f1f77bcf86cd799439011',
         doctor: validDoctorId,
-        date: '2026-10-12',
+        date: futureMonday(),
         time: '10:00 AM',
         status: 'pending',
       };
@@ -133,7 +142,7 @@ describe('Appointment Routes', () => {
         .post('/api/appointments')
         .send({
           doctorId: validDoctorId,
-          date: '2026-10-12',
+          date: futureMonday(),
           time: '10:00 AM',
           type: 'Consultation',
         });
@@ -142,6 +151,20 @@ describe('Appointment Routes', () => {
       expect(res.body.success).toBe(true);
       expect(res.body.appointment).toBeDefined();
     });
+
+    it('returns a slot conflict when the database unique index rejects a concurrent booking', async () => {
+      Doctor.findById.mockResolvedValue({ _id: validDoctorId });
+      Availability.findOne.mockResolvedValue(null);
+      Appointment.findOne.mockResolvedValue(null);
+      Appointment.create.mockRejectedValue({ code: 11000 });
+
+      const res = await request(app).post('/api/appointments').send({
+        doctorId: validDoctorId, date: futureMonday(), time: '10:00 AM',
+      });
+
+      expect(res.statusCode).toBe(409);
+      expect(res.body.message).toBe('This time slot is already booked');
+    });
   });
 
   describe('GET /api/appointments/my', () => {
@@ -149,7 +172,7 @@ describe('Appointment Routes', () => {
       const mockAppts = [
         {
           _id: 'appt1',
-          date: '2026-10-12',
+          date: futureMonday(),
           time: '10:00 AM',
           status: 'confirmed',
           type: 'Checkup',
@@ -205,6 +228,22 @@ describe('Appointment Routes', () => {
 
       expect(res.statusCode).toBe(403);
       expect(res.body.message).toBe('Not authorized');
+      expect(mockAppt.save).not.toHaveBeenCalled();
+    });
+
+    it('should reject cancellation of a completed appointment', async () => {
+      const mockAppt = {
+        _id: validApptId,
+        patient: '507f1f77bcf86cd799439011',
+        status: 'completed',
+        save: jest.fn(),
+      };
+      Appointment.findById.mockResolvedValue(mockAppt);
+
+      const res = await request(app).put(`/api/appointments/${validApptId}/cancel`);
+
+      expect(res.statusCode).toBe(409);
+      expect(res.body.message).toContain('Only pending or confirmed');
       expect(mockAppt.save).not.toHaveBeenCalled();
     });
   });

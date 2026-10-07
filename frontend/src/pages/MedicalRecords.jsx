@@ -32,6 +32,7 @@ const emptyForm = {
   description: '',
   diagnosis: '',
   medications: [],
+  isPrivate: false,
 }
 
 export default function MedicalRecords() {
@@ -396,6 +397,16 @@ export default function MedicalRecords() {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   />
                 </div>
+
+                <label className="flex items-start gap-3 text-sm text-navy">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={formData.isPrivate}
+                    onChange={(e) => setFormData({ ...formData, isPrivate: e.target.checked })}
+                  />
+                  <span>Keep this record private from doctors. You can still view it in your account.</span>
+                </label>
 
                 {/* Medications */}
                 <div className="flex flex-col gap-2">

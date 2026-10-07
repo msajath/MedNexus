@@ -42,4 +42,10 @@ const appointmentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Cancelled and completed appointments no longer reserve the slot.
+appointmentSchema.index(
+  { doctor: 1, date: 1, time: 1 },
+  { unique: true, name: 'active_doctor_slot', partialFilterExpression: { status: { $in: ['pending', 'confirmed'] } } }
+);
+
 module.exports = mongoose.model('Appointment', appointmentSchema);

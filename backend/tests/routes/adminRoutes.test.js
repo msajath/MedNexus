@@ -31,30 +31,40 @@ app.use('/api/admin', adminRoutes);
 describe('Admin Routes', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('cascades dependent data when deleting a doctor user', async () => {
+  it('deactivates a doctor without deleting appointments or medical records', async () => {
     const userId = '507f1f77bcf86cd799439011';
     const doctorId = '507f191e810c19729de860ea';
-    User.findById.mockResolvedValue({ _id: userId, name: 'QA Doctor', role: 'doctor' });
-    Doctor.findOne.mockResolvedValue({ _id: doctorId });
-    Availability.deleteMany.mockResolvedValue({ deletedCount: 1 });
-    Appointment.deleteMany.mockResolvedValue({ deletedCount: 2 });
-    MedicalRecord.deleteMany.mockResolvedValue({ deletedCount: 1 });
-    Message.deleteMany.mockResolvedValue({ deletedCount: 1 });
-    Doctor.deleteOne.mockResolvedValue({ deletedCount: 1 });
-    User.findByIdAndDelete.mockResolvedValue({ _id: userId });
+    const user = { _id: userId, name: 'QA Doctor', role: 'doctor', save: jest.fn() };
+    const doctor = { _id: doctorId, available: true, save: jest.fn() };
+    User.findById.mockResolvedValue(user);
+    Doctor.findOne.mockResolvedValue(doctor);
 
     const res = await request(app).delete(`/api/admin/users/${userId}`);
 
     expect(res.statusCode).toBe(200);
-    expect(Availability.deleteMany).toHaveBeenCalledWith({ doctor: doctorId });
-    expect(Appointment.deleteMany).toHaveBeenCalledWith({
-      $or: [{ patient: userId }, { doctor: doctorId }],
+    expect(user.isActive).toBe(false);
+    expect(user.save).toHaveBeenCalled();
+    expect(doctor.available).toBe(false);
+    expect(doctor.save).toHaveBeenCalled();
+    expect(Appointment.deleteMany).not.toHaveBeenCalled();
+    expect(MedicalRecord.deleteMany).not.toHaveBeenCalled();
+    expect(User.findByIdAndDelete).not.toHaveBeenCalled();
+  });
+
+  it('creates a doctor without returning or storing a plaintext password', async () => {
+    User.findOne.mockResolvedValue(null);
+    User.create.mockResolvedValue({ _id: '507f1f77bcf86cd799439022', name: 'Dr QA', email: 'qa@example.com', role: 'doctor' });
+    Doctor.create.mockResolvedValue({ _id: '507f1f77bcf86cd799439023', specialty: 'General', fee: 100 });
+    Availability.create.mockResolvedValue({});
+
+    const res = await request(app).post('/api/admin/doctors').send({
+      name: 'Dr QA', email: 'QA@EXAMPLE.COM', password: 'plaintext-from-client', specialty: 'General', fee: 100,
     });
-    expect(MedicalRecord.deleteMany).toHaveBeenCalledWith({
-      $or: [{ patient: userId }, { doctor: doctorId }],
-    });
-    expect(Message.deleteMany).toHaveBeenCalledWith({ recipient: userId });
-    expect(Doctor.deleteOne).toHaveBeenCalledWith({ _id: doctorId });
-    expect(User.findByIdAndDelete).toHaveBeenCalledWith(userId);
+
+    expect(res.status).toBe(201);
+    expect(User.create.mock.calls[0][0].password).not.toBe('plaintext-from-client');
+    expect(Doctor.create.mock.calls[0][0]).not.toHaveProperty('tempPassword');
+    expect(JSON.stringify(res.body)).not.toContain('plaintext-from-client');
+    expect(res.body.user).not.toHaveProperty('password');
   });
 });

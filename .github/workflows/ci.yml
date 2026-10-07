@@ -40,13 +40,38 @@ jobs:
           name: frontend-dist
           path: frontend/dist
           retention-days: 7
+  backend-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+    env:
+      MONGO_TEST_URI: mongodb://127.0.0.1:27017/mednexus_ci
+      JWT_SECRET: integration-only-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+        working-directory: backend
+      - run: npm test -- --runInBand
+        working-directory: backend
+
   containers:
-    needs: checks
+    needs: [checks, backend-integration]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       MONGO_USERNAME: ci
       MONGO_PASSWORD: ci-only-database-password
+      MONGO_APP_USERNAME: ci_app
+      MONGO_APP_PASSWORD: ci-only-app-password
       JWT_SECRET: ci-only-jwt-secret-not-for-deployment
     steps:
       - uses: actions/checkout@v4
@@ -63,7 +88,7 @@ jobs:
       - if: always()
         run: docker compose down --volumes
   publish:
-    needs: [checks, containers]
+    needs: [checks, backend-integration, containers]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
     timeout-minutes: 20

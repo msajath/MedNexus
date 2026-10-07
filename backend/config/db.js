@@ -1,4 +1,18 @@
 const mongoose = require('mongoose');
+const User = require('../models/User');
+const Appointment = require('../models/Appointment');
+const Doctor = require('../models/Doctor');
+
+const ensureStorageReady = async () => {
+  // autoIndex is disabled for normal queries; explicitly require these safety indexes.
+  await User.createIndexes();
+  await Appointment.createIndexes();
+  // Remove legacy plaintext doctor credentials before accepting requests.
+  await Doctor.collection.updateMany(
+    { tempPassword: { $exists: true } },
+    { $unset: { tempPassword: '' } }
+  );
+};
 
 const connectDB = async () => {
   const srvUri = process.env.MONGO_URI; // mongodb+srv://... (preferred)
@@ -10,14 +24,18 @@ const connectDB = async () => {
   }
 
   const tryConnect = async (uri, label) => {
+    let conn;
     try {
-      const conn = await mongoose.connect(uri, { autoIndex: false });
-      console.log(`✅ MongoDB Connected (${label}): ${conn.connection.host || uri}`);
-      return true;
+      conn = await mongoose.connect(uri, { autoIndex: false });
     } catch (err) {
       console.error(`❌ MongoDB Connection Error (${label}):`, err.message || err);
       return false;
     }
+    // Index or migration failure is a data-integrity problem, not a reason to
+    // silently switch to another database URI.
+    await ensureStorageReady();
+    console.log(`✅ MongoDB Connected (${label}): ${conn.connection.host}`);
+    return true;
   };
 
   // Try SRV first (usual Atlas URI). If it fails due to DNS, try the standard URI.

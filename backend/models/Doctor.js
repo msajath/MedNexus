@@ -7,10 +7,6 @@ const doctorSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
-    tempPassword: {
-      type: String,
-      default: '', // Initial password set by admin (visible to admin only)
-    },
     credentialsChanged: {
       type: Boolean,
       default: false, // True once doctor has changed their own email/password

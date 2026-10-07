@@ -60,6 +60,10 @@ const medicalRecordSchema = new mongoose.Schema(
       enum: ['patient', 'doctor'],
       default: 'doctor',
     },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

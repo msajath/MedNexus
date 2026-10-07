@@ -8,10 +8,14 @@ health checks, logs, and database backup/restore.
 ## Quick start with Docker
 
 1. Copy root `.env.example` to `.env`.
-2. Generate separate random values for `MONGO_PASSWORD` and `JWT_SECRET` using the
+2. Generate separate random values for `MONGO_PASSWORD`, `MONGO_APP_PASSWORD`, and `JWT_SECRET` using the
    command in `.env.example` and fill in the file.
 3. Run `docker compose up --build --detach --wait`.
-4. Open http://localhost:8080.
+4. Open http://localhost:8080 and check http://localhost:8080/api/ready.
+
+The browser calls `/api`; only the backend connects to MongoDB. Docker Compose
+creates a restricted MongoDB application account on a new database volume.
+For an existing volume, follow the migration steps in [DEVOPS.md](DEVOPS.md).
 
 ## Native development
 

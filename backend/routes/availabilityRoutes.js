@@ -2,6 +2,7 @@ const express = require('express');
 const Availability = require('../models/Availability');
 const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
+const User = require('../models/User');
 const { protect, authorize } = require('../middleware/auth');
 const validateObjectId = require('../middleware/validateObjectId');
 
@@ -35,7 +36,7 @@ const getSlotsForSchedule = (schedule) => {
   const start = timeToMinutes(schedule.start);
   const end = timeToMinutes(schedule.end);
 
-  for (let minutes = start; minutes <= end; minutes += 30) {
+  for (let minutes = start; minutes + 30 <= end; minutes += 30) {
     const slot = minutesToTime(minutes);
     const period = minutes < 12 * 60 ? 'morning' : minutes < 16 * 60 ? 'afternoon' : 'evening';
     slots[period].push(slot);
@@ -116,6 +117,12 @@ router.put('/', protect, authorize('doctor'), async (req, res) => {
 router.get('/slots/:doctorId/:date', validateObjectId('doctorId'), async (req, res) => {
   try {
     const { doctorId, date } = req.params;
+
+    const doctor = await Doctor.findById(doctorId);
+    const doctorUser = doctor ? await User.findById(doctor.user) : null;
+    if (!doctor || !doctorUser || doctorUser.isActive === false || doctorUser.isVerified !== true || doctor.available === false) {
+      return res.status(404).json({ success: false, message: 'Doctor is unavailable' });
+    }
 
     if (!isValidDate(date)) {
       return res.status(400).json({ success: false, message: 'Date must be in YYYY-MM-DD format' });

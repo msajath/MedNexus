@@ -15,7 +15,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
 
   const [showAddDoctor, setShowAddDoctor] = useState(false)
-  const [newDoctor, setNewDoctor] = useState({ name: '', email: '', password: '', specialty: 'General Practice', fee: 100 })
+  const [newDoctor, setNewDoctor] = useState({ name: '', email: '', specialty: 'General Practice', fee: 100 })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
   const [createdCredentials, setCreatedCredentials] = useState(null) // Store new doctor credentials
@@ -80,9 +80,9 @@ export default function AdminDashboard() {
       }
       if (response.ok) {
         // Save credentials to show to admin
-        setCreatedCredentials({ name: newDoctor.name, email: newDoctor.email, password: newDoctor.password })
+        setCreatedCredentials({ name: newDoctor.name, email: newDoctor.email })
         setShowAddDoctor(false)
-        setNewDoctor({ name: '', email: '', password: '', specialty: 'General Practice', fee: 100 })
+        setNewDoctor({ name: '', email: '', specialty: 'General Practice', fee: 100 })
         setMessage({ type: '', text: '' })
         fetchAdminStats()
       } else {
@@ -128,10 +128,6 @@ export default function AdminDashboard() {
                   <input type="email" required className="w-full p-2.5 border-[1.5px] border-slate-300 rounded-lg text-sm" value={newDoctor.email} onChange={(e) => setNewDoctor({...newDoctor, email: e.target.value})} placeholder="doctor@example.com" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-navy">Initial Password</label>
-                  <input type="text" required className="w-full p-2.5 border-[1.5px] border-slate-300 rounded-lg text-sm" value={newDoctor.password} onChange={(e) => setNewDoctor({...newDoctor, password: e.target.value})} placeholder="password123" />
-                </div>
-                <div className="flex flex-col gap-1">
                   <label className="text-sm font-medium text-navy">Specialty</label>
                   <select className="w-full p-2.5 border-[1.5px] border-slate-300 rounded-lg text-sm" value={newDoctor.specialty} onChange={(e) => setNewDoctor({...newDoctor, specialty: e.target.value})}>
                     {specialties.map(s => <option key={s} value={s}>{s}</option>)}
@@ -166,13 +162,13 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-navy">Doctor Created!</h2>
-                  <p className="text-sm text-navy-muted">Share these credentials with the doctor</p>
+                  <p className="text-sm text-navy-muted">Ask the doctor to set their password</p>
                 </div>
               </div>
 
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl mb-4 flex items-start gap-2">
                 <span className="material-icons-outlined text-amber-600 text-[18px] mt-0.5 shrink-0">warning</span>
-                <p className="text-xs text-amber-700">Save these credentials now. The doctor must use these to log in and should change their password after first login.</p>
+                <p className="text-xs text-amber-700">The doctor should open Forgot Password and set a private password using their email address.</p>
               </div>
 
               <div className="flex flex-col gap-3">
@@ -193,26 +189,13 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-outline uppercase tracking-wider">Initial Password</label>
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-surface rounded-xl border border-outline-variant">
-                    <span className="text-navy text-sm font-mono">{createdCredentials.password}</span>
-                    <button
-                      onClick={() => { navigator.clipboard.writeText(createdCredentials.password); }}
-                      className="text-primary hover:text-primary-dark"
-                      title="Copy password"
-                    >
-                      <span className="material-icons-outlined text-[18px]">content_copy</span>
-                    </button>
-                  </div>
-                </div>
               </div>
 
               <button
                 className="w-full mt-5 py-3 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary-dark transition-colors"
                 onClick={() => setCreatedCredentials(null)}
               >
-                Done — I've Saved the Credentials
+                Done
               </button>
             </div>
           </div>
