@@ -85,7 +85,7 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 // Generate and hash password reset token
 userSchema.methods.generateResetToken = function () {
   // Generate a 6-digit OTP code
-  const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const resetCode = crypto.randomInt(100000, 1000000).toString();
 
   // Hash the code and store it
   this.resetPasswordToken = crypto.createHash('sha256').update(resetCode).digest('hex');

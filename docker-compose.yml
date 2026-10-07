@@ -26,6 +26,7 @@ services:
     environment:
       PORT: "5000"
       NODE_ENV: production
+      TRUST_PROXY: "1"
       MONGO_URI: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongodb:27017/medibook?authSource=admin
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env}
       JWT_EXPIRE: ${JWT_EXPIRE:-7d}

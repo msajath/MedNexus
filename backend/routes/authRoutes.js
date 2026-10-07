@@ -17,7 +17,11 @@ const rateLimitStore = new Map();
 const RATE_LIMITS = {
   perEmail: { windowMs: 60 * 60 * 1000, max: 5 }, // 5 per email per hour
   perIP: { windowMs: 60 * 60 * 1000, max: 20 }, // 20 per IP per hour
+  resetPerEmail: { windowMs: 60 * 60 * 1000, max: 5 },
+  resetPerIP: { windowMs: 60 * 60 * 1000, max: 20 },
 };
+
+const normalizeEmail = (email) => email.trim().toLowerCase();
 
 function isRateLimited(key, { windowMs, max }) {
   const now = Date.now();
@@ -51,7 +55,7 @@ router.post(
   '/register',
   [
     body('name').notEmpty().withMessage('Name is required'),
-    body('email').isEmail().withMessage('Please provide a valid email'),
+    body('email').trim().isEmail().withMessage('Please provide a valid email'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
     body('role').optional().isIn(['patient', 'doctor']).withMessage('Role must be patient or doctor'),
   ],
@@ -63,7 +67,8 @@ router.post(
         return res.status(400).json({ success: false, errors: errors.array() });
       }
 
-      const { name, email, password, role, phone, licenseNumber } = req.body;
+      const { name, password, role, phone, licenseNumber } = req.body;
+      const email = normalizeEmail(req.body.email);
 
       // Check if user already exists
       const existingUser = await User.findOne({ email });
@@ -106,6 +111,9 @@ router.post(
         },
       });
     } catch (error) {
+      if (error.code === 11000 && error.keyPattern?.email) {
+        return res.status(400).json({ success: false, message: 'User already exists with this email' });
+      }
       res.status(500).json({ success: false, message: error.message });
     }
   }
@@ -119,7 +127,7 @@ router.post(
 router.post(
   '/login',
   [
-    body('email').isEmail().withMessage('Please provide a valid email'),
+    body('email').trim().isEmail().withMessage('Please provide a valid email'),
     body('password').notEmpty().withMessage('Password is required'),
   ],
   async (req, res) => {
@@ -129,7 +137,8 @@ router.post(
         return res.status(400).json({ success: false, errors: errors.array() });
       }
 
-      const { email, password } = req.body;
+      const { password } = req.body;
+      const email = normalizeEmail(req.body.email);
 
       // Find user and include password field
       const user = await User.findOne({ email }).select('+password');
@@ -211,14 +220,26 @@ router.get('/me', protect, async (req, res) => {
 // @desc    Update user profile
 // @access  Private
 // ──────────────────────────────────────────────
-router.put('/profile', protect, async (req, res) => {
+router.put('/profile', protect, [body('email').optional().trim().isEmail().withMessage('Please provide a valid email')], async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
     const { name, phone, email, dob, gender, bloodType, address, avatar, specialty, fee, experience, location, bio } = req.body;
 
     const user = await User.findById(req.user._id);
+    const normalizedEmail = email ? normalizeEmail(email) : null;
+    const emailChanged = normalizedEmail && normalizedEmail !== user.email;
     if (name) user.name = name;
     if (phone) user.phone = phone;
-    if (email) user.email = email;
+    if (emailChanged) {
+      const emailExists = await User.findOne({ email: normalizedEmail });
+      if (emailExists) {
+        return res.status(400).json({ success: false, message: 'Email is already in use by another account' });
+      }
+      user.email = normalizedEmail;
+    }
     if (dob) user.dob = dob;
     if (gender) user.gender = gender;
     if (bloodType) user.bloodType = bloodType;
@@ -238,7 +259,7 @@ router.put('/profile', protect, async (req, res) => {
         if (location !== undefined) doctorProfile.location = location;
         if (bio !== undefined) doctorProfile.bio = bio;
         // If email changed by doctor, mark credentials as changed
-        if (email && email !== req.user.email) doctorProfile.credentialsChanged = true;
+        if (emailChanged) doctorProfile.credentialsChanged = true;
         await doctorProfile.save();
       }
     }
@@ -260,6 +281,9 @@ router.put('/profile', protect, async (req, res) => {
       },
     });
   } catch (error) {
+    if (error.code === 11000 && error.keyPattern?.email) {
+      return res.status(400).json({ success: false, message: 'Email is already in use by another account' });
+    }
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -312,7 +336,7 @@ router.put(
 // ──────────────────────────────────────────────
 router.post(
   '/forgot-password',
-  [body('email').isEmail().withMessage('Please provide a valid email')],
+  [body('email').trim().isEmail().withMessage('Please provide a valid email')],
   async (req, res) => {
     try {
       const errors = validationResult(req);
@@ -321,7 +345,8 @@ router.post(
       }
 
       // rate-limit by email and by IP to prevent abuse
-      const emailKey = `forgot:${req.body.email.toLowerCase()}`;
+      const email = normalizeEmail(req.body.email);
+      const emailKey = `forgot:${email}`;
       const ip = req.ip || req.connection.remoteAddress || 'unknown';
       const ipKey = `forgot:${ip}`;
 
@@ -333,7 +358,11 @@ router.post(
         return res.status(429).json({ success: false, message: 'Too many requests from this IP address. Try again later.' });
       }
 
-      const user = await User.findOne({ email: req.body.email.toLowerCase() });
+      if (process.env.NODE_ENV === 'production' && !(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)) {
+        return res.status(503).json({ success: false, message: 'Password reset email is unavailable' });
+      }
+
+      const user = await User.findOne({ email });
       if (!user) {
         return res.json({
           success: true,
@@ -371,7 +400,8 @@ router.post(
         message: 'If an account exists for that email, a reset code has been sent',
       });
     } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      console.error('Password reset request failed:', error.message);
+      res.status(503).json({ success: false, message: 'Password reset email is unavailable' });
     }
   }
 );
@@ -384,7 +414,7 @@ router.post(
 router.post(
   '/reset-password',
   [
-    body('email').isEmail().withMessage('Please provide a valid email'),
+    body('email').trim().isEmail().withMessage('Please provide a valid email'),
     body('resetCode').notEmpty().withMessage('Reset code is required'),
     body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters'),
   ],
@@ -395,7 +425,13 @@ router.post(
         return res.status(400).json({ success: false, errors: errors.array() });
       }
 
-      const { email, resetCode, newPassword } = req.body;
+      const { resetCode, newPassword } = req.body;
+      const email = normalizeEmail(req.body.email);
+      const ip = req.ip || req.connection.remoteAddress || 'unknown';
+      if (isRateLimited(`reset-email:${email}`, RATE_LIMITS.resetPerEmail) ||
+          isRateLimited(`reset-ip:${ip}`, RATE_LIMITS.resetPerIP)) {
+        return res.status(429).json({ success: false, message: 'Too many reset attempts. Try again later.' });
+      }
 
       // Hash the provided code to compare with stored hash
       const hashedCode = crypto.createHash('sha256').update(resetCode).digest('hex');
@@ -415,6 +451,10 @@ router.post(
       user.resetPasswordToken = null;
       user.resetPasswordExpire = null;
       await user.save();
+
+      if (user.role === 'doctor') {
+        await Doctor.findOneAndUpdate({ user: user._id }, { credentialsChanged: true });
+      }
 
       res.json({ success: true, message: 'Password reset successfully. You can now log in with your new password.' });
     } catch (error) {

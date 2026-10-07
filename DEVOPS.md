@@ -57,7 +57,8 @@ curl --fail http://127.0.0.1:8080/api/ready
 
 Keep `HTTP_BIND=127.0.0.1` and place a host HTTPS reverse proxy in front of port
 8080. Configure a domain, TLS certificate, firewall and `ALLOWED_ORIGINS` with
-the exact HTTPS origin. Set SMTP variables before using real email delivery.
+the exact HTTPS origin. Set SMTP variables to enable password reset emails;
+the reset request returns 503 in production when SMTP is absent.
 This repository does not provision a cloud account, domain or TLS certificate.
 Choose the hosting provider before adding provider-specific infrastructure or CD
 credentials. Review database least-privilege access before handling patient data;

@@ -9,6 +9,7 @@ const errorHandler = require('./middleware/errorHandler');
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', process.env.TRUST_PROXY === '1' ? 1 : false);
 
 // ──────────────────────────────────────────────
 // Middleware
