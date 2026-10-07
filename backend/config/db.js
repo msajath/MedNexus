@@ -38,9 +38,16 @@ const connectDB = async () => {
     return true;
   };
 
-  // Try SRV first (usual Atlas URI). If it fails due to DNS, try the standard URI.
+  // Try SRV first (usual Atlas URI). If it fails due to DNS, retry with public DNS fallback, then standard URI.
   if (srvUri) {
-    const ok = await tryConnect(srvUri, 'SRV');
+    let ok = await tryConnect(srvUri, 'SRV');
+    if (!ok) {
+      try {
+        const dns = require('dns');
+        dns.setServers(['8.8.8.8', '1.1.1.1']);
+        ok = await tryConnect(srvUri, 'SRV (DNS fallback)');
+      } catch (_) {}
+    }
     if (ok) return;
   }
 

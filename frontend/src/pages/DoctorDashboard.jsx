@@ -9,6 +9,12 @@ import { getLocalDateString } from '../utils/date'
 export default function DoctorDashboard() {
   const { user } = useAuth()
   const [appointments, setAppointments] = useState([])
+  const [stats, setStats] = useState({
+    todayCount: 0,
+    patientCount: 0,
+    pendingCount: 0,
+    totalEarnings: '$0',
+  })
   const now = new Date()
   const [currentMonth] = useState(now.toLocaleString('default', { month: 'long', year: 'numeric' }))
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
@@ -29,7 +35,19 @@ export default function DoctorDashboard() {
         const data = await response.json()
         const appts = data.appointments || data || []
         const today = getLocalDateString()
-        setAppointments(appts.filter((appointment) => appointment.date === today).slice(0, 5))
+        const todayList = appts.filter((appointment) => appointment.date === today)
+        setAppointments(todayList.slice(0, 5))
+
+        const patientIds = new Set(appts.map(a => a.patient?._id || a.patient).filter(Boolean))
+        const pending = appts.filter(a => a.status === 'pending').length
+        const fee = user?.doctorProfile?.fee || 100
+        const completedCount = appts.filter(a => ['confirmed', 'completed'].includes(a.status)).length
+        setStats({
+          todayCount: todayList.length,
+          patientCount: patientIds.size,
+          pendingCount: pending,
+          totalEarnings: `$${(completedCount * fee).toLocaleString()}`,
+        })
       }
     } catch (err) {
       console.error('Error fetching appointments:', err)
@@ -39,6 +57,7 @@ export default function DoctorDashboard() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTodayAppointments()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
@@ -48,16 +67,18 @@ export default function DoctorDashboard() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
             <h2 className="text-3xl font-semibold text-navy">Welcome back, {user?.name || 'Doctor'}!</h2>
-            <p className="text-base text-navy-muted mt-1">You have {appointments.length} appointments scheduled.</p>
+            <p className="text-base text-navy-muted mt-1">You have {appointments.length} appointments scheduled today.</p>
           </div>
-          <button className="flex items-center gap-2 px-6 py-3 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary-dark transition-colors" onClick={(e) => { e.preventDefault(); alert(`Viewing ${appointments.length} appointments...`); }}><span className="material-icons-outlined text-[18px]">calendar_today</span>Today's Appointments</button>
+          <Link to="/doctor/appointments" className="flex items-center gap-2 px-6 py-3 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary-dark transition-colors">
+            <span className="material-icons-outlined text-[18px]">calendar_today</span>Manage Calendar
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard icon="calendar_today" value="12" label="Today's Appointments" color="var(--color-primary)" trend={8} />
-          <StatCard icon="people" value="1,284" label="Total Patients" color="var(--color-success)" trend={12} />
-          <StatCard icon="pending_actions" value="8" label="Pending Requests" color="var(--color-warning)" trend={-3} />
-          <StatCard icon="payments" value="$14,250" label="Total Earnings" color="#8b5cf6" trend={15} />
+          <StatCard icon="calendar_today" value={stats.todayCount.toString()} label="Today's Appointments" color="var(--color-primary)" />
+          <StatCard icon="people" value={stats.patientCount.toString()} label="Total Patients" color="var(--color-success)" />
+          <StatCard icon="pending_actions" value={stats.pendingCount.toString()} label="Pending Requests" color="var(--color-warning)" />
+          <StatCard icon="payments" value={stats.totalEarnings} label="Total Earnings" color="#8b5cf6" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 mb-8">

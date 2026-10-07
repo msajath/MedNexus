@@ -7,6 +7,13 @@ const Doctor = require('../../models/Doctor');
 const Appointment = require('../../models/Appointment');
 const MedicalRecord = require('../../models/MedicalRecord');
 
+const dns = require('dns');
+if (process.env.MONGO_TEST_URI && process.env.MONGO_TEST_URI.startsWith('mongodb+srv://')) {
+  try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+  } catch (_) {}
+}
+
 const describeWithMongo = process.env.MONGO_TEST_URI ? describe : describe.skip;
 const tokenFor = (user) => jwt.sign({ id: user._id, version: user.tokenVersion || 0 }, process.env.JWT_SECRET);
 const auth = (user) => ({ Authorization: `Bearer ${tokenFor(user)}` });
@@ -17,6 +24,8 @@ const nextMonday = () => {
 };
 
 describeWithMongo('MongoDB security and booking integration', () => {
+  jest.setTimeout(30000);
+
   beforeAll(async () => {
     process.env.JWT_SECRET = 'integration-only-secret';
     await mongoose.connect(process.env.MONGO_TEST_URI, { autoIndex: false, serverSelectionTimeoutMS: 30000 });
@@ -47,8 +56,8 @@ describeWithMongo('MongoDB security and booking integration', () => {
     const doctorA = await Doctor.create({ user: doctorAUser._id, specialty: 'General', fee: 100 });
     await Doctor.create({ user: doctorBUser._id, specialty: 'General', fee: 100 });
     const appointment = await Appointment.create({ patient: patient._id, doctor: doctorA._id, date: nextMonday(), time: '10:00 AM', status: 'confirmed' });
-    await MedicalRecord.create({ patient: patient._id, title: 'Visible', date: nextMonday(), isPrivate: false });
-    await MedicalRecord.create({ patient: patient._id, title: 'Private', date: nextMonday(), isPrivate: true });
+    await MedicalRecord.create({ patient: patient._id, title: 'Visible', date: nextMonday(), isPrivate: false, addedBy: 'patient' });
+    await MedicalRecord.create({ patient: patient._id, title: 'Private', date: nextMonday(), isPrivate: true, addedBy: 'patient' });
 
     const allowed = await request(app).get(`/api/records/patient/${patient._id}`).set(auth(doctorAUser));
     expect(allowed.status).toBe(200);

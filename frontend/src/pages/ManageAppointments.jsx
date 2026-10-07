@@ -10,6 +10,30 @@ export default function ManageAppointments() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  const [updatingId, setUpdatingId] = useState(null)
+
+  const handleStatusUpdate = async (id, status) => {
+    setUpdatingId(id)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/appointments/${id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Failed to update status')
+      setAppointments(prev => prev.map(a => ((a._id || a.id) === id ? { ...a, status } : a)))
+    } catch (err) {
+      alert(err.message || 'Error updating appointment status')
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
   const fetchAppointments = async () => {
     try {
       const token = localStorage.getItem('token')
@@ -80,24 +104,44 @@ export default function ManageAppointments() {
                     </div>
                   </div>
 
-                  <button className="flex items-center gap-1 w-max px-3 py-1.5 text-sm font-semibold text-primary bg-transparent hover:bg-primary-fixed rounded-lg transition-colors" onClick={() => setExpandedId(expandedId === appt._id ? null : appt._id)}>
-                    <span className="material-icons-outlined text-[18px]">{expandedId === appt._id ? 'expand_less' : 'expand_more'}</span>
+                  <button className="flex items-center gap-1 w-max px-3 py-1.5 text-sm font-semibold text-primary bg-transparent hover:bg-primary-fixed rounded-lg transition-colors" onClick={() => setExpandedId(expandedId === (appt._id || appt.id) ? null : (appt._id || appt.id))}>
+                    <span className="material-icons-outlined text-[18px]">{expandedId === (appt._id || appt.id) ? 'expand_less' : 'expand_more'}</span>
                     Full Clinical Notes
                   </button>
 
-                  {expandedId === appt._id && (
+                  {expandedId === (appt._id || appt.id) && (
                     <div className="p-4 bg-surface-container-low rounded-lg text-sm leading-relaxed text-navy-muted animate-fade-in">
                       <p>{appt.notes || 'No notes available'}</p>
                     </div>
                   )}
 
-                  {appt.status !== 'cancelled' && (
+                  {['pending', 'confirmed'].includes(appt.status) && (
                     <div className="flex gap-3 pt-3 border-t border-surface-container-high">
-                      <button className="flex items-center gap-1 px-4 py-2 bg-success text-white text-sm font-semibold rounded-lg hover:bg-green-600 transition-colors">
-                        <span className="material-icons-outlined text-[16px]">check</span> Complete
+                      {appt.status === 'pending' && (
+                        <button
+                          disabled={updatingId === (appt._id || appt.id)}
+                          onClick={() => handleStatusUpdate(appt._id || appt.id, 'confirmed')}
+                          className="flex items-center gap-1 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
+                        >
+                          <span className="material-icons-outlined text-[16px]">check_circle</span> Confirm
+                        </button>
+                      )}
+                      {appt.status === 'confirmed' && (
+                        <button
+                          disabled={updatingId === (appt._id || appt.id)}
+                          onClick={() => handleStatusUpdate(appt._id || appt.id, 'completed')}
+                          className="flex items-center gap-1 px-4 py-2 bg-success text-white text-sm font-semibold rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
+                        >
+                          <span className="material-icons-outlined text-[16px]">check</span> Complete
+                        </button>
+                      )}
+                      <button
+                        disabled={updatingId === (appt._id || appt.id)}
+                        onClick={() => handleStatusUpdate(appt._id || appt.id, 'cancelled')}
+                        className="px-4 py-2 bg-red-50 text-red-600 text-sm font-semibold rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
+                      >
+                        Cancel
                       </button>
-                      <button className="px-4 py-2 border border-outline text-navy text-sm font-semibold rounded-lg hover:bg-surface-container-lowest transition-colors">Reschedule</button>
-                      <button className="px-4 py-2 bg-red-50 text-red-600 text-sm font-semibold rounded-lg hover:bg-red-100 transition-colors">Cancel</button>
                     </div>
                   )}
                 </div>
