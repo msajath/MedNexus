@@ -22,7 +22,7 @@ jobs:
       run:
         working-directory: ${{ matrix.component }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -53,7 +53,7 @@ jobs:
       MONGO_TEST_URI: mongodb://127.0.0.1:27017/mednexus_ci
       JWT_SECRET: integration-only-secret
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -75,7 +75,7 @@ jobs:
       MONGO_APP_PASSWORD: ci-only-app-password
       JWT_SECRET: ci-only-jwt-secret-not-for-deployment
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: docker compose config --quiet
       - name: Validate Atlas Compose configuration
         env:
@@ -105,7 +105,7 @@ jobs:
       matrix:
         component: [backend, frontend]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Normalize registry name
         id: registry
         env:
