@@ -35,6 +35,14 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+app.use((req, res, next) => {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method) || !req.headers.origin) return next();
+  if (!allowedOrigins.includes(req.headers.origin)) {
+    return res.status(403).json({ success: false, message: 'Untrusted request origin' });
+  }
+  next();
+});
+
 // ──────────────────────────────────────────────
 // API Routes
 // ──────────────────────────────────────────────

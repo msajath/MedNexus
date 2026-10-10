@@ -8,38 +8,26 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const fetchCurrentUser = async (token) => {
+  const fetchCurrentUser = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const response = await fetch(`${API_BASE}/api/auth/me`)
       if (response.ok) {
         const data = await response.json()
         setUser(data.user || data)
         setError(null)
       } else {
-        localStorage.removeItem('token')
         setUser(null)
       }
     } catch (err) {
       console.error('Error fetching current user:', err)
-      localStorage.removeItem('token')
     } finally {
       setLoading(false)
     }
   }
 
-  // Check if user is already logged in (token exists)
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      fetchCurrentUser(token)
-    } else {
-      setLoading(false)
-    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchCurrentUser()
   }, [])
 
   const login = async (email, password) => {
@@ -59,15 +47,13 @@ export function AuthProvider({ children }) {
       }
 
       const data = await response.json()
-      const token = data.token || data.data?.token
       const userData = data.user || data.data?.user
 
-      if (token) {
-        localStorage.setItem('token', token)
+      if (userData) {
         setUser(userData)
         return userData
       } else {
-        throw new Error('No token received')
+        throw new Error('No user received')
       }
     } catch (err) {
       console.error('Login error:', err)
@@ -93,15 +79,13 @@ export function AuthProvider({ children }) {
       }
 
       const data = await response.json()
-      const token = data.token
       const userData = data.user
 
-      if (token) {
-        localStorage.setItem('token', token)
+      if (userData) {
         setUser(userData)
         return userData
       } else {
-        throw new Error('No token received')
+        throw new Error('No user received')
       }
     } catch (err) {
       console.error('Register error:', err)
@@ -110,8 +94,8 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const logout = () => {
-    localStorage.removeItem('token')
+  const logout = async () => {
+    await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST' })
     setUser(null)
   }
 

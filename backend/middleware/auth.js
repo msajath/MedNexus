@@ -1,6 +1,12 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+const getCookie = (req, name) => {
+  const cookies = req.headers.cookie?.split(';').map((cookie) => cookie.trim()) || [];
+  const value = cookies.find((cookie) => cookie.startsWith(`${name}=`));
+  return value ? decodeURIComponent(value.slice(name.length + 1)) : null;
+};
+
 // Protect routes — verify JWT token
 const protect = async (req, res, next) => {
   let token;
@@ -8,6 +14,7 @@ const protect = async (req, res, next) => {
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
   }
+  if (!token) token = getCookie(req, 'mednexus_session');
 
   if (!token) {
     return res.status(401).json({

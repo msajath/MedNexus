@@ -6,6 +6,12 @@ const validateObjectId = require('../middleware/validateObjectId');
 
 const router = express.Router();
 
+const getFallbackAvatar = (doctor) => {
+  const key = doctor.user?.email || doctor.user?.name || String(doctor._id);
+  const hash = [...key].reduce((total, character) => total + character.charCodeAt(0), 0);
+  return `/images/doc${(hash % 15) + 1}.png`;
+};
+
 // ──────────────────────────────────────────────
 // @route   GET /api/doctors
 // @desc    Get all doctors (with search & filter)
@@ -61,7 +67,7 @@ router.get('/', async (req, res) => {
       location: doc.location,
       available: doc.available,
       languages: doc.languages,
-      avatar: doc.user.avatar,
+      avatar: doc.user.avatar || getFallbackAvatar(doc),
     }));
 
     res.json({ success: true, count: formatted.length, doctors: formatted });
@@ -145,7 +151,7 @@ router.get('/:id', validateObjectId('id'), async (req, res) => {
         bio: doctor.bio,
         education: doctor.education,
         experienceHistory: doctor.experienceHistory,
-        avatar: doctor.user.avatar,
+        avatar: doctor.user.avatar || getFallbackAvatar(doctor),
       },
     });
   } catch (error) {

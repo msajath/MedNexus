@@ -9,6 +9,14 @@ const { sendMail } = require('../utils/mailer');
 
 const router = express.Router();
 
+const sessionCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  path: '/',
+};
+
 // Simple in-memory rate limiter for sensitive endpoints (forgot-password)
 // Keeps a sliding window counter per key (email or ip). This is intentionally
 // lightweight so it works without extra dependencies. For production, prefer
@@ -98,10 +106,10 @@ router.post(
 
       // Generate token
       const token = generateToken(user);
+      res.cookie('mednexus_session', token, sessionCookieOptions);
 
       res.status(201).json({
         success: true,
-        token,
         user: {
           id: user._id,
           name: user.name,
@@ -154,6 +162,7 @@ router.post(
 
       // Generate token
       const token = generateToken(user);
+      res.cookie('mednexus_session', token, sessionCookieOptions);
 
       // If doctor, fetch doctor-specific info
       let doctorInfo = null;
@@ -163,7 +172,6 @@ router.post(
 
       res.json({
         success: true,
-        token,
         user: {
           id: user._id,
           name: user.name,
@@ -178,6 +186,16 @@ router.post(
     }
   }
 );
+
+router.post('/logout', (req, res) => {
+  res.clearCookie('mednexus_session', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+  });
+  res.json({ success: true });
+});
 
 // ──────────────────────────────────────────────
 // @route   GET /api/auth/me

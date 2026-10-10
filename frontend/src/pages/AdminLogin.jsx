@@ -35,7 +35,6 @@ export default function AdminLogin() {
         throw new Error('Access denied. This page is for administrators only.')
       }
 
-      localStorage.setItem('token', data.token)
       setUser(data.user)
       navigate('/admin/dashboard', { replace: true })
     } catch (err) {

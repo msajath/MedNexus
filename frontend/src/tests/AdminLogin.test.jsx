@@ -41,11 +41,10 @@ test('handles input changes', () => {
   expect(emailInput.value).toBe('admin@test.com');
 });
 
-test('logs in admin with a single login request', async () => {
+test('logs in admin using a cookie session', async () => {
   fetchMock.mockResolvedValue({
     ok: true,
     json: vi.fn().mockResolvedValue({
-      token: 'mock-admin-token',
       user: {
         role: 'admin',
         email: 'admin@mednexus.com',
@@ -70,10 +69,10 @@ test('logs in admin with a single login request', async () => {
   fireEvent.click(screen.getByRole('button', { name: /sign in to admin panel/i }));
 
   await waitFor(() => {
-    expect(localStorage.getItem('token')).toBe('mock-admin-token');
+    expect(screen.getByText(/Admin Portal/i)).toBeInTheDocument();
   });
+  expect(localStorage.getItem('token')).toBeNull();
 
-  expect(fetchMock).toHaveBeenCalledTimes(1);
   expect(fetchMock).toHaveBeenCalledWith(
     '/api/auth/login',
     expect.objectContaining({
