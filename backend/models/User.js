@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please provide a name'],
       trim: true,
+      maxlength: 120,
     },
     email: {
       type: String,
@@ -19,7 +20,7 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: [true, 'Please provide a password'],
-      minlength: 6,
+      minlength: 15,
       select: false, // don't return password by default
     },
     role: {
@@ -62,10 +63,12 @@ const userSchema = new mongoose.Schema(
     resetPasswordToken: {
       type: String,
       default: null,
+      select: false,
     },
     resetPasswordExpire: {
       type: Date,
       default: null,
+      select: false,
     },
   },
   { timestamps: true }

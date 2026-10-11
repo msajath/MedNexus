@@ -45,7 +45,7 @@ Check `/api/ready` after migration. Changing `.env` alone does not rotate an
 existing database account; the command above updates the application user's
 password to the current `MONGO_APP_PASSWORD`. Root password rotation requires
 MongoDB user management and cannot be done by changing `.env` alone. The API
-creates its required email and active-slot unique indexes before accepting
+creates its required email, active-slot, and doctor-availability unique indexes before accepting
 traffic. If existing data violates either index, startup fails until the
 conflicting data is reviewed and corrected.
 
@@ -56,15 +56,30 @@ the cluster's network access. Never put a MongoDB URI in the Vite frontend.
 
 ## CI and releases
 
-GitHub Actions runs backend tests and production dependency audits,
-MongoDB-backed integration tests, frontend tests/lint/build, then a full Compose
-smoke test including database readiness, the API proxy and SPA deep links. Pushes
+GitHub Actions runs backend tests and audits of all dependencies,
+MongoDB-backed integration tests, frontend tests/lint/build, desktop/mobile
+browser workflows, and full-history secret scanning. A Compose smoke test checks
+database readiness, the API proxy, SPA deep links, security headers, and missing
+asset responses. Pushes
 to main/master or `v*` tags publish both tested images to GHCR with immutable
 `sha-<full-commit-sha>` tags. PRs and dev pushes never publish. This workflow
 publishes images; it does not deploy to a server. Enable Actions and
 allow the workflow token to write packages. Dependabot checks npm, Docker and
 Actions weekly. Configure branch protection to require both component checks and
-`backend-integration` and `containers`, and require reviews before merging.
+`backend-integration`, `browser-qa`, `secrets`, and `containers`, and require reviews before merging.
+Actions are pinned to commit SHAs; images include SBOMs and build provenance.
+The separate CodeQL workflow runs security-extended analysis on public repositories.
+For a private repository with GitHub Code Security enabled, set the repository
+variable `ENABLE_CODEQL=true` and require its `analyze` check as well.
+
+Production cookies require HTTPS and same-origin site/API routing. The Vercel
+configuration adds frontend headers but does not configure a backend proxy;
+configure that routing before using Vercel with cookie authentication. The CSP
+allows same-origin API connections. Rate limits are held in each API process;
+multiple replicas require a shared rate-limit store or gateway limits. Nginx
+overwrites forwarded client IP headers. When another trusted proxy sits in front
+of Nginx, configure its trusted IP ranges with the Nginx real-IP module to avoid
+all users sharing one proxy IP limit.
 
 ## Server deployment
 

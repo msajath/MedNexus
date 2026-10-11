@@ -2,11 +2,13 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
+const Availability = require('../models/Availability');
 
 const ensureStorageReady = async () => {
   // autoIndex is disabled for normal queries; explicitly require these safety indexes.
   await User.createIndexes();
   await Appointment.createIndexes();
+  await Availability.createIndexes();
   // Remove legacy plaintext doctor credentials before accepting requests.
   await Doctor.collection.updateMany(
     { tempPassword: { $exists: true } },

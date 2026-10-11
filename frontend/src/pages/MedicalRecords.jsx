@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
 import { getLocalDateString } from '../utils/date'
-import { API_BASE } from '../config'
+import { API_BASE, apiFetch } from '../config'
 
 const RECORD_TYPES = ['All', 'Prescription', 'Lab Report', 'Diagnosis', 'Vaccination', 'Imaging', 'Discharge Summary', 'Other']
 
@@ -53,10 +53,8 @@ export default function MedicalRecords() {
 
   const fetchRecords = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${API_BASE}/api/records/my`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await apiFetch(`${API_BASE}/api/records/my`, {
+        })
       const data = await res.json()
       setRecords(data.records || [])
     } catch (err) {
@@ -89,10 +87,9 @@ export default function MedicalRecords() {
     if (!formData.title || !formData.date) return
     setIsSaving(true)
     try {
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${API_BASE}/api/records`, {
+      const res = await apiFetch(`${API_BASE}/api/records`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       })
       const data = await res.json()
@@ -115,11 +112,9 @@ export default function MedicalRecords() {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this medical record?')) return
     try {
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${API_BASE}/api/records/${id}`, {
+      const res = await apiFetch(`${API_BASE}/api/records/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      })
+        })
       if (res.ok) {
         setRecords(prev => prev.filter(r => (r._id || r.id) !== id))
         if (selectedRecord && (selectedRecord._id || selectedRecord.id) === id) setSelectedRecord(null)

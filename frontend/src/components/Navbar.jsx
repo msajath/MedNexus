@@ -48,9 +48,9 @@ export default function Navbar() {
     return () => window.clearTimeout(timeoutId)
   }, [location.pathname])
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setDropdownOpen(false)
-    logout()
+    try { await logout() } catch (error) { alert(error.message); return }
     navigate('/')
   }
 

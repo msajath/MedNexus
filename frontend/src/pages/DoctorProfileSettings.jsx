@@ -3,7 +3,7 @@ import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
 import { specialties } from '../data/mockData'
-import { API_BASE } from '../config'
+import { API_BASE, apiFetch } from '../config'
 
 export default function DoctorProfileSettings() {
   const { user, setUser } = useAuth()
@@ -30,6 +30,7 @@ export default function DoctorProfileSettings() {
   const [profilePicture, setProfilePicture] = useState(null)
   const fileInputRef = useRef(null)
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [emailPassword, setEmailPassword] = useState('')
   const [pwSaving, setPwSaving] = useState(false)
   const [pwMessage, setPwMessage] = useState({ type: '', text: '' })
 
@@ -70,6 +71,10 @@ export default function DoctorProfileSettings() {
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+        setMessage({ type: 'error', text: 'Choose a PNG, JPEG or WebP image up to 2 MB.' })
+        return
+      }
       const reader = new FileReader()
       reader.onloadend = () => {
         setProfilePicture(reader.result)
@@ -84,13 +89,10 @@ export default function DoctorProfileSettings() {
     setIsSaving(true)
     setMessage({ type: '', text: '' })
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE}/api/auth/profile`, {
+      const response = await apiFetch(`${API_BASE}/api/auth/profile`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+          'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: `${formData.firstName} ${formData.lastName}`.trim(),
           phone: formData.phone,
@@ -99,6 +101,7 @@ export default function DoctorProfileSettings() {
           bloodType: formData.bloodType,
           address: formData.address,
           email: formData.email,
+          ...(formData.email !== user.email && { currentPassword: emailPassword }),
           avatar: profilePicture,
           specialty: formData.specialty,
           fee: Number(formData.fee),
@@ -111,6 +114,7 @@ export default function DoctorProfileSettings() {
       const data = await response.json()
       if (data.success) {
         setUser(data.user)
+        setEmailPassword('')
         setMessage({ type: 'success', text: 'Profile updated successfully!' })
         setTimeout(() => setMessage({ type: '', text: '' }), 3000)
       } else {
@@ -133,10 +137,9 @@ export default function DoctorProfileSettings() {
     setPwSaving(true)
     setPwMessage({ type: '', text: '' })
     try {
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${API_BASE}/api/auth/password`, {
+      const res = await apiFetch(`${API_BASE}/api/auth/password`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword })
       })
       const data = await res.json()
@@ -179,7 +182,7 @@ export default function DoctorProfileSettings() {
                 <h2 className="text-2xl font-semibold text-navy">{formData.firstName} {formData.lastName}</h2>
                 <p className="inline-block mt-2 px-3 py-1 bg-primary-fixed text-on-primary-fixed text-xs font-semibold uppercase tracking-wider rounded-full">{formData.specialty}</p>
               </div>
-              <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
+              <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
               <button 
                 className="sm:ml-auto px-4 py-2 border border-outline text-navy text-sm font-semibold rounded-lg hover:bg-surface-container-lowest transition-colors"
                 onClick={() => fileInputRef.current.click()}
@@ -245,6 +248,7 @@ export default function DoctorProfileSettings() {
               </div>
             </div>
 
+            {formData.email !== user?.email && <label className="flex flex-col gap-2 p-6 bg-white rounded-xl text-sm text-navy">Confirm your current password to change email<input type="password" autoComplete="current-password" value={emailPassword} onChange={event => setEmailPassword(event.target.value)} className="p-3 border border-slate-300 rounded-xl" /></label>}
             {/* Change Password */}
             <div className="p-6 bg-white rounded-xl shadow-sm border border-outline-variant">
               <h3 className="text-xl font-semibold text-navy mb-1">Change Password</h3>
@@ -267,9 +271,9 @@ export default function DoctorProfileSettings() {
                     <input
                       type="password"
                       required
-                      minLength={6}
+                      minLength={15}
                       className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base focus:border-primary outline-none transition-colors"
-                      placeholder="Min. 6 characters"
+                      placeholder="At least 15 characters"
                       value={pwForm.newPassword}
                       onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
                     />

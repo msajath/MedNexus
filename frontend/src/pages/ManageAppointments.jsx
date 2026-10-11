@@ -3,7 +3,7 @@ import Sidebar from '../components/Sidebar'
 import StatusBadge from '../components/StatusBadge'
 import Footer from '../components/Footer'
 import { formatAppointmentDate } from '../utils/date'
-import { API_BASE } from '../config'
+import { API_BASE, apiFetch } from '../config'
 
 export default function ManageAppointments() {
   const [appointments, setAppointments] = useState([])
@@ -16,13 +16,10 @@ export default function ManageAppointments() {
   const handleStatusUpdate = async (id, status) => {
     setUpdatingId(id)
     try {
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${API_BASE}/api/appointments/${id}/status`, {
+      const res = await apiFetch(`${API_BASE}/api/appointments/${id}/status`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+          'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       })
       const data = await res.json()
@@ -37,12 +34,8 @@ export default function ManageAppointments() {
 
   const fetchAppointments = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE}/api/appointments/my`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const response = await apiFetch(`${API_BASE}/api/appointments/my`, {
+        })
       if (!response.ok) throw new Error('Failed to fetch appointments')
       const data = await response.json()
       setAppointments(data.appointments || data || [])

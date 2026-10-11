@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar'
 import StatusBadge from '../components/StatusBadge'
 import Footer from '../components/Footer'
 import { formatAppointmentDate } from '../utils/date'
-import { API_BASE } from '../config'
+import { API_BASE, apiFetch } from '../config'
 
 export default function MyAppointments() {
   const [appointments, setAppointments] = useState([])
@@ -16,12 +16,8 @@ export default function MyAppointments() {
 
   const fetchAppointments = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE}/api/appointments/my`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const response = await apiFetch(`${API_BASE}/api/appointments/my`, {
+        })
       if (!response.ok) throw new Error('Failed to fetch appointments')
       const data = await response.json()
       setAppointments(data.appointments || data || [])
@@ -42,11 +38,9 @@ export default function MyAppointments() {
   const handleCancel = async (apptId) => {
     if (!window.confirm('Are you sure you want to cancel this appointment?')) return
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE}/api/appointments/${apptId}/cancel`, {
+      const response = await apiFetch(`${API_BASE}/api/appointments/${apptId}/cancel`, {
         method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+        })
       if (response.ok) {
         setAppointments(prev => prev.map(a =>
           (a._id || a.id) === apptId ? { ...a, status: 'cancelled' } : a
@@ -128,13 +122,13 @@ export default function MyAppointments() {
                       <td className="p-4 px-5 text-sm text-navy border-b border-surface-container-high"><StatusBadge status={appt.status} /></td>
                       <td className="p-4 px-5 text-sm text-navy border-b border-surface-container-high">
                         <div className="flex gap-2">
-                          {appt.status !== 'cancelled' && (
+                          {['pending', 'confirmed'].includes(appt.status) && (
                             <>
                               <button
                                 className="px-3 py-1.5 text-xs font-semibold text-primary bg-transparent hover:bg-primary-fixed rounded-lg transition-colors"
                                 onClick={() => {
                                   const doctorId = appt.doctor?._id || appt.doctor?.id || appt.doctorId
-                                  if (doctorId) navigate(`/doctors/${doctorId}`)
+                                  if (doctorId) navigate(`/book/${doctorId}?reschedule=${appt._id || appt.id}`)
                                   else alert('Cannot reschedule: doctor info unavailable')
                                 }}
                               >Reschedule</button>

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { API_BASE } from '../config'
+import { API_BASE, apiFetch } from '../config'
 
 const AuthContext = createContext(null)
 
@@ -10,7 +10,7 @@ export function AuthProvider({ children }) {
 
   const fetchCurrentUser = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/auth/me`)
+      const response = await apiFetch(`${API_BASE}/api/auth/me`)
       if (response.ok) {
         const data = await response.json()
         setUser(data.user || data)
@@ -33,7 +33,7 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     setError(null)
     try {
-      const response = await fetch(`${API_BASE}/api/auth/login`, {
+      const response = await apiFetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -51,6 +51,7 @@ export function AuthProvider({ children }) {
 
       if (userData) {
         setUser(userData)
+        await fetchCurrentUser()
         return userData
       } else {
         throw new Error('No user received')
@@ -65,7 +66,7 @@ export function AuthProvider({ children }) {
   const register = async (name, email, password, role, extras = {}) => {
     setError(null)
     try {
-      const response = await fetch(`${API_BASE}/api/auth/register`, {
+      const response = await apiFetch(`${API_BASE}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -83,6 +84,7 @@ export function AuthProvider({ children }) {
 
       if (userData) {
         setUser(userData)
+        await fetchCurrentUser()
         return userData
       } else {
         throw new Error('No user received')
@@ -95,7 +97,8 @@ export function AuthProvider({ children }) {
   }
 
   const logout = async () => {
-    await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST' })
+    const response = await apiFetch(`${API_BASE}/api/auth/logout`, { method: 'POST' })
+    if (!response.ok && response.status !== 401) throw new Error('Logout failed. Please try again.')
     setUser(null)
   }
 

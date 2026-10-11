@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
+const { helmet, limiter, validateRequest } = require('./middleware/security');
 
 // Load environment variables
 dotenv.config();
@@ -14,7 +15,12 @@ if (process.env.NODE_ENV === 'production' &&
 }
 
 const app = express();
+app.disable('x-powered-by');
+app.set('query parser', 'simple');
 app.set('trust proxy', process.env.TRUST_PROXY === '1' ? 1 : false);
+app.use(helmet({ strictTransportSecurity: process.env.NODE_ENV === 'production' ? undefined : false }));
+app.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+app.use('/api', limiter(300, 60 * 1000, { skip: (req) => ['/health', '/ready'].includes(req.path) }));
 
 // ──────────────────────────────────────────────
 // Middleware
@@ -25,15 +31,15 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+    if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    return callback(new Error('Blocked by CORS policy'));
+    return callback(Object.assign(new Error('Untrusted request origin'), { status: 403 }));
   },
   credentials: true,
 }));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '4mb' }));
+app.use(validateRequest);
 
 app.use((req, res, next) => {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method) || !req.headers.origin) return next();
@@ -68,6 +74,7 @@ app.get('/api/ready', (req, res) => {
 // ──────────────────────────────────────────────
 // Error Handler (must be after routes)
 // ──────────────────────────────────────────────
+app.use((req, res) => res.status(404).json({ success: false, message: 'Route not found' }));
 app.use(errorHandler);
 
 // ──────────────────────────────────────────────

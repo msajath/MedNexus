@@ -6,3 +6,8 @@ dist
 coverage
 *.log
 .git
+e2e
+e2e-ui
+test-results
+playwright-report
+playwright-report-ui

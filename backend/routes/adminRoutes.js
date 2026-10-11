@@ -1,3 +1,6 @@
+const { query, text, body, doctorRules, check } = require('../middleware/validateInput');
+const { allowedTransitions } = require('../utils/slots');
+const errorHandler = require('../middleware/errorHandler');
 const express = require('express');
 const crypto = require('crypto');
 const User = require('../models/User');
@@ -28,12 +31,12 @@ router.get('/stats', async (req, res) => {
     const totalPatients = await User.countDocuments({ ...active, role: 'patient' });
     const totalAppointments = await Appointment.countDocuments();
     const monthlyAppointments = await Appointment.countDocuments({
-      createdAt: { $gte: new Date(new Date().setDate(1)) }, // from 1st of current month
+      createdAt: { $gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) }, // from 1st of current month
     });
     const pendingApprovals = await User.countDocuments({ ...active, role: 'doctor', isVerified: false });
 
     // Calculate revenue (sum of all confirmed appointment fees)
-    const confirmedAppointments = await Appointment.find({ status: 'confirmed' }).populate('doctor');
+    const confirmedAppointments = await Appointment.find({ status: { $in: ['confirmed', 'completed'] } }).populate('doctor');
     const revenue = confirmedAppointments.reduce((sum, appt) => sum + (appt.doctor?.fee || 0), 0);
 
     res.json({
@@ -49,7 +52,7 @@ router.get('/stats', async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -58,7 +61,7 @@ router.get('/stats', async (req, res) => {
 // @desc    Get all users
 // @access  Private (admin only)
 // ──────────────────────────────────────────────
-router.get('/users', async (req, res) => {
+router.get('/users', [query('role').optional().isIn(['patient', 'doctor', 'admin'])], check, async (req, res) => {
   try {
     const { role } = req.query;
     let query = { isActive: { $ne: false } };
@@ -67,7 +70,7 @@ router.get('/users', async (req, res) => {
     const users = await User.find(query).select('-password').sort({ createdAt: -1 });
     res.json({ success: true, count: users.length, users });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -93,7 +96,7 @@ router.put('/verify-doctor/:userId', validateObjectId('userId'), async (req, res
 
     res.json({ success: true, message: `Dr. ${user.name} has been verified`, user });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -102,7 +105,7 @@ router.put('/verify-doctor/:userId', validateObjectId('userId'), async (req, res
 // @desc    Add a new doctor to the system
 // @access  Private (admin only)
 // ──────────────────────────────────────────────
-router.post('/doctors', async (req, res) => {
+router.post('/doctors', [text('name', 120, false), body('email').isString().bail().trim().isEmail(), ...doctorRules], check, async (req, res) => {
   try {
     const { name, specialty, fee } = req.body;
     const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
@@ -130,7 +133,7 @@ router.post('/doctors', async (req, res) => {
     const doctor = await Doctor.create({
       user: user._id,
       specialty: specialty || 'General Practice',
-      fee: fee || 100,
+      fee: fee ?? 100,
     });
 
     // 4. Create default Availability
@@ -156,7 +159,7 @@ router.post('/doctors', async (req, res) => {
       doctor: { id: doctor._id, specialty: doctor.specialty },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -192,7 +195,7 @@ router.get('/doctors-detail', async (req, res) => {
 
     res.json({ success: true, count: result.length, doctors: result });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -251,7 +254,7 @@ router.get('/doctors/:userId', validateObjectId('userId'), async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -287,7 +290,7 @@ router.delete('/users/:userId', validateObjectId('userId'), async (req, res) => 
 
     res.json({ success: true, message: `Account for ${user.name} deactivated; clinical history retained` });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -336,7 +339,7 @@ router.get('/recent-activity', async (req, res) => {
 
     res.json({ success: true, activity: activity.slice(0, 10) });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -346,7 +349,7 @@ router.get('/contact-messages', async (req, res) => {
     const messages = await ContactMessage.find().sort({ createdAt: -1 });
     res.json({ success: true, count: messages.length, messages });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -361,7 +364,7 @@ router.put('/contact-messages/:id/status', validateObjectId('id'), async (req, r
     if (!message) return res.status(404).json({ success: false, message: 'Contact message not found' });
     return res.json({ success: true, message });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -378,7 +381,7 @@ router.get('/appointments', async (req, res) => {
       .sort({ createdAt: -1 });
     res.json({ success: true, count: appointments.length, appointments });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -393,18 +396,19 @@ router.put('/appointments/:id/status', validateObjectId('id'), async (req, res) 
     if (!['confirmed', 'cancelled', 'completed'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid status' });
     }
-    const appointment = await Appointment.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
+    const current = await Appointment.findById(req.params.id);
+    if (!current) return res.status(404).json({ success: false, message: 'Appointment not found' });
+    if (!allowedTransitions[current.status]?.includes(status)) return res.status(409).json({ success: false, message: 'Invalid appointment status transition' });
+    const appointment = await Appointment.findOneAndUpdate(
+      { _id: current._id, status: current.status }, { status }, { new: true, runValidators: true }
     );
-    if (!appointment) return res.status(404).json({ success: false, message: 'Appointment not found' });
+    if (!appointment) return res.status(409).json({ success: false, message: 'Appointment changed. Refresh and retry.' });
     res.json({ success: true, appointment });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(409).json({ success: false, message: 'This time slot is already booked' });
     }
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -421,7 +425,7 @@ router.get('/records', async (req, res) => {
       .sort({ createdAt: -1 });
     res.json({ success: true, count: records.length, records });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 

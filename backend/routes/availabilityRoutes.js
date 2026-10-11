@@ -1,3 +1,6 @@
+const { scheduleRules, check } = require('../middleware/validateInput');
+const { defaultSchedule, isValidDate, isFutureSlot } = require('../utils/slots');
+const errorHandler = require('../middleware/errorHandler');
 const express = require('express');
 const Availability = require('../models/Availability');
 const Appointment = require('../models/Appointment');
@@ -8,15 +11,6 @@ const validateObjectId = require('../middleware/validateObjectId');
 
 const router = express.Router();
 
-const defaultSchedule = [
-  { day: 'Monday', enabled: true, start: '09:00', end: '17:00' },
-  { day: 'Tuesday', enabled: true, start: '09:00', end: '17:00' },
-  { day: 'Wednesday', enabled: true, start: '10:00', end: '16:00' },
-  { day: 'Thursday', enabled: true, start: '09:00', end: '17:00' },
-  { day: 'Friday', enabled: true, start: '09:00', end: '14:00' },
-  { day: 'Saturday', enabled: false, start: '00:00', end: '00:00' },
-  { day: 'Sunday', enabled: false, start: '00:00', end: '00:00' },
-];
 
 const timeToMinutes = (time) => {
   const [hours, minutes] = time.split(':').map(Number);
@@ -62,19 +56,14 @@ const subtractSlots = (allSlots, availableSlots) => Object.fromEntries(
   ])
 );
 
-const isValidDate = (date) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
-  const [year, month, day] = date.split('-').map(Number);
-  const dateValue = new Date(year, month - 1, day);
-  return dateValue.getFullYear() === year && dateValue.getMonth() === month - 1 && dateValue.getDate() === day;
-};
+
 
 // ──────────────────────────────────────────────
 // @route   PUT /api/availability
 // @desc    Set/update doctor's weekly availability
 // @access  Private (doctor only)
 // ──────────────────────────────────────────────
-router.put('/', protect, authorize('doctor'), async (req, res) => {
+router.put('/', protect, authorize('doctor'), scheduleRules, check, async (req, res) => {
   try {
     const { schedule } = req.body;
 
@@ -88,22 +77,14 @@ router.put('/', protect, authorize('doctor'), async (req, res) => {
       return res.status(404).json({ success: false, message: 'Doctor profile not found' });
     }
 
-    // Upsert availability
-    let availability = await Availability.findOne({ doctor: doctor._id });
-
-    if (availability) {
-      availability.schedule = schedule;
-      await availability.save();
-    } else {
-      availability = await Availability.create({
-        doctor: doctor._id,
-        schedule,
-      });
-    }
+    const availability = await Availability.findOneAndUpdate(
+      { doctor: doctor._id }, { $set: { schedule } },
+      { upsert: true, new: true, runValidators: true }
+    );
 
     res.json({ success: true, schedule: availability.schedule });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -154,6 +135,7 @@ router.get('/slots/:doctorId/:date', validateObjectId('doctorId'), async (req, r
     }
 
     const availableSlots = getSlotsForSchedule(daySchedule);
+    for (const period of Object.keys(availableSlots)) availableSlots[period] = availableSlots[period].filter((time) => isFutureSlot(date, time));
 
     // Query existing appointments for this doctor on this date
     // that are not cancelled (i.e., pending or confirmed)
@@ -173,7 +155,7 @@ router.get('/slots/:doctorId/:date', validateObjectId('doctorId'), async (req, r
       bookedSlots,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -192,7 +174,7 @@ router.get('/:doctorId', validateObjectId('doctorId'), async (req, res) => {
 
     res.json({ success: true, schedule: availability.schedule });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 

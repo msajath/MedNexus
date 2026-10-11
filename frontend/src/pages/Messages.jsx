@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Sidebar from '../components/Sidebar'
 import { useAuth } from '../context/AuthContext'
-import { API_BASE } from '../config'
+import { API_BASE, apiFetch } from '../config'
 
 export default function Messages() {
   const { user } = useAuth()
@@ -13,9 +13,8 @@ export default function Messages() {
     const loadMessages = async () => {
       try {
         const endpoint = user?.role === 'admin' ? `${API_BASE}/api/admin/contact-messages` : `${API_BASE}/api/messages`
-        const response = await fetch(endpoint, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        })
+        const response = await apiFetch(endpoint, {
+          })
         const data = await response.json()
         if (!response.ok) throw new Error(data.message || 'Unable to load messages')
         const normalizedMessages = (data.messages || []).map((message) => user?.role === 'admin' ? {
@@ -40,12 +39,12 @@ export default function Messages() {
 
     try {
       const endpoint = user?.role === 'admin'
-        ? `${API_BASE}/api/admin/contact-messages//status`
-        : `${API_BASE}/api/messages//read`
-      const response = await fetch(endpoint, {
+        ? `${API_BASE}/api/admin/contact-messages/${message._id}/status`
+        : `${API_BASE}/api/messages/${message._id}/read`
+      const response = await apiFetch(endpoint, {
         method: 'PUT',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+
           ...(user?.role === 'admin' && { 'Content-Type': 'application/json' }),
         },
         ...(user?.role === 'admin' && { body: JSON.stringify({ status: 'in-progress' }) }),

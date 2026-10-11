@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { assets } from '../assets/assets'
-import { API_BASE } from '../config'
+import { API_BASE, apiFetch } from '../config'
 
 // Helper to format a Date as YYYY-MM-DD
 const formatDate = (d) => {
@@ -32,7 +32,7 @@ export default function DoctorProfile() {
 
   const fetchDoctor = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/doctors/${id}`)
+      const response = await apiFetch(`${API_BASE}/api/doctors/${id}`)
       if (!response.ok) {
         if (response.status === 404) {
           setError('Doctor not found')
@@ -74,7 +74,7 @@ export default function DoctorProfile() {
     setBookedSlots([])
     try {
       const dateStr = formatDate(days[dateIndex])
-      const response = await fetch(`${API_BASE}/api/availability/slots/${id}/${dateStr}`, {
+      const response = await apiFetch(`${API_BASE}/api/availability/slots/${id}/${dateStr}`, {
         cache: 'no-store',
       })
       if (response.ok) {
@@ -134,12 +134,10 @@ export default function DoctorProfile() {
 
     try {
       const dateStr = formatDate(days[selectedDate])
-      const response = await fetch(`${API_BASE}/api/appointments`, {
+      const response = await apiFetch(`${API_BASE}/api/appointments`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
+          'Content-Type': 'application/json' },
         body: JSON.stringify({
           doctorId: doctor._id || doctor.id,
           date: dateStr,
@@ -212,7 +210,7 @@ export default function DoctorProfile() {
                     {doctor.name} <span className="material-icons-outlined text-blue-600 text-2xl">verified</span>
                   </h1>
                   <div className="text-base text-slate-500 flex items-center gap-4 mb-8">
-                    MBBS - {doctor.specialty} <span className="bg-white border border-slate-200 rounded-full px-3 py-1 text-sm text-slate-600">{doctor.experience.replace('+ Years', ' Year').replace(' Years', ' Year')}</span>
+                    {doctor.specialty} <span className="bg-white border border-slate-200 rounded-full px-3 py-1 text-sm text-slate-600">{doctor.experience || 'Experience not provided'}</span>
                   </div>
                   
                   <div className="mb-8">

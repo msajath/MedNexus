@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import StatCard from '../components/StatCard'
 import Footer from '../components/Footer'
 import { specialties } from '../data/mockData'
-import { API_BASE } from '../config'
+import { API_BASE, apiFetch } from '../config'
 
 export default function AdminDashboard() {
+  const navigate = useNavigate()
+  const [health, setHealth] = useState({ api: 'Checking', database: 'Checking', latency: null })
   const [stats, setStats] = useState({
     totalDoctors: 0,
     totalPatients: 0,
@@ -23,12 +26,11 @@ export default function AdminDashboard() {
 
   const fetchAdminStats = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE}/api/admin/stats`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const started = performance.now()
+      const ready = await apiFetch(`${API_BASE}/api/ready`)
+      setHealth({ api: 'Reachable', database: ready.ok ? 'Ready' : 'Unavailable', latency: Math.round(performance.now() - started) })
+      const response = await apiFetch(`${API_BASE}/api/admin/stats`, {
+        })
       if (response.ok) {
         const data = await response.json()
         setStats(data.stats || data || {
@@ -37,7 +39,10 @@ export default function AdminDashboard() {
           monthlyAppointments: 0,
           revenue: '$0'
         })
-        setRecentActivity(data.recentActivity || [])
+        const activityResponse = await apiFetch(`${API_BASE}/api/admin/recent-activity`)
+        if (!activityResponse.ok) throw new Error('Unable to load recent activity')
+        const activityData = await activityResponse.json()
+        setRecentActivity(activityData.activity || [])
       }
     } catch (err) {
       console.error('Error fetching admin stats:', err)
@@ -63,13 +68,10 @@ export default function AdminDashboard() {
     setIsSubmitting(true)
     setMessage({ type: '', text: '' })
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE}/api/admin/doctors`, {
+      const response = await apiFetch(`${API_BASE}/api/admin/doctors`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+          'Content-Type': 'application/json' },
         body: JSON.stringify(newDoctor)
       })
       const data = await response.json()
@@ -96,6 +98,16 @@ export default function AdminDashboard() {
     }
   }
 
+  const downloadReport = () => {
+    const blob = new Blob([JSON.stringify({ generatedAt: new Date().toISOString(), stats, recentActivity }, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'mednexus-report.json'
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-surface">
       <Sidebar />
@@ -106,7 +118,7 @@ export default function AdminDashboard() {
             <p className="mt-2 text-base text-navy-muted">Platform performance and user activity.</p>
           </div>
           <div className="flex gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 border border-outline text-navy text-sm font-semibold rounded-lg hover:bg-surface-container-lowest transition-colors" onClick={() => alert("Downloading report...")}><span className="material-icons-outlined text-[18px]">download</span> Download Report</button>
+            <button className="flex items-center gap-2 px-4 py-2 border border-outline text-navy text-sm font-semibold rounded-lg hover:bg-surface-container-lowest transition-colors" onClick={downloadReport}><span className="material-icons-outlined text-[18px]">download</span> Download Report</button>
             <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary-dark transition-colors" onClick={() => setShowAddDoctor(true)}><span className="material-icons-outlined text-[18px]">person_add</span> Add Doctor</button>
           </div>
         </div>
@@ -229,7 +241,7 @@ export default function AdminDashboard() {
                     </div>
                     <div className="flex flex-col gap-1">
                       <p className="text-sm font-medium text-navy">{activity.message}</p>
-                      <span className="text-xs text-outline">{activity.time}</span>
+                      <span className="text-xs text-outline">{new Date(activity.time).toLocaleString()}</span>
                     </div>
                   </div>
                 ))
@@ -244,33 +256,15 @@ export default function AdminDashboard() {
           <div>
             <h3 className="text-xl font-semibold text-navy mb-5">System Health</h3>
             <div className="flex flex-col gap-5 p-6 bg-white rounded-xl shadow-sm border border-outline-variant">
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-navy-muted">Server Uptime</span>
-                  <span className="text-sm font-semibold text-success">99.99%</span>
-                </div>
-                <div className="h-1.5 bg-surface-container-high rounded-full overflow-hidden"><div className="h-full bg-success rounded-full" style={{ width: '99.99%' }}></div></div>
-              </div>
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-navy-muted">API Response Time</span>
-                  <span className="text-sm font-semibold text-navy">124ms</span>
-                </div>
-                <div className="h-1.5 bg-surface-container-high rounded-full overflow-hidden"><div className="h-full bg-primary rounded-full" style={{ width: '30%' }}></div></div>
-              </div>
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-navy-muted">Database Load</span>
-                  <span className="text-sm font-semibold text-warning">65%</span>
-                </div>
-                <div className="h-1.5 bg-surface-container-high rounded-full overflow-hidden"><div className="h-full bg-warning rounded-full" style={{ width: '65%' }}></div></div>
-              </div>
+              <p className="text-sm text-navy-muted">API: <strong>{health.api}</strong></p>
+              <p className="text-sm text-navy-muted">Database: <strong>{health.database}</strong></p>
+              <p className="text-sm text-navy-muted">Health check latency: <strong>{health.latency === null ? 'Unavailable' : health.latency + ' ms'}</strong></p>
             </div>
 
             <div className="p-6 mt-5 bg-white rounded-xl shadow-sm border border-outline-variant">
               <h4 className="text-lg font-semibold text-navy mb-2">Pending Doctor Approvals</h4>
-              <p className="text-sm text-navy-muted">There are <strong>4</strong> new doctor profiles awaiting verification.</p>
-              <button className="mt-3 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary-dark transition-colors" onClick={() => alert("Loading pending doctor approvals...")}>Review Now</button>
+              <p className="text-sm text-navy-muted">There are <strong>{stats.pendingApprovals || 0}</strong> new doctor profiles awaiting verification.</p>
+              <button className="mt-3 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary-dark transition-colors" onClick={() => navigate('/admin/doctors')}>Review Now</button>
             </div>
           </div>
         </div>

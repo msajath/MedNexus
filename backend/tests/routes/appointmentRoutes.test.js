@@ -195,6 +195,39 @@ describe('Appointment Routes', () => {
     });
   });
 
+  describe('PUT /api/appointments/:id/reschedule', () => {
+    const id = '507f1f77bcf86cd799439055';
+    let appointment;
+    beforeEach(() => {
+      appointment = { _id: id, patient: '507f1f77bcf86cd799439011', doctor: '507f1f77bcf86cd799439012', status: 'confirmed', date: futureMonday(), time: '10:00 AM' };
+      Appointment.findById.mockResolvedValue(appointment);
+      Doctor.findById.mockResolvedValue({ _id: appointment.doctor, user: 'doctor-user', available: true });
+      Availability.findOne.mockResolvedValue(null);
+    });
+    it('moves the existing appointment and requires doctor confirmation again', async () => {
+      Appointment.findOneAndUpdate.mockResolvedValue({ ...appointment, time: '11:00 AM', status: 'pending' });
+      const res = await request(app).put(`/api/appointments/${id}/reschedule`).send({ date: futureMonday(), time: '11:00am' });
+      expect(res.status).toBe(200);
+      expect(res.body.appointment.time).toBe('11:00 AM');
+      expect(Appointment.findOneAndUpdate).toHaveBeenCalledWith(expect.objectContaining({ patient: appointment.patient, status: 'confirmed', date: appointment.date, time: '10:00 AM' }), { date: futureMonday(), time: '11:00 AM', status: 'pending' }, { new: true, runValidators: true });
+      expect(Appointment.create).not.toHaveBeenCalled();
+    });
+    it.each([['different-patient', 'pending', 403], ['507f1f77bcf86cd799439011', 'completed', 409]])('rejects foreign and terminal bookings (%#)', async (patient, status, expected) => {
+      Appointment.findById.mockResolvedValue({ ...appointment, patient, status });
+      const res = await request(app).put(`/api/appointments/${id}/reschedule`).send({ date: futureMonday(), time: '11:00 AM' });
+      expect(res.status).toBe(expected);
+      expect(Appointment.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+    it('rejects occupied slots and concurrent changes without creating a second booking', async () => {
+      Appointment.findOneAndUpdate.mockRejectedValueOnce({ code: 11000 }).mockResolvedValueOnce(null);
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const res = await request(app).put(`/api/appointments/${id}/reschedule`).send({ date: futureMonday(), time: '11:00 AM' });
+        expect(res.status).toBe(409);
+      }
+      expect(Appointment.create).not.toHaveBeenCalled();
+    });
+  });
+
   describe('PUT /api/appointments/:id/cancel', () => {
     const validApptId = '507f1f77bcf86cd799439055';
 
@@ -207,12 +240,13 @@ describe('Appointment Routes', () => {
       };
       Appointment.findById.mockResolvedValue(mockAppt);
 
+      Appointment.findOneAndUpdate.mockResolvedValue({ ...mockAppt, status: 'cancelled' });
       const res = await request(app).put(`/api/appointments/${validApptId}/cancel`);
 
       expect(res.statusCode).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(mockAppt.status).toBe('cancelled');
-      expect(mockAppt.save).toHaveBeenCalled();
+      expect(res.body.appointment.status).toBe('cancelled');
+      expect(Appointment.findOneAndUpdate).toHaveBeenCalledWith({ _id: validApptId, status: 'pending' }, { status: 'cancelled' }, { new: true, runValidators: true });
     });
 
     it('should reject cancellation if user is not the owner', async () => {

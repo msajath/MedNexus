@@ -4,7 +4,8 @@ const User = require('../models/User');
 const getCookie = (req, name) => {
   const cookies = req.headers.cookie?.split(';').map((cookie) => cookie.trim()) || [];
   const value = cookies.find((cookie) => cookie.startsWith(`${name}=`));
-  return value ? decodeURIComponent(value.slice(name.length + 1)) : null;
+  if (!value) return null;
+  try { return decodeURIComponent(value.slice(name.length + 1)); } catch { return null; }
 };
 
 // Protect routes — verify JWT token
@@ -24,7 +25,7 @@ const protect = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
     req.user = await User.findById(decoded.id);
 
     if (!req.user || req.user.isActive === false ||

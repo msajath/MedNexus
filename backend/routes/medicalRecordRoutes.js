@@ -1,3 +1,6 @@
+const { recordRules, check } = require('../middleware/validateInput');
+const { clinicDate } = require('../utils/slots');
+const errorHandler = require('../middleware/errorHandler');
 const express = require('express');
 const MedicalRecord = require('../models/MedicalRecord');
 const Doctor = require('../models/Doctor');
@@ -7,13 +10,7 @@ const validateObjectId = require('../middleware/validateObjectId');
 
 const router = express.Router();
 
-const getLocalDateString = () => {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+
 
 // ──────────────────────────────────────────────
 // @route   GET /api/records/my
@@ -31,7 +28,7 @@ router.get('/my', protect, authorize('patient'), async (req, res) => {
 
     res.json({ success: true, count: records.length, records });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -40,7 +37,7 @@ router.get('/my', protect, authorize('patient'), async (req, res) => {
 // @desc    Create a new medical record (patient self-upload)
 // @access  Private (patient)
 // ──────────────────────────────────────────────
-router.post('/', protect, authorize('patient'), async (req, res) => {
+router.post('/', protect, authorize('patient'), recordRules, check, async (req, res) => {
   try {
     const { title, type, description, diagnosis, medications, date, attachments, isPrivate } = req.body;
 
@@ -52,14 +49,14 @@ router.post('/', protect, authorize('patient'), async (req, res) => {
       diagnosis: diagnosis || '',
       medications: medications || [],
       attachments: attachments || [],
-      date: date || getLocalDateString(),
+      date: date || clinicDate(),
       addedBy: 'patient',
       isPrivate: isPrivate === true,
     });
 
     res.status(201).json({ success: true, record });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -91,7 +88,7 @@ router.delete('/:id', protect, authorize('patient'), validateObjectId('id'), asy
     await record.save();
     res.json({ success: true, message: 'Record deleted successfully' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -131,7 +128,7 @@ router.get('/patient/:patientId', protect, authorize('doctor'), validateObjectId
 
     res.json({ success: true, count: records.length, records });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -144,6 +141,7 @@ router.post(
   '/doctor-add',
   protect,
   authorize('doctor'),
+  recordRules, check,
   validateObjectId('patientId', { source: 'body' }),
   validateObjectId('appointmentId', { source: 'body' }),
   async (req, res) => {
@@ -183,7 +181,7 @@ router.post(
 
       res.status(201).json({ success: true, record });
     } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      return errorHandler(error, req, res, () => {});
     }
   },
 );

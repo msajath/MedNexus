@@ -5,7 +5,7 @@ import Sidebar from '../components/Sidebar'
 import StatCard from '../components/StatCard'
 import StatusBadge from '../components/StatusBadge'
 import Footer from '../components/Footer'
-import { API_BASE } from '../config'
+import { API_BASE, apiFetch } from '../config'
 
 export default function PatientDashboard() {
   const { user } = useAuth()
@@ -14,12 +14,8 @@ export default function PatientDashboard() {
 
   const fetchAppointments = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE}/api/appointments/my`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const response = await apiFetch(`${API_BASE}/api/appointments/my`, {
+        })
       if (response.ok) {
         const data = await response.json()
         setAppointments(data.appointments || data || [])
@@ -51,10 +47,10 @@ export default function PatientDashboard() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard icon="calendar_today" value="12" label="Today's Appointments" color="var(--color-primary)" />
-          <StatCard icon="people" value="1,284" label="Total Patients" color="var(--color-success)" />
-          <StatCard icon="pending_actions" value="8" label="Pending Requests" color="var(--color-warning)" />
-          <StatCard icon="favorite" value="98%" label="Health Score" color="#ec4899" />
+          <StatCard icon="calendar_today" value={appointments.length} label="Total Appointments" color="var(--color-primary)" />
+          <StatCard icon="event_available" value={appointments.filter(a => a.status === 'confirmed').length} label="Confirmed" color="var(--color-success)" />
+          <StatCard icon="pending_actions" value={appointments.filter(a => a.status === 'pending').length} label="Pending Requests" color="var(--color-warning)" />
+          <StatCard icon="check_circle" value={appointments.filter(a => a.status === 'completed').length} label="Completed" color="#ec4899" />
         </div>
 
         <div className="mb-8">

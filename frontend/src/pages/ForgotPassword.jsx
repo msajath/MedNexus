@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { assets } from '../assets/assets'
-import { API_BASE } from '../config'
+import { API_BASE, apiFetch } from '../config'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
@@ -20,7 +20,7 @@ export default function ForgotPassword() {
     setLoading(true)
 
     try {
-      const response = await fetch(`${API_BASE}/api/auth/forgot-password`, {
+      const response = await apiFetch(`${API_BASE}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -53,7 +53,7 @@ export default function ForgotPassword() {
 
     setLoading(true)
     try {
-      const response = await fetch(`${API_BASE}/api/auth/reset-password`, {
+      const response = await apiFetch(`${API_BASE}/api/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, resetCode, newPassword }),
@@ -138,11 +138,11 @@ export default function ForgotPassword() {
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium text-navy" htmlFor="new-password">New Password</label>
-                  <input type="password" id="new-password" minLength="6" className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required disabled={loading} />
+                  <input type="password" id="new-password" minLength="15" className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required disabled={loading} />
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium text-navy" htmlFor="confirm-password">Confirm Password</label>
-                  <input type="password" id="confirm-password" minLength="6" className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required disabled={loading} />
+                  <input type="password" id="confirm-password" minLength="15" className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required disabled={loading} />
                 </div>
               </>
             )}

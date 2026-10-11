@@ -18,6 +18,8 @@ const doctorSchema = new mongoose.Schema(
     fee: {
       type: Number,
       required: [true, 'Please provide a consultation fee'],
+      min: 0,
+      max: 1000000,
     },
     experience: {
       type: String,

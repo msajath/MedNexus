@@ -7,6 +7,9 @@ node_modules/
 !.env.example
 !.env.atlas.example
 coverage/
+playwright-report/
+playwright-report-ui/
+test-results/
 .vite/
 backups/
 *.archive.gz

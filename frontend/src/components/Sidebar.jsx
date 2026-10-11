@@ -33,9 +33,9 @@ export default function Sidebar() {
 
   const links = user?.role === 'doctor' ? doctorLinks : user?.role === 'admin' ? adminLinks : patientLinks
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setMobileOpen(false)
-    logout()
+    try { await logout() } catch (error) { alert(error.message); return }
     navigate('/')
   }
 

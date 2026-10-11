@@ -77,7 +77,10 @@ test('logs in admin using a cookie session', async () => {
     '/api/auth/login',
     expect.objectContaining({
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
     })
   );
+  const request = fetchMock.mock.calls.find(([url]) => url === '/api/auth/login')[1];
+  expect(request.headers.get('Content-Type')).toBe('application/json');
+  expect(request.headers.get('X-MedNexus-Request')).toBe('1');
 });

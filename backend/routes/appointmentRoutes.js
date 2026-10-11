@@ -1,3 +1,4 @@
+const errorHandler = require('../middleware/errorHandler');
 const express = require('express');
 const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
@@ -8,57 +9,14 @@ const validateObjectId = require('../middleware/validateObjectId');
 
 const router = express.Router();
 
-const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const { defaultSchedule, normalizeTime, isFutureSlot, isWithinSchedule, allowedTransitions } = require('../utils/slots');
+const { body, text, check } = require('../middleware/validateInput');
 const cancellableStatuses = new Set(['pending', 'confirmed']);
-const allowedTransitions = {
-  pending: new Set(['confirmed', 'cancelled']),
-  confirmed: new Set(['completed', 'cancelled']),
-  cancelled: new Set(),
-  completed: new Set(),
-};
 
-const timeToMinutes = (time) => {
-  if (typeof time !== 'string') return null;
-  const match = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if (!match || Number(match[1]) < 1 || Number(match[1]) > 12 || Number(match[2]) > 59) return null;
-  let hours = Number(match[1]) % 12;
-  if (match[3].toUpperCase() === 'PM') hours += 12;
-  return hours * 60 + Number(match[2]);
-};
-
-const isFutureSlot = (date, time) => {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
-    timeZone: process.env.CLINIC_TIME_ZONE || 'Asia/Colombo',
-    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-  }).formatToParts(new Date()).filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]));
-  const today = `${parts.year}-${parts.month}-${parts.day}`;
-  return date > today || (date === today && timeToMinutes(time) > Number(parts.hour) * 60 + Number(parts.minute));
-};
-
-const isWithinSchedule = (date, time, schedule) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
-  const [year, month, day] = date.split('-').map(Number);
-  const dateValue = new Date(year, month - 1, day);
-  if (dateValue.getFullYear() !== year || dateValue.getMonth() !== month - 1 || dateValue.getDate() !== day) return false;
-
-  const daySchedule = schedule.find((item) => item.day === dayNames[dateValue.getDay()]);
-  const appointmentMinutes = timeToMinutes(time);
-  if (!daySchedule?.enabled || appointmentMinutes === null) return false;
-
-  const [startHours, startMinutes] = daySchedule.start.split(':').map(Number);
-  const [endHours, endMinutes] = daySchedule.end.split(':').map(Number);
-  return appointmentMinutes >= startHours * 60 + startMinutes &&
-    appointmentMinutes + 30 <= endHours * 60 + endMinutes && appointmentMinutes % 30 === 0;
-};
-
-// ──────────────────────────────────────────────
-// @route   POST /api/appointments
-// @desc    Book a new appointment
-// @access  Private (patient only)
-// ──────────────────────────────────────────────
-router.post('/', protect, authorize('patient'), validateObjectId('doctorId', { source: 'body' }), async (req, res) => {
+router.post('/', protect, authorize('patient'), validateObjectId('doctorId', { source: 'body' }), [body('date').isString(), body('time').isString(), body('type').optional().isIn(['Consultation', 'Follow-up', 'Check-up', 'New Consultation', 'Lab Review', 'Annual Check-up', 'General Check-up']), text('notes', 5000), text('symptoms', 5000)], check, async (req, res) => {
   try {
-    const { doctorId, date, time, type, notes, symptoms } = req.body;
+    const { doctorId, date, type, notes, symptoms } = req.body;
+    const time = normalizeTime(req.body.time);
 
     // Verify doctor exists
     const doctor = await Doctor.findById(doctorId);
@@ -71,15 +29,6 @@ router.post('/', protect, authorize('patient'), validateObjectId('doctorId', { s
     }
 
     const availability = await Availability.findOne({ doctor: doctorId });
-    const defaultSchedule = [
-      { day: 'Monday', enabled: true, start: '09:00', end: '17:00' },
-      { day: 'Tuesday', enabled: true, start: '09:00', end: '17:00' },
-      { day: 'Wednesday', enabled: true, start: '10:00', end: '16:00' },
-      { day: 'Thursday', enabled: true, start: '09:00', end: '17:00' },
-      { day: 'Friday', enabled: true, start: '09:00', end: '14:00' },
-      { day: 'Saturday', enabled: false, start: '00:00', end: '00:00' },
-      { day: 'Sunday', enabled: false, start: '00:00', end: '00:00' },
-    ];
     if (!isWithinSchedule(date, time, availability?.schedule || defaultSchedule)) {
       return res.status(400).json({ success: false, message: 'The selected time is outside the doctor\'s availability' });
     }
@@ -122,7 +71,7 @@ router.post('/', protect, authorize('patient'), validateObjectId('doctorId', { s
     if (error.code === 11000) {
       return res.status(409).json({ success: false, message: 'This time slot is already booked' });
     }
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -131,7 +80,7 @@ router.post('/', protect, authorize('patient'), validateObjectId('doctorId', { s
 // @desc    Get current user's appointments (patient)
 // @access  Private
 // ──────────────────────────────────────────────
-router.get('/my', protect, async (req, res) => {
+router.get('/my', protect, authorize('patient', 'doctor'), async (req, res) => {
   try {
     let appointments;
 
@@ -190,7 +139,7 @@ router.get('/my', protect, async (req, res) => {
 
     res.json({ success: true, count: formatted.length, appointments: formatted });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -199,6 +148,37 @@ router.get('/my', protect, async (req, res) => {
 // @desc    Cancel an appointment (patient shortcut)
 // @access  Private
 // ──────────────────────────────────────────────
+router.put('/:id/reschedule', protect, authorize('patient'), validateObjectId('id'),
+  [body('date').isString(), body('time').isString()], check, async (req, res) => {
+    try {
+      const appointment = await Appointment.findById(req.params.id);
+      if (!appointment) return res.status(404).json({ success: false, message: 'Appointment not found' });
+      if (String(appointment.patient) !== String(req.user._id)) return res.status(403).json({ success: false, message: 'Not authorized' });
+      if (!cancellableStatuses.has(appointment.status)) return res.status(409).json({ success: false, message: 'Only pending or confirmed appointments can be rescheduled' });
+      const { date } = req.body;
+      const time = normalizeTime(req.body.time);
+      const doctor = await Doctor.findById(appointment.doctor);
+      const doctorUser = doctor && await User.findById(doctor.user);
+      if (!doctorUser || doctorUser.isActive === false || doctorUser.isVerified !== true || doctor.available === false) {
+        return res.status(404).json({ success: false, message: 'Doctor is unavailable' });
+      }
+      const availability = await Availability.findOne({ doctor: doctor._id });
+      if (!isFutureSlot(date, time) || !isWithinSchedule(date, time, availability?.schedule || defaultSchedule)) {
+        return res.status(400).json({ success: false, message: 'Choose a future time within the doctor\'s availability' });
+      }
+      if (appointment.date === date && appointment.time === time) return res.json({ success: true, appointment });
+      const updated = await Appointment.findOneAndUpdate({
+        _id: appointment._id, patient: req.user._id, status: appointment.status,
+        date: appointment.date, time: appointment.time,
+      }, { date, time, status: 'pending' }, { new: true, runValidators: true });
+      if (!updated) return res.status(409).json({ success: false, message: 'Appointment changed. Refresh and retry.' });
+      res.json({ success: true, appointment: updated });
+    } catch (error) {
+      if (error.code === 11000) return res.status(409).json({ success: false, message: 'This time slot is already booked' });
+      return errorHandler(error, req, res, () => {});
+    }
+  });
+
 router.put('/:id/cancel', protect, validateObjectId('id'), async (req, res) => {
   try {
     const appointment = await Appointment.findById(req.params.id);
@@ -216,11 +196,11 @@ router.put('/:id/cancel', protect, validateObjectId('id'), async (req, res) => {
       return res.status(409).json({ success: false, message: 'Only pending or confirmed appointments can be cancelled' });
     }
 
-    appointment.status = 'cancelled';
-    await appointment.save();
-    res.json({ success: true, appointment });
+    const updated = await Appointment.findOneAndUpdate({ _id: appointment._id, status: appointment.status }, { status: 'cancelled' }, { new: true, runValidators: true });
+    if (!updated) return res.status(409).json({ success: false, message: 'Appointment changed. Refresh and retry.' });
+    res.json({ success: true, appointment: updated });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -256,22 +236,21 @@ router.put('/:id/status', protect, validateObjectId('id'), async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to update this appointment' });
     }
 
-    if (!allowedTransitions[appointment.status]?.has(status)) {
+    if (!allowedTransitions[appointment.status]?.includes(status)) {
       return res.status(409).json({
         success: false,
         message: `Cannot change an appointment from ${appointment.status} to ${status}`,
       });
     }
 
-    appointment.status = status;
-    await appointment.save();
-
-    res.json({ success: true, appointment });
+    const updated = await Appointment.findOneAndUpdate({ _id: appointment._id, status: appointment.status }, { status }, { new: true, runValidators: true });
+    if (!updated) return res.status(409).json({ success: false, message: 'Appointment changed. Refresh and retry.' });
+    res.json({ success: true, appointment: updated });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(409).json({ success: false, message: 'This time slot is already booked' });
     }
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -292,7 +271,7 @@ router.get('/all', protect, authorize('admin'), async (req, res) => {
 
     res.json({ success: true, count: appointments.length, appointments });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 

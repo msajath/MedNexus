@@ -1,3 +1,4 @@
+jest.mock('../../utils/mailer', () => ({ sendMail: jest.fn().mockResolvedValue({}) }));
 const request = require('supertest');
 const express = require('express');
 const authRoutes = require('../../routes/authRoutes');
@@ -26,7 +27,7 @@ describe('Auth Routes', () => {
       User.create.mockResolvedValue({ _id: '123', name: 'Test', email: 'test@test.com', role: 'patient' });
 
       const res = await request(app).post('/api/auth/register').send({
-        name: 'Test', email: ' Test@TEST.com ', password: 'password', role: 'patient'
+        name: 'Test', email: ' Test@TEST.com ', password: 'QA-password-123456', role: 'patient'
       });
 
       expect(res.statusCode).toBe(201);
@@ -42,7 +43,7 @@ describe('Auth Routes', () => {
         .send({
           name: 'Test',
           email: 'test@test.com',
-          password: 'password',
+          password: 'QA-password-123456',
           role: 'patient'
         });
 
@@ -65,13 +66,14 @@ describe('Auth Routes', () => {
         .send({
           name: 'Test',
           email: 'test@test.com',
-          password: 'password',
+          password: 'QA-password-123456',
           role: 'patient'
         });
 
       expect(res.statusCode).toBe(201);
       expect(res.body.success).toBe(true);
-      expect(res.body.token).toBeDefined();
+      expect(res.body.token).toBeUndefined();
+      expect(res.headers['set-cookie'][0]).toMatch(/mednexus_session=.*HttpOnly.*SameSite=Lax/);
     });
   });
 
@@ -79,7 +81,7 @@ describe('Auth Routes', () => {
     it('looks up a canonical email', async () => {
       User.findOne.mockReturnValue({ select: jest.fn().mockResolvedValue(null) });
 
-      await request(app).post('/api/auth/login').send({ email: ' Test@TEST.com ', password: 'password' });
+      await request(app).post('/api/auth/login').send({ email: ' Test@TEST.com ', password: 'QA-password-123456' });
 
       expect(User.findOne).toHaveBeenCalledWith({ email: 'test@test.com' });
     });
@@ -93,7 +95,7 @@ describe('Auth Routes', () => {
         .post('/api/auth/login')
         .send({
           email: 'notfound@test.com',
-          password: 'password'
+          password: 'QA-password-123456'
         });
 
       expect(res.statusCode).toBe(401);
@@ -117,12 +119,13 @@ describe('Auth Routes', () => {
         .post('/api/auth/login')
         .send({
           email: 'test@test.com',
-          password: 'password'
+          password: 'QA-password-123456'
         });
 
       expect(res.statusCode).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.token).toBeDefined();
+      expect(res.body.token).toBeUndefined();
+      expect(res.headers['set-cookie'][0]).toMatch(/mednexus_session=.*HttpOnly.*SameSite=Lax/);
     });
   });
 
@@ -168,34 +171,34 @@ describe('Auth Routes', () => {
         _id: 'doctor-1', role: 'doctor', password: 'old',
         save: jest.fn().mockResolvedValue(true),
       };
-      User.findOne.mockResolvedValue(mockUser);
+      User.findOneAndUpdate.mockResolvedValue(mockUser);
       Doctor.findOneAndUpdate.mockResolvedValue({});
 
       const res = await request(app).post('/api/auth/reset-password').send({
-        email: ' Doctor@EXAMPLE.com ', resetCode: '123456', newPassword: 'new-password'
+        email: ' Doctor@EXAMPLE.com ', resetCode: '123456', newPassword: 'QA-new-password-123456'
       });
 
       expect(res.statusCode).toBe(200);
-      expect(User.findOne).toHaveBeenCalledWith(expect.objectContaining({ email: 'doctor@example.com' }));
+      expect(User.findOneAndUpdate).toHaveBeenCalledWith(expect.objectContaining({ email: 'doctor@example.com' }), expect.objectContaining({ $inc: { tokenVersion: 1 } }), { new: true });
       expect(Doctor.findOneAndUpdate).toHaveBeenCalledWith(
         { user: 'doctor-1' }, { credentialsChanged: true }
       );
     });
 
     it('limits invalid reset attempts per email', async () => {
-      User.findOne.mockResolvedValue(null);
+      User.findOneAndUpdate.mockResolvedValue(null);
       const email = 'rate-limit-test@example.com';
       for (let attempt = 0; attempt < 5; attempt += 1) {
         const res = await request(app).post('/api/auth/reset-password').send({
-          email, resetCode: '123456', newPassword: 'new-password'
+          email, resetCode: '123456', newPassword: 'QA-new-password-123456'
         });
         expect(res.statusCode).toBe(400);
       }
       const blocked = await request(app).post('/api/auth/reset-password').send({
-        email, resetCode: '123456', newPassword: 'new-password'
+        email, resetCode: '123456', newPassword: 'QA-new-password-123456'
       });
       expect(blocked.statusCode).toBe(429);
-      expect(User.findOne).toHaveBeenCalledTimes(5);
+      expect(User.findOneAndUpdate).toHaveBeenCalledTimes(5);
     });
 
     it('should accept a valid reset code and save the new password', async () => {
@@ -205,18 +208,18 @@ describe('Auth Routes', () => {
         resetPasswordExpire: new Date(Date.now() + 60_000),
         save: jest.fn().mockResolvedValue(true),
       };
-      User.findOne.mockResolvedValue(mockUser);
+      User.findOneAndUpdate.mockResolvedValue(mockUser);
 
       const res = await request(app)
         .post('/api/auth/reset-password')
-        .send({ email: 'test@test.com', resetCode: '123456', newPassword: 'new-password' });
+        .send({ email: 'test@test.com', resetCode: '123456', newPassword: 'QA-new-password-123456' });
 
       expect(res.statusCode).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(mockUser.password).toBe('new-password');
-      expect(mockUser.resetPasswordToken).toBeNull();
-      expect(mockUser.resetPasswordExpire).toBeNull();
-      expect(mockUser.save).toHaveBeenCalled();
+      const update = User.findOneAndUpdate.mock.calls[0][1];
+      expect(await require('bcryptjs').compare('QA-new-password-123456', update.$set.password)).toBe(true);
+      expect(update.$set.resetPasswordToken).toBeNull();
+      expect(update.$inc.tokenVersion).toBe(1);
     });
   });
 
@@ -224,13 +227,14 @@ describe('Auth Routes', () => {
     const token = () => jwt.sign({ id: '123' }, process.env.JWT_SECRET);
 
     it('saves a unique normalized email for the current user', async () => {
-      const current = { _id: '123', email: 'current@example.com', role: 'patient', save: jest.fn() };
-      User.findById.mockResolvedValue(current);
+      const current = { _id: '123', email: 'current@example.com', role: 'patient', save: jest.fn(), matchPassword: jest.fn().mockResolvedValue(true) };
+      current.select = jest.fn().mockResolvedValue(current);
+      User.findById.mockReturnValue(current);
       User.findOne.mockResolvedValue(null);
 
       const res = await request(app).put('/api/auth/profile')
         .set('Authorization', `Bearer ${token()}`)
-        .send({ email: ' New@EXAMPLE.com ' });
+        .send({ email: ' New@EXAMPLE.com ', currentPassword: 'QA-password-123456' });
 
       expect(res.statusCode).toBe(200);
       expect(User.findOne).toHaveBeenCalledWith({ email: 'new@example.com' });
@@ -240,12 +244,14 @@ describe('Auth Routes', () => {
 
     it('rejects an email owned by another user', async () => {
       const current = { _id: '123', email: 'current@example.com', role: 'patient', save: jest.fn() };
-      User.findById.mockResolvedValue(current);
+      current.matchPassword = jest.fn().mockResolvedValue(true);
+      current.select = jest.fn().mockResolvedValue(current);
+      User.findById.mockReturnValue(current);
       User.findOne.mockResolvedValue({ _id: '456' });
 
       const res = await request(app).put('/api/auth/profile')
         .set('Authorization', `Bearer ${token()}`)
-        .send({ email: ' Other@EXAMPLE.com ' });
+        .send({ email: ' Other@EXAMPLE.com ', currentPassword: 'QA-password-123456' });
 
       expect(res.statusCode).toBe(400);
       expect(User.findOne).toHaveBeenCalledWith({ email: 'other@example.com' });

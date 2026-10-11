@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
-import { API_BASE } from '../config'
+import { API_BASE, apiFetch } from '../config'
 
 const roleColors = {
   patient: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -20,10 +20,8 @@ export default function AdminUsers() {
 
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${API_BASE}/api/admin/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await apiFetch(`${API_BASE}/api/admin/users`, {
+        })
       const data = await res.json()
       setUsers(data.users || [])
     } catch (err) {
@@ -42,11 +40,9 @@ export default function AdminUsers() {
     if (!window.confirm(`Deactivate ${userName}? Their clinical history will be retained.`)) return
     setDeleting(userId)
     try {
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
+      const res = await apiFetch(`${API_BASE}/api/admin/users/${userId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      })
+        })
       if (res.ok) {
         setUsers(prev => prev.filter(u => u._id !== userId))
       }
@@ -59,11 +55,9 @@ export default function AdminUsers() {
 
   const handleVerifyDoctor = async (userId) => {
     try {
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${API_BASE}/api/admin/verify-doctor/${userId}`, {
+      const res = await apiFetch(`${API_BASE}/api/admin/verify-doctor/${userId}`, {
         method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` }
-      })
+        })
       if (res.ok) {
         setUsers(prev => prev.map(u => u._id === userId ? { ...u, isVerified: true } : u))
       }
@@ -76,10 +70,8 @@ export default function AdminUsers() {
     setSelectedDoctor({ ...doctor, loading: true })
     setDoctorLoading(true)
     try {
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${API_BASE}/api/admin/doctors/${doctor._id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await apiFetch(`${API_BASE}/api/admin/doctors/${doctor._id}`, {
+        })
       const data = await res.json()
       if (res.ok) setSelectedDoctor(data.doctor)
     } catch (err) {

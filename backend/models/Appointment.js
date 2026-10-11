@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { normalizeTime, isValidDate, timeToMinutes } = require('../utils/slots');
 
 const appointmentSchema = new mongoose.Schema(
   {
@@ -15,10 +16,13 @@ const appointmentSchema = new mongoose.Schema(
     date: {
       type: String,
       required: [true, 'Please provide an appointment date'],
+      validate: isValidDate,
     },
     time: {
       type: String,
       required: [true, 'Please provide an appointment time'],
+      set: normalizeTime,
+      validate: (value) => timeToMinutes(value) !== null && timeToMinutes(value) % 30 === 0,
     },
     type: {
       type: String,

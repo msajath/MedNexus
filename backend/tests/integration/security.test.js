@@ -5,7 +5,9 @@ const { app } = require('../../server');
 const User = require('../../models/User');
 const Doctor = require('../../models/Doctor');
 const Appointment = require('../../models/Appointment');
+const Availability = require('../../models/Availability');
 const MedicalRecord = require('../../models/MedicalRecord');
+const assertTestDatabase = require('../helpers/testDatabase');
 
 const dns = require('dns');
 if (process.env.MONGO_TEST_URI && process.env.MONGO_TEST_URI.startsWith('mongodb+srv://')) {
@@ -27,10 +29,12 @@ describeWithMongo('MongoDB security and booking integration', () => {
   jest.setTimeout(30000);
 
   beforeAll(async () => {
+    assertTestDatabase(process.env.MONGO_TEST_URI);
     process.env.JWT_SECRET = 'integration-only-secret';
     await mongoose.connect(process.env.MONGO_TEST_URI, { autoIndex: false, serverSelectionTimeoutMS: 30000 });
     await User.createIndexes();
     await Appointment.createIndexes();
+    await Availability.createIndexes();
   }, 30000);
 
   afterEach(async () => {

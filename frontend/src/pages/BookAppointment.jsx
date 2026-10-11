@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
-import { API_BASE } from '../config'
+import { API_BASE, apiFetch } from '../config'
 
 const emptySlots = { morning: [], afternoon: [], evening: [] }
 
@@ -17,6 +17,8 @@ const formatDate = (d) => {
 export default function BookAppointment() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const rescheduleId = searchParams.get('reschedule')
   const [doctor, setDoctor] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -31,7 +33,7 @@ export default function BookAppointment() {
 
   const fetchDoctor = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/doctors/${id}`)
+      const response = await apiFetch(`${API_BASE}/api/doctors/${id}`)
       if (!response.ok) throw new Error('Doctor not found')
       const data = await response.json()
       setDoctor(data.doctor || data)
@@ -63,7 +65,7 @@ export default function BookAppointment() {
     setSelectedSlot(null) // Reset selected slot when date changes
     try {
       const dateStr = formatDate(days[dateIndex])
-      const response = await fetch(`${API_BASE}/api/availability/slots/${id}/${dateStr}`, {
+      const response = await apiFetch(`${API_BASE}/api/availability/slots/${id}/${dateStr}`, {
         cache: 'no-store',
       })
       if (response.ok) {
@@ -105,12 +107,11 @@ export default function BookAppointment() {
 
     try {
       const dateStr = formatDate(days[selectedDate])
-      const response = await fetch(`${API_BASE}/api/appointments`, {
-        method: 'POST',
+      const endpoint = rescheduleId ? `/api/appointments/${encodeURIComponent(rescheduleId)}/reschedule` : '/api/appointments'
+      const response = await apiFetch(`${API_BASE}${endpoint}`, {
+        method: rescheduleId ? 'PUT' : 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
+          'Content-Type': 'application/json' },
         body: JSON.stringify({
           doctorId: doctor._id || doctor.id,
           date: dateStr,
@@ -168,7 +169,7 @@ export default function BookAppointment() {
           {booked ? (
             <div className="text-center py-16 px-8 bg-white rounded-xl shadow-sm border border-slate-200 mt-12 animate-fade-in-up">
               <span className="material-icons-outlined text-[64px] text-success mb-4">check_circle</span>
-              <h2 className="text-3xl font-semibold text-navy mb-2">Appointment Booked!</h2>
+              <h2 className="text-3xl font-semibold text-navy mb-2">{rescheduleId ? 'Appointment Rescheduled!' : 'Appointment Booked!'}</h2>
               <p className="text-base text-navy-muted">Redirecting to your appointments...</p>
             </div>
           ) : (
@@ -283,11 +284,11 @@ export default function BookAppointment() {
                     onClick={handleBook} 
                     id="confirm-booking"
                   >
-                    Confirm Booking
+                    {rescheduleId ? 'Confirm Reschedule' : 'Confirm Booking'}
                   </button>
                   <p className="flex items-center justify-center gap-1 text-xs text-outline mt-3">
                     <span className="material-icons-outlined text-[14px]">lock</span> 
-                    Your health data is protected with 256-bit encryption.
+                    Your appointment is linked to your private account.
                   </p>
                 </div>
               </div>

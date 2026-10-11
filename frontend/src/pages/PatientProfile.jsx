@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
-import { API_BASE } from '../config'
+import { API_BASE, apiFetch } from '../config'
+import PasswordChangeForm from '../components/PasswordChangeForm'
 
 export default function PatientProfile() {
+  const navigate = useNavigate()
   const { user, setUser } = useAuth()
   
   const [formData, setFormData] = useState({
@@ -47,6 +50,10 @@ export default function PatientProfile() {
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+        setMessage({ type: 'error', text: 'Choose a PNG, JPEG or WebP image up to 2 MB.' })
+        return
+      }
       const reader = new FileReader()
       reader.onloadend = () => {
         setProfilePicture(reader.result)
@@ -61,13 +68,10 @@ export default function PatientProfile() {
     setIsSaving(true)
     setMessage({ type: '', text: '' })
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE}/api/auth/profile`, {
+      const response = await apiFetch(`${API_BASE}/api/auth/profile`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+          'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: `${formData.firstName} ${formData.lastName}`.trim(),
           phone: formData.phone,
@@ -118,7 +122,7 @@ export default function PatientProfile() {
                 <h2 className="text-2xl font-semibold text-navy">{formData.firstName} {formData.lastName}</h2>
                 <p className="inline-block mt-2 px-3 py-1 bg-primary-fixed text-on-primary-fixed text-xs font-semibold uppercase tracking-wider rounded-full">Premium Member</p>
               </div>
-              <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
+              <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
               <button 
                 className="sm:ml-auto px-4 py-2 border border-outline text-navy text-sm font-semibold rounded-lg hover:bg-surface-container-lowest transition-colors"
                 onClick={() => fileInputRef.current.click()}
@@ -154,20 +158,13 @@ export default function PatientProfile() {
                 >
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </button>
-                <button className="px-5 py-2.5 text-navy font-semibold bg-transparent hover:bg-surface-container rounded-lg transition-colors">Cancel</button>
+                <button onClick={() => navigate('/patient/appointments')} className="px-5 py-2.5 text-navy font-semibold bg-transparent hover:bg-surface-container rounded-lg transition-colors">Cancel</button>
               </div>
             </div>
 
             <div className="p-6 bg-white rounded-xl shadow-sm border border-outline-variant">
               <h3 className="text-xl font-semibold text-navy mb-5">Security Settings</h3>
-              <div className="flex justify-between items-center py-4 border-b border-surface-container-high"><div><h4 className="text-base font-semibold text-navy">Change Password</h4><p className="text-sm text-navy-muted">Update your password regularly for better security</p></div><button className="px-4 py-2 border border-outline text-navy text-sm font-semibold rounded-lg hover:bg-surface-container-lowest transition-colors">Update</button></div>
-              <div className="flex justify-between items-center py-4"><div><h4 className="text-base font-semibold text-navy">Two-Factor Authentication</h4><p className="text-sm text-navy-muted">Add an extra layer of security to your account</p></div>
-                <label className="relative inline-block w-12 h-[26px] cursor-pointer group">
-                  <input type="checkbox" className="sr-only peer" />
-                  <div className="absolute inset-0 bg-surface-container-high rounded-full transition-all duration-300 peer-checked:bg-primary"></div>
-                  <div className="absolute left-[3px] bottom-[3px] w-5 h-5 bg-white rounded-full transition-all duration-300 peer-checked:translate-x-[22px]"></div>
-                </label>
-              </div>
+              <PasswordChangeForm />
             </div>
           </div>
 
@@ -176,7 +173,7 @@ export default function PatientProfile() {
               <span className="material-icons-outlined text-[32px] text-primary">support_agent</span>
               <h4 className="text-lg font-semibold text-navy">Need assistance?</h4>
               <p className="text-sm text-navy-muted">Our support team is available 24/7 to help with account settings.</p>
-              <button className="mt-3 px-4 py-2 border border-outline text-navy text-sm font-semibold rounded-lg hover:bg-surface-container-lowest transition-colors">Contact Support</button>
+              <button onClick={() => navigate('/contact')} className="mt-3 px-4 py-2 border border-outline text-navy text-sm font-semibold rounded-lg hover:bg-surface-container-lowest transition-colors">Contact Support</button>
             </div>
           </div>
         </div>

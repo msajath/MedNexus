@@ -6,6 +6,7 @@ const availabilitySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Doctor',
       required: true,
+      unique: true,
     },
     schedule: [
       {

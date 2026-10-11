@@ -3,8 +3,7 @@ import { useLocation } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import DoctorCard from '../components/DoctorCard'
-import { specialties } from '../data/mockData'
-import { API_BASE } from '../config'
+import { API_BASE, apiFetch } from '../config'
 
 export default function DoctorListing() {
   const locationObj = useLocation()
@@ -19,7 +18,7 @@ export default function DoctorListing() {
 
   const fetchDoctors = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/doctors`)
+      const response = await apiFetch(`${API_BASE}/api/doctors`)
       if (!response.ok) throw new Error('Failed to fetch doctors')
       const data = await response.json()
       setDoctors(data.doctors || data || [])
@@ -46,7 +45,7 @@ export default function DoctorListing() {
       d.specialty.toLowerCase().includes(searchLower) || 
       (d.location && d.location.toLowerCase().includes(searchLower))
 
-    // Specialty matching with mapping for variations (e.g. Cardiology -> Cardiologist)
+    // Match both exact specialties and category links such as Cardiology -> Cardiologist.
     const matchesSpec = specialty === 'All Specialties' ? true : (() => {
       const dSpec = d.specialty.toLowerCase();
       const fSpec = specialty.toLowerCase();
@@ -56,11 +55,11 @@ export default function DoctorListing() {
         'pediatrics': 'pediatric',
         'dermatology': 'dermatolog',
         'orthopedics': 'orthopedic',
-        'general practice': 'general physician',
-        'general physician': 'general physician'
+        'general practice': 'general',
+        'general physician': 'general'
       };
       const searchKey = map[fSpec] || fSpec;
-      return dSpec.includes(searchKey);
+      return dSpec === fSpec || dSpec.includes(searchKey);
     })()
 
     // Location matching
@@ -71,6 +70,7 @@ export default function DoctorListing() {
 
   // Get unique locations from data for the dropdown
   const uniqueLocations = ['All Locations', ...new Set(doctors.map(d => d.location).filter(Boolean))]
+  const uniqueSpecialties = ['All Specialties', ...new Set([...doctors.map(d => d.specialty).filter(Boolean), ...(specialty !== 'All Specialties' ? [specialty] : [])])]
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -89,7 +89,7 @@ export default function DoctorListing() {
             </div>
             <div className="flex flex-col md:flex-row gap-3">
               <select className="flex-1 p-3 px-4 border-[1.5px] border-slate-300 rounded-lg text-base text-on-surface bg-white outline-none focus:border-primary transition-colors" value={specialty} onChange={(e) => setSpecialty(e.target.value)} id="specialty-filter">
-                {specialties.map((s) => (<option key={s} value={s}>{s}</option>))}
+                {uniqueSpecialties.map((s) => (<option key={s} value={s}>{s}</option>))}
               </select>
               <select className="flex-1 p-3 px-4 border-[1.5px] border-slate-300 rounded-lg text-base text-on-surface bg-white outline-none focus:border-primary transition-colors" value={location} onChange={(e) => setLocation(e.target.value)} id="location-filter">
                 {uniqueLocations.map((loc) => (<option key={loc} value={loc}>{loc}</option>))}

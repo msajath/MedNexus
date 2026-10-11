@@ -1,3 +1,5 @@
+const { query, check, doctorRules } = require('../middleware/validateInput');
+const errorHandler = require('../middleware/errorHandler');
 const express = require('express');
 const Doctor = require('../models/Doctor');
 const User = require('../models/User');
@@ -17,14 +19,14 @@ const getFallbackAvatar = (doctor) => {
 // @desc    Get all doctors (with search & filter)
 // @access  Public
 // ──────────────────────────────────────────────
-router.get('/', async (req, res) => {
+router.get('/', [query('search').optional().isString().bail().isLength({ max: 120 }), query('specialty').optional().isString().bail().isLength({ max: 120 }), query('available').optional().isIn(['true', 'false'])], check, async (req, res) => {
   try {
     const { search, specialty, available } = req.query;
     let query = {};
 
     // Filter by specialty
     if (specialty && specialty !== 'All Specialties') {
-      query.specialty = { $regex: specialty, $options: 'i' };
+      query.specialty = specialty;
     }
 
     // Filter by availability
@@ -40,6 +42,7 @@ router.get('/', async (req, res) => {
     query.user = { $in: verifiedUserIds };
 
     let doctors = await Doctor.find(query).populate('user', 'name email avatar isVerified');
+    doctors = doctors.filter((doc) => doc.user && doc.user.isVerified);
 
     // Search by doctor name
     if (search) {
@@ -47,7 +50,8 @@ router.get('/', async (req, res) => {
       doctors = doctors.filter(
         (doc) =>
           doc.user.name.toLowerCase().includes(searchLower) ||
-          doc.specialty.toLowerCase().includes(searchLower)
+          doc.specialty.toLowerCase().includes(searchLower) ||
+          doc.location?.toLowerCase().includes(searchLower)
       );
     }
 
@@ -72,7 +76,7 @@ router.get('/', async (req, res) => {
 
     res.json({ success: true, count: formatted.length, doctors: formatted });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -85,10 +89,11 @@ router.get('/', async (req, res) => {
 // ──────────────────────────────────────────────
 router.get('/specialties/list', async (req, res) => {
   try {
-    const specialties = await Doctor.distinct('specialty');
+    const verifiedUsers = await User.find({ role: 'doctor', isVerified: true, isActive: { $ne: false } }).select('_id');
+    const specialties = await Doctor.distinct('specialty', { user: { $in: verifiedUsers.map((user) => user._id) } });
     res.json({ success: true, specialties: ['All Specialties', ...specialties] });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -97,7 +102,7 @@ router.get('/specialties/list', async (req, res) => {
 // @desc    Update own doctor profile
 // @access  Private (doctor only)
 // ──────────────────────────────────────────────
-router.put('/profile', protect, authorize('doctor'), async (req, res) => {
+router.put('/profile', protect, authorize('doctor'), doctorRules, check, async (req, res) => {
   try {
     const doctor = await Doctor.findOne({ user: req.user._id });
 
@@ -117,7 +122,7 @@ router.put('/profile', protect, authorize('doctor'), async (req, res) => {
 
     res.json({ success: true, doctor });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 
@@ -155,7 +160,7 @@ router.get('/:id', validateObjectId('id'), async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return errorHandler(error, req, res, () => {});
   }
 });
 

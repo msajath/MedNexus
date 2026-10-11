@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
 import { formatAppointmentDate } from '../utils/date'
-import { API_BASE } from '../config'
+import { API_BASE, apiFetch } from '../config'
 
 const statusColors = {
   pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
@@ -20,10 +20,8 @@ export default function AdminAppointments() {
 
   const fetchAppointments = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${API_BASE}/api/admin/appointments`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await apiFetch(`${API_BASE}/api/admin/appointments`, {
+        })
       const data = await res.json()
       setAppointments(data.appointments || [])
     } catch (err) {
@@ -41,10 +39,9 @@ export default function AdminAppointments() {
   const updateStatus = async (id, status) => {
     setUpdating(id)
     try {
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${API_BASE}/api/admin/appointments/${id}/status`, {
+      const res = await apiFetch(`${API_BASE}/api/admin/appointments/${id}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       })
       if (res.ok) {
@@ -168,13 +165,13 @@ export default function AdminAppointments() {
                       <td className="p-4">
                         <select
                           value={appt.status}
-                          disabled={updating === appt._id}
+                          disabled={updating === appt._id || ['completed', 'cancelled'].includes(appt.status)}
                           onChange={(e) => updateStatus(appt._id, e.target.value)}
                           className="text-xs border border-slate-300 rounded-lg p-1.5 text-navy bg-white outline-none focus:border-primary transition-colors cursor-pointer disabled:opacity-50"
                         >
-                          <option value="pending">Pending</option>
+                          <option value="pending" disabled>Pending</option>
                           <option value="confirmed">Confirmed</option>
-                          <option value="completed">Completed</option>
+                          <option value="completed" disabled={appt.status !== 'confirmed'}>Completed</option>
                           <option value="cancelled">Cancelled</option>
                         </select>
                       </td>

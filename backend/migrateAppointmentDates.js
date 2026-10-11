@@ -19,6 +19,9 @@ const getRelativeDate = (daysOffset) => {
 
 const migrateAppointmentDates = async () => {
   try {
+    if (process.env.NODE_ENV === 'production' || process.env.CONFIRM_DEMO_DATE_MIGRATION !== 'yes') {
+      throw new Error('Demo-only migration: set CONFIRM_DEMO_DATE_MIGRATION=yes outside production');
+    }
     await connectDB();
 
     const dateUpdates = [

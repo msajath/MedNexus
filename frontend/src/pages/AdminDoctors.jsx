@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
-import { API_BASE } from '../config'
+import { API_BASE, apiFetch } from '../config'
 
 export default function AdminDoctors() {
   const [doctors, setDoctors] = useState([])
@@ -11,10 +11,8 @@ export default function AdminDoctors() {
 
   const fetchDoctors = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${API_BASE}/api/admin/doctors-detail`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await apiFetch(`${API_BASE}/api/admin/doctors-detail`, {
+        })
       const data = await res.json()
       setDoctors(data.doctors || [])
     } catch (err) {
@@ -32,11 +30,9 @@ export default function AdminDoctors() {
   const handleDelete = async (userId, name) => {
     if (!window.confirm(`Deactivate Dr. ${name}? Their clinical history will be retained.`)) return
     try {
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
+      const res = await apiFetch(`${API_BASE}/api/admin/users/${userId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      })
+        })
       if (res.ok) {
         setDoctors(prev => prev.filter(d => d.userId !== userId))
         if (selected?.userId === userId) setSelected(null)
@@ -46,11 +42,9 @@ export default function AdminDoctors() {
 
   const handleVerify = async (userId) => {
     try {
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${API_BASE}/api/admin/verify-doctor/${userId}`, {
+      const res = await apiFetch(`${API_BASE}/api/admin/verify-doctor/${userId}`, {
         method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` }
-      })
+        })
       if (res.ok) {
         setDoctors(prev => prev.map(d => d.userId === userId ? { ...d, isVerified: true } : d))
         if (selected?.userId === userId) setSelected(prev => ({ ...prev, isVerified: true }))

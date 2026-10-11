@@ -11,12 +11,13 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: process.env.QA_API_TARGET || 'http://localhost:5000',
         changeOrigin: true,
       },
     },
   },
   test: {
+    include: ['src/**/*.test.{js,jsx}'],
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/setupTests.js',

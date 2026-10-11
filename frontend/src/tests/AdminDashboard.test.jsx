@@ -12,10 +12,9 @@ beforeEach(() => {
 });
 
 test('renders AdminDashboard stats', async () => {
-  // Mock the admin stats endpoint
-  fetchMock.mockResolvedValueOnce({
+  fetchMock.mockImplementation(async (url) => ({
     ok: true,
-    json: async () => ({
+    json: async () => url === '/api/auth/me' ? { user: { role: 'admin', name: 'QA Admin' } } : url.endsWith('/recent-activity') ? { activity: [] } : ({
       success: true,
       stats: {
         totalDoctors: '10',
@@ -24,7 +23,7 @@ test('renders AdminDashboard stats', async () => {
         revenue: '$5000'
       }
     })
-  });
+  }));
 
   render(
     <BrowserRouter>

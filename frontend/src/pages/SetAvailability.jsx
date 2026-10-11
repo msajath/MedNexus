@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
-import { API_BASE } from '../config'
+import { API_BASE, apiFetch } from '../config'
 
 export default function SetAvailability() {
   const [schedule, setSchedule] = useState([])
@@ -11,23 +11,16 @@ export default function SetAvailability() {
 
   const fetchAvailability = async () => {
     try {
-      const token = localStorage.getItem('token')
       // First, get the current user's doctor ID
-      const userResponse = await fetch(`${API_BASE}/api/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const userResponse = await apiFetch(`${API_BASE}/api/auth/me`, {
+        })
       const userData = await userResponse.json()
       const doctorId = userData.user?.doctorProfile?._id || userData.user?._id || userData._id
 
       // Fetch availability for this doctor
-      const response = await fetch(`${API_BASE}/api/availability/${doctorId}`, {
+      const response = await apiFetch(`${API_BASE}/api/availability/${doctorId}`, {
         cache: 'no-store',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+        })
       if (!response.ok) {
         // If no availability set yet, create default schedule
         const defaultSchedule = [
@@ -83,14 +76,11 @@ export default function SetAvailability() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE}/api/availability`, {
+      const response = await apiFetch(`${API_BASE}/api/availability`, {
         method: 'PUT',
         cache: 'no-store',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+          'Content-Type': 'application/json' },
         body: JSON.stringify({ schedule: schedule })
       })
       if (!response.ok) throw new Error('Failed to save availability')
@@ -153,12 +143,12 @@ export default function SetAvailability() {
                     <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
                       <div className="flex flex-col gap-1">
                         <label className="text-xs font-medium text-navy-muted">Start</label>
-                        <input type="time" className="p-2 px-3 w-[130px] font-mono border-[1.5px] border-slate-300 rounded-lg text-sm text-on-surface bg-white focus:border-primary outline-none transition-colors" value={item.start} onChange={(e) => updateTime(idx, 'start', e.target.value)} />
+                        <input type="time" step="1800" className="p-2 px-3 w-[130px] font-mono border-[1.5px] border-slate-300 rounded-lg text-sm text-on-surface bg-white focus:border-primary outline-none transition-colors" value={item.start} onChange={(e) => updateTime(idx, 'start', e.target.value)} />
                       </div>
                       <span className="text-sm text-outline mt-[18px]">to</span>
                       <div className="flex flex-col gap-1">
                         <label className="text-xs font-medium text-navy-muted">End</label>
-                        <input type="time" className="p-2 px-3 w-[130px] font-mono border-[1.5px] border-slate-300 rounded-lg text-sm text-on-surface bg-white focus:border-primary outline-none transition-colors" value={item.end} onChange={(e) => updateTime(idx, 'end', e.target.value)} />
+                        <input type="time" step="1800" className="p-2 px-3 w-[130px] font-mono border-[1.5px] border-slate-300 rounded-lg text-sm text-on-surface bg-white focus:border-primary outline-none transition-colors" value={item.end} onChange={(e) => updateTime(idx, 'end', e.target.value)} />
                       </div>
                     </div>
                   ) : (
