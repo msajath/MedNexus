@@ -1,5 +1,5 @@
-// Vite proxies /api in development; production should route /api on the same HTTPS origin.
-export const API_BASE = import.meta.env.VITE_API_URL || '';
+// Vite proxies /api in development; production routes /api on the same HTTPS origin.
+export const API_BASE = import.meta.env.DEV ? (import.meta.env.VITE_API_URL || '') : '';
 
 // Send credentials only through the API client; never patch global fetch.
 export const apiFetch = (input, init = {}) => {
