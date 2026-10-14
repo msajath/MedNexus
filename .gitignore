@@ -46,3 +46,7 @@ Thumbs.db
 .agents/
 .claude/
 skills-lock.json
+
+# Local audit reports
+*_AUDIT*.md
+*_REPORT.md
