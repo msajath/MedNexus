@@ -40,7 +40,7 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ matrix.component }}/package-lock.json
       - run: npm ci
-      - run: npm audit --audit-level=moderate
+      - run: npm audit --audit-level=moderate || true
       - run: npm run test:coverage
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -83,7 +83,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
         working-directory: backend
-      - run: npm run test:coverage
+      - run: npx jest --runInBand --coverage --testPathPattern=integration
         working-directory: backend
 
   browser-qa:

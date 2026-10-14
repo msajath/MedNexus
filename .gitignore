@@ -41,3 +41,8 @@ Thumbs.db
 
 # Local files
 *.local
+
+# AI tool configs
+.agents/
+.claude/
+skills-lock.json
