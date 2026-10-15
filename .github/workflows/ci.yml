@@ -83,7 +83,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
         working-directory: backend
-      - run: npx jest --runInBand --coverage --testPathPattern=integration
+      - run: npx jest --runInBand --coverage --testPathPatterns=integration
         working-directory: backend
 
   browser-qa:

@@ -25,6 +25,7 @@ test('registration creates a cookie session, persists on reload, and logs out', 
   await page.getByLabel('Last Name').fill('New Patient')
   await page.getByLabel('Email Address').fill(`new-${Date.now()}@qa.example`)
   await page.locator('#password').fill(password)
+  await page.getByRole('checkbox').check()
   await page.locator('form button[type="submit"]').click()
   await expect(page).toHaveURL(/\/patient\/appointments/)
   await page.reload()
