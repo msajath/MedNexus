@@ -175,7 +175,7 @@ router.post(
         description: description || '',
         diagnosis: diagnosis || '',
         medications: medications || [],
-        date: date || getLocalDateString(),
+        date: date || clinicDate(),
         addedBy: 'doctor',
       });
 

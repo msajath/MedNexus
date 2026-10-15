@@ -111,7 +111,7 @@ withMongo('Real database API workflows', () => {
     expect((await request(app).get(`/api/availability/${doctor._id}`)).body.schedule).toHaveLength(7);
   });
   test.each([
-    [], defaultSchedule.map(s => ({ ...s, day: 'Monday' })), defaultSchedule.map(s => ({ ...s, start: '99:00' })),
+    [[]], defaultSchedule.map(s => ({ ...s, day: 'Monday' })), defaultSchedule.map(s => ({ ...s, start: '99:00' })),
     defaultSchedule.map(s => ({ ...s, end: '08:00' })),
     defaultSchedule.map(s => ({ ...s, start: '09:15' })),
   ])('invalid availability is rejected (%#)', async (schedule) => {
