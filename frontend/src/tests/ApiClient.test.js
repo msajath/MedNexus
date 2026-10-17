@@ -45,3 +45,18 @@ test('does not replay a failed mutation', async () => {
   expect((await apiFetch('/api/appointments', { method: 'POST' })).status).toBe(502)
   expect(fetch).toHaveBeenCalledTimes(1)
 })
+
+test('stops waiting for an unresponsive API', async () => {
+  vi.useFakeTimers()
+  const fetch = vi.fn((_, { signal }) => new Promise((_, reject) => {
+    signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+  }))
+  vi.stubGlobal('fetch', fetch)
+
+  const request = apiFetch('/api/doctors')
+  const result = expect(request).rejects.toThrow('The server is taking too long to respond')
+  await vi.advanceTimersByTimeAsync(90000)
+
+  await result
+  expect(fetch).toHaveBeenCalledTimes(1)
+})

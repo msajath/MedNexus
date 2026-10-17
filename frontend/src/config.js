@@ -29,18 +29,28 @@ export const apiFetch = async (input, init = {}) => {
   if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
     headers.set('X-MedNexus-Request', '1')
   }
-  const options = { ...init, headers, credentials: 'include' }
   const retryRead = ['GET', 'HEAD'].includes(method) && typeof input === 'string' && input.startsWith('/api/')
+  const controller = retryRead ? new AbortController() : null
+  const onAbort = () => controller.abort(init.signal.reason)
+  if (controller && init.signal?.aborted) onAbort()
+  else if (controller) init.signal?.addEventListener('abort', onAbort, { once: true })
+  const timeout = controller && setTimeout(() => controller.abort(new Error('The server is taking too long to respond')), 90000)
+  const options = { ...init, headers, credentials: 'include', signal: controller?.signal || init.signal }
 
-  for (let attempt = 0; ; attempt++) {
-    try {
-      const response = await fetch(input, options)
-      if (!retryRead || !transientStatuses.has(response.status) || attempt === readRetryDelays.length) {
-        return response
+  try {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const response = await fetch(input, options)
+        if (!retryRead || !transientStatuses.has(response.status) || attempt === readRetryDelays.length) {
+          return response
+        }
+      } catch (error) {
+        if (!retryRead || attempt === readRetryDelays.length || controller.signal.aborted) throw error
       }
-    } catch (error) {
-      if (!retryRead || attempt === readRetryDelays.length || init.signal?.aborted) throw error
+      await waitForRetry(readRetryDelays[attempt], controller.signal)
     }
-    await waitForRetry(readRetryDelays[attempt], init.signal)
+  } finally {
+    if (timeout) clearTimeout(timeout)
+    init.signal?.removeEventListener('abort', onAbort)
   }
 }
