@@ -17,6 +17,8 @@ export default function DoctorListing() {
   const [error, setError] = useState(null)
 
   const fetchDoctors = async () => {
+    setLoading(true)
+    setError(null)
     try {
       const response = await apiFetch(`${API_BASE}/api/doctors`)
       if (!response.ok) throw new Error('Failed to fetch doctors')
@@ -108,6 +110,9 @@ export default function DoctorListing() {
           {error && (
             <div className="text-center p-8 text-red-500">
               <p>Error loading doctors: {error}</p>
+              <button type="button" onClick={fetchDoctors} className="mt-4 rounded-lg bg-primary px-5 py-2 font-medium text-white hover:opacity-90">
+                Try again
+              </button>
             </div>
           )}
 
