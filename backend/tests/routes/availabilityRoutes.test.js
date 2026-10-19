@@ -53,6 +53,26 @@ describe('doctor availability API', () => {
     expect(Availability.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
+  test('rejects weekend availability even if a doctor enables it', async () => {
+    const schedule = defaultSchedule.map((item) => ({ ...item, enabled: item.day === 'Saturday' ? true : item.enabled,
+      start: item.day === 'Saturday' ? '09:00' : item.start, end: item.day === 'Saturday' ? '12:00' : item.end }));
+    const result = await request(app).put('/api/availability').send({ schedule });
+    expect(result.status).toBe(400);
+    expect(Availability.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  test('returns no weekend slots even for a previously enabled schedule', async () => {
+    const date = new Date();
+    date.setUTCDate(date.getUTCDate() + 14 + (6 - date.getUTCDay() + 7) % 7);
+    Availability.findOne.mockResolvedValue({ schedule: defaultSchedule.map(item => item.day === 'Saturday'
+      ? { ...item, enabled: true, start: '09:00', end: '12:00' } : item) });
+    const result = await request(app).get(`/api/availability/slots/${doctorId}/${date.toISOString().slice(0, 10)}`);
+    expect(result.status).toBe(200);
+    expect(result.body.slots.morning).toEqual([]);
+    expect(result.body.unavailableSlots.morning).toEqual([]);
+    expect(Appointment.find).not.toHaveBeenCalled();
+  });
+
   test('returns future half-hour slots and excludes an occupied slot', async () => {
     Appointment.find.mockResolvedValue([{ time: '10:00 AM' }]);
     const result = await request(app).get(`/api/availability/slots/${doctorId}/${nextMonday()}`);

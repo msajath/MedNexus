@@ -110,13 +110,8 @@ router.get('/slots/:doctorId/:date', validateObjectId('doctorId'), async (req, r
     }
 
     // Determine day of week from date (use UTC-safe parsing for YYYY-MM-DD)
-    const dateParts = date.split('-');
-    const dateObj = new Date(
-      parseInt(dateParts[0]),
-      parseInt(dateParts[1]) - 1,
-      parseInt(dateParts[2])
-    );
-    const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+    const dayIndex = new Date(`${date}T00:00:00Z`).getUTCDay();
+    const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayIndex];
 
     // Get doctor's availability
     const availability = await Availability.findOne({ doctor: doctorId });
@@ -125,11 +120,11 @@ router.get('/slots/:doctorId/:date', validateObjectId('doctorId'), async (req, r
     const daySchedule = schedule.find((s) => s.day === dayOfWeek);
     const allSlots = getAllSlots();
 
-    if (!daySchedule || !daySchedule.enabled) {
+    if (dayIndex === 0 || dayIndex === 6 || !daySchedule || !daySchedule.enabled) {
       return res.json({
         success: true,
         slots: { morning: [], afternoon: [], evening: [] },
-        unavailableSlots: allSlots,
+        unavailableSlots: { morning: [], afternoon: [], evening: [] },
         bookedSlots: [],
       });
     }

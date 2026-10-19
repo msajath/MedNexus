@@ -1,18 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { assets } from '../assets/assets'
 import { API_BASE, apiFetch } from '../config'
-
-// Helper to format a Date as YYYY-MM-DD
-const formatDate = (d) => {
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+import { getBookingDays, bookingDateKey, bookingDateLabel } from '../utils/bookingDates'
 
 export default function DoctorProfile() {
   const { id } = useParams()
@@ -29,6 +22,12 @@ export default function DoctorProfile() {
   const [bookedSlots, setBookedSlots] = useState([])
   const [unavailableSlots, setUnavailableSlots] = useState([])
   const [slotsLoading, setSlotsLoading] = useState(false)
+  const [slotsError, setSlotsError] = useState('')
+  const [bookingError, setBookingError] = useState('')
+  const [isBooking, setIsBooking] = useState(false)
+  const bookingInFlight = useRef(false)
+  const slotsRequest = useRef(0)
+  const [days] = useState(() => getBookingDays(7))
 
   const fetchDoctor = async () => {
     try {
@@ -58,36 +57,30 @@ export default function DoctorProfile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  const today = new Date()
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today)
-    d.setDate(d.getDate() + i)
-    return d
-  })
-
   // Fetch available slots when date is selected
   const fetchAvailableSlots = async (dateIndex) => {
+    const requestId = ++slotsRequest.current
     setSlotsLoading(true)
     setSelectedSlot(null)
     setTimeSlots([])
     setUnavailableSlots([])
     setBookedSlots([])
+    setSlotsError('')
+    setBookingError('')
     try {
-      const dateStr = formatDate(days[dateIndex])
+      const dateStr = bookingDateKey(days[dateIndex])
       const response = await apiFetch(`${API_BASE}/api/availability/slots/${id}/${dateStr}`, {
         cache: 'no-store',
       })
       if (response.ok) {
         const data = await response.json()
+        if (requestId !== slotsRequest.current) return
         if (data.success && data.slots) {
           // Flatten all slots into a single list for this view
           const allSlots = [
             ...(data.slots.morning || []),
             ...(data.slots.afternoon || []),
             ...(data.slots.evening || []),
-            ...(data.unavailableSlots?.morning || []),
-            ...(data.unavailableSlots?.afternoon || []),
-            ...(data.unavailableSlots?.evening || []),
           ]
           setTimeSlots(allSlots)
           setUnavailableSlots([
@@ -98,15 +91,19 @@ export default function DoctorProfile() {
           setBookedSlots(data.bookedSlots || [])
         }
       } else {
-        setTimeSlots([])
+        const data = await response.json().catch(() => ({}))
+        if (requestId !== slotsRequest.current) return
+        setSlotsError(data.message || 'Could not load booking times. Please try again.')
       }
     } catch (err) {
+      if (requestId !== slotsRequest.current) return
       console.error('Error fetching available slots:', err)
+      setSlotsError('Could not load booking times. Please try again.')
       setTimeSlots([])
       setUnavailableSlots([])
       setBookedSlots([])
     } finally {
-      setSlotsLoading(false)
+      if (requestId === slotsRequest.current) setSlotsLoading(false)
     }
   }
 
@@ -117,23 +114,29 @@ export default function DoctorProfile() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedDate(0)
     fetchAvailableSlots(0)
+    return () => { slotsRequest.current++ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const handleBook = async () => {
+    if (bookingInFlight.current || booked) return
     if (!isAuthenticated) {
       navigate('/login')
       return
     }
 
     if (selectedDate === null || !selectedSlot) {
-      alert('Please select both date and time')
+      setBookingError('Please select both date and time.')
       return
     }
 
+    bookingInFlight.current = true
+    setIsBooking(true)
+    setBookingError('')
     try {
-      const dateStr = formatDate(days[selectedDate])
+      const dateStr = bookingDateKey(days[selectedDate])
       const response = await apiFetch(`${API_BASE}/api/appointments`, {
         method: 'POST',
         headers: {
@@ -152,7 +155,11 @@ export default function DoctorProfile() {
       setTimeout(() => navigate('/patient/appointments'), 2000)
     } catch (err) {
       console.error('Error booking appointment:', err)
-      alert('Failed to book appointment: ' + err.message)
+      if (/already booked/i.test(err.message)) await fetchAvailableSlots(selectedDate)
+      setBookingError(err.message)
+    } finally {
+      bookingInFlight.current = false
+      setIsBooking(false)
     }
   }
 
@@ -230,22 +237,27 @@ export default function DoctorProfile() {
               <div className="py-4">
                 <h3 className="text-xl font-semibold text-slate-600 mb-6">Booking slots</h3>
                 
-                <div className="flex gap-4 overflow-x-auto pb-4 mb-4">
+                {doctor.available === false && <p className="mb-4 rounded-lg bg-amber-50 p-4 text-amber-800">This doctor is currently unavailable for booking.</p>}
+                {doctor.available !== false && <div className="flex gap-4 overflow-x-auto pb-4 mb-4">
                   {days.map((d, i) => (
                     <button 
                       key={i} 
                       className={`flex flex-col items-center justify-center min-w-16 h-20 rounded-full border transition-all ${selectedDate === i ? 'bg-[#5a66ff] border-[#5a66ff] text-white' : 'bg-white border-slate-200 hover:border-[#5a66ff] text-navy'}`}
                       onClick={() => handleDateSelect(i)}
                     >
-                      <span className={`text-xs font-semibold mb-1 ${selectedDate === i ? 'text-white' : 'text-slate-500'}`}>{d.toLocaleDateString('en', { weekday: 'short' }).toUpperCase()}</span>
-                      <span className="text-[1.1rem] font-medium">{d.getDate()}</span>
+                      <span className={`text-xs font-semibold mb-1 ${selectedDate === i ? 'text-white' : 'text-slate-500'}`}>{bookingDateLabel(d, { weekday: 'short' }).toUpperCase()}</span>
+                      <span className="text-[1.1rem] font-medium">{d.getUTCDate()}</span>
                     </button>
                   ))}
-                </div>
+                </div>}
 
-                <div className="flex flex-wrap gap-4 mb-8">
+                {doctor.available !== false && <div className="flex flex-wrap gap-4 mb-8">
                   {slotsLoading ? (
                     <p className="text-slate-400 text-sm py-4">Loading available slots...</p>
+                  ) : slotsError ? (
+                    <p role="alert" className="text-red-600 text-sm py-4">{slotsError} <button type="button" className="underline" onClick={() => fetchAvailableSlots(selectedDate)}>Try again</button></p>
+                  ) : timeSlots.length === 0 ? (
+                    <p className="text-slate-500 text-sm py-4">No booking times for this day. Please choose another weekday.</p>
                   ) : (
                     timeSlots.map(time => {
                       const isBooked = bookedSlots.includes(time)
@@ -269,13 +281,15 @@ export default function DoctorProfile() {
                       )
                     })
                   )}
-                </div>
+                </div>}
 
+                {bookingError && <p role="alert" className="mb-3 text-sm text-red-600">{bookingError}</p>}
                 <button 
                   className="px-12 py-3.5 bg-[#5a66ff] text-white text-base font-medium rounded-full hover:bg-indigo-600 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed" 
                   onClick={handleBook}
+                  disabled={doctor.available === false || !selectedSlot || isBooking}
                 >
-                  Book an appointment
+                  {isBooking ? 'Booking...' : 'Book an appointment'}
                 </button>
               </div>
             </>

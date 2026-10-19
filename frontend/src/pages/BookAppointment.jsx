@@ -1,18 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { API_BASE, apiFetch } from '../config'
+import { getBookingDays, bookingDateKey, bookingDateLabel } from '../utils/bookingDates'
 
 const emptySlots = { morning: [], afternoon: [], evening: [] }
-
-// Helper to format a Date as YYYY-MM-DD
-const formatDate = (d) => {
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
 export default function BookAppointment() {
   const { id } = useParams()
@@ -30,6 +23,12 @@ export default function BookAppointment() {
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [bookedSlots, setBookedSlots] = useState([])
   const [unavailableSlots, setUnavailableSlots] = useState(emptySlots)
+  const [slotsError, setSlotsError] = useState('')
+  const [bookingError, setBookingError] = useState('')
+  const [isBooking, setIsBooking] = useState(false)
+  const bookingInFlight = useRef(false)
+  const slotsRequest = useRef(0)
+  const [days] = useState(() => getBookingDays(10))
 
   const fetchDoctor = async () => {
     try {
@@ -49,29 +48,32 @@ export default function BookAppointment() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDoctor()
+    setSelectedDate(null)
+    setSelectedSlot(null)
+    slotsRequest.current++
+    return () => { slotsRequest.current++ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  const today = new Date()
-  const days = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(today)
-    d.setDate(d.getDate() + i)
-    return d
-  })
-
   // Fetch available slots when a date is selected
   const fetchAvailableSlots = async (dateIndex) => {
+    const requestId = ++slotsRequest.current
     setSlotsLoading(true)
     setSelectedSlot(null) // Reset selected slot when date changes
+    setSlotsError('')
+    setBookingError('')
     try {
-      const dateStr = formatDate(days[dateIndex])
+      const dateStr = bookingDateKey(days[dateIndex])
       const response = await apiFetch(`${API_BASE}/api/availability/slots/${id}/${dateStr}`, {
         cache: 'no-store',
       })
       if (response.ok) {
         const data = await response.json()
+        if (requestId !== slotsRequest.current) return
         if (data.success && data.slots) {
           setAvailableSlots(data.slots)
+          setActiveTab(Object.keys(data.slots).find(period => data.slots[period].some(slot => !data.bookedSlots?.includes(slot))) ||
+            Object.keys(data.slots).find(period => data.slots[period].length > 0) || 'morning')
           setUnavailableSlots(data.unavailableSlots || emptySlots)
           setBookedSlots(data.bookedSlots || [])
         } else {
@@ -80,17 +82,22 @@ export default function BookAppointment() {
           setBookedSlots([])
         }
       } else {
+        const data = await response.json().catch(() => ({}))
+        if (requestId !== slotsRequest.current) return
+        setSlotsError(data.message || 'Could not load booking times. Please try again.')
         setAvailableSlots(emptySlots)
         setUnavailableSlots(emptySlots)
         setBookedSlots([])
       }
     } catch (err) {
+      if (requestId !== slotsRequest.current) return
       console.error('Error fetching available slots:', err)
+      setSlotsError('Could not load booking times. Please try again.')
       setAvailableSlots(emptySlots)
       setUnavailableSlots(emptySlots)
       setBookedSlots([])
     } finally {
-      setSlotsLoading(false)
+      if (requestId === slotsRequest.current) setSlotsLoading(false)
     }
   }
 
@@ -100,13 +107,17 @@ export default function BookAppointment() {
   }
 
   const handleBook = async () => {
+    if (bookingInFlight.current || booked) return
     if (selectedDate === null || !selectedSlot) {
-      alert('Please select both date and time')
+      setBookingError('Please select both date and time.')
       return
     }
 
+    bookingInFlight.current = true
+    setIsBooking(true)
+    setBookingError('')
     try {
-      const dateStr = formatDate(days[selectedDate])
+      const dateStr = bookingDateKey(days[selectedDate])
       const endpoint = rescheduleId ? `/api/appointments/${encodeURIComponent(rescheduleId)}/reschedule` : '/api/appointments'
       const response = await apiFetch(`${API_BASE}${endpoint}`, {
         method: rescheduleId ? 'PUT' : 'POST',
@@ -126,7 +137,11 @@ export default function BookAppointment() {
       setTimeout(() => navigate('/patient/appointments'), 2000)
     } catch (err) {
       console.error('Error booking appointment:', err)
-      alert('Failed to book appointment: ' + err.message)
+      if (/already booked/i.test(err.message)) await fetchAvailableSlots(selectedDate)
+      setBookingError(err.message)
+    } finally {
+      bookingInFlight.current = false
+      setIsBooking(false)
     }
   }
 
@@ -196,19 +211,20 @@ export default function BookAppointment() {
 
                 <div className="p-6 bg-white rounded-xl shadow-sm border border-slate-200">
                   <h2 className="text-xl font-semibold text-navy mb-4">Select Date</h2>
-                  <div className="flex gap-3 overflow-x-auto pb-3 -mx-2 px-2 md:mx-0 md:px-0">
+                  {doctor.available === false && <p className="mb-4 rounded-lg bg-amber-50 p-4 text-amber-800">This doctor is currently unavailable for booking.</p>}
+                  {doctor.available !== false && <div className="flex gap-3 overflow-x-auto pb-3 -mx-2 px-2 md:mx-0 md:px-0">
                     {days.map((d, i) => (
                       <button 
                         key={i} 
                         className={`flex flex-col items-center gap-1 p-3 px-4 rounded-xl border-[1.5px] min-w-18 transition-all cursor-pointer ${selectedDate === i ? 'bg-primary border-primary text-white' : 'bg-white border-outline-variant text-navy hover:border-primary hover:text-primary'}`}
                         onClick={() => handleDateSelect(i)}
                       >
-                        <span className={`text-xs font-medium ${selectedDate === i ? 'text-white' : 'text-navy-muted'}`}>{d.toLocaleDateString('en', { weekday: 'short' })}</span>
-                        <span className="text-xl font-bold">{d.getDate()}</span>
-                        <span className={`text-xs ${selectedDate === i ? 'text-white' : 'text-navy-muted'}`}>{d.toLocaleDateString('en', { month: 'short' })}</span>
+                        <span className={`text-xs font-medium ${selectedDate === i ? 'text-white' : 'text-navy-muted'}`}>{bookingDateLabel(d, { weekday: 'short' })}</span>
+                        <span className="text-xl font-bold">{d.getUTCDate()}</span>
+                        <span className={`text-xs ${selectedDate === i ? 'text-white' : 'text-navy-muted'}`}>{bookingDateLabel(d, { month: 'short' })}</span>
                       </button>
                     ))}
-                  </div>
+                  </div>}
                 </div>
 
                 <div className="p-6 bg-white rounded-xl shadow-sm border border-slate-200">
@@ -227,13 +243,15 @@ export default function BookAppointment() {
                   </div>
                   {slotsLoading ? (
                     <div className="text-center py-6 text-navy-muted text-sm">Loading available slots...</div>
+                  ) : slotsError ? (
+                    <div role="alert" className="text-center py-6 text-red-600 text-sm">{slotsError} {selectedDate !== null && <button type="button" className="underline" onClick={() => fetchAvailableSlots(selectedDate)}>Try again</button>}</div>
                   ) : selectedDate === null ? (
                     <div className="text-center py-6 text-navy-muted text-sm">Please select a date first to see available slots</div>
-                  ) : (availableSlots[activeTab] || []).length === 0 && (unavailableSlots[activeTab] || []).length === 0 ? (
-                    <div className="text-center py-6 text-navy-muted text-sm">No slots available for this time period</div>
+                  ) : (availableSlots[activeTab] || []).length === 0 ? (
+                    <div className="text-center py-6 text-navy-muted text-sm">No booking times for this period. Try another weekday or time period.</div>
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {[...(availableSlots[activeTab] || []), ...(unavailableSlots[activeTab] || [])].map((slot) => {
+                      {(availableSlots[activeTab] || []).map((slot) => {
                         const isBooked = bookedSlots.includes(slot)
                         const isUnavailable = unavailableSlots[activeTab]?.includes(slot)
                         return (
@@ -268,7 +286,7 @@ export default function BookAppointment() {
                   </div>
                   <div className="flex justify-between py-3 border-b border-surface-container-high text-sm">
                     <span className="text-outline">Date</span>
-                    <span className="font-semibold text-navy">{selectedDate !== null ? days[selectedDate].toLocaleDateString() : '—'}</span>
+                    <span className="font-semibold text-navy">{selectedDate !== null ? bookingDateLabel(days[selectedDate], { dateStyle: 'medium' }) : '—'}</span>
                   </div>
                   <div className="flex justify-between py-3 border-b border-surface-container-high text-sm">
                     <span className="text-outline">Time</span>
@@ -278,13 +296,14 @@ export default function BookAppointment() {
                     <span className="text-outline">Fee</span>
                     <span className="text-primary font-bold">${doctor.fee}</span>
                   </div>
+                  {bookingError && <p role="alert" className="mt-3 text-sm text-red-600">{bookingError}</p>}
                   <button 
                     className="w-full mt-4 py-3.5 bg-primary text-white text-base font-semibold rounded-xl hover:bg-primary-dark transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed" 
-                    disabled={selectedDate === null || !selectedSlot}
+                    disabled={doctor.available === false || selectedDate === null || !selectedSlot || isBooking}
                     onClick={handleBook} 
                     id="confirm-booking"
                   >
-                    {rescheduleId ? 'Confirm Reschedule' : 'Confirm Booking'}
+                    {isBooking ? 'Booking...' : rescheduleId ? 'Confirm Reschedule' : 'Confirm Booking'}
                   </button>
                   <p className="flex items-center justify-center gap-1 text-xs text-outline mt-3">
                     <span className="material-icons-outlined text-[14px]">lock</span> 

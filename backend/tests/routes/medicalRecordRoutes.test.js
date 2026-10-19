@@ -3,7 +3,7 @@ const express = require('express');
 
 jest.mock('../../middleware/auth', () => ({
   protect: (req, res, next) => {
-    req.user = { _id: '507f1f77bcf86cd799439011', role: 'doctor', isVerified: req.headers['x-unverified'] !== 'true' };
+    req.user = { _id: '507f1f77bcf86cd799439011', role: req.headers['x-role'] || 'doctor', isVerified: req.headers['x-unverified'] !== 'true' };
     next();
   },
   authorize: (...roles) => (req, res, next) => roles.includes(req.user.role) ? next() : res.sendStatus(403),
@@ -23,6 +23,20 @@ app.use('/api/records', routes);
 const patientId = '507f1f77bcf86cd799439012';
 const doctorId = '507f1f77bcf86cd799439013';
 const appointmentId = '507f1f77bcf86cd799439014';
+
+test('accepts a patient PDF report and rejects a forged PDF payload', async () => {
+  MedicalRecord.create.mockImplementation(async value => value);
+  const valid = { title: 'Lab report', attachments: [{ name: 'results.pdf', type: 'application/pdf',
+    url: `data:application/pdf;base64,${Buffer.from('%PDF-1.4\nreport').toString('base64')}` }] };
+  const accepted = await request(app).post('/api/records').set('x-role', 'patient').send(valid);
+  expect(accepted.status).toBe(201);
+  expect(accepted.body.record.attachments).toHaveLength(1);
+
+  const forged = await request(app).post('/api/records').set('x-role', 'patient').send({ ...valid, attachments: [{ ...valid.attachments[0],
+    url: `data:application/pdf;base64,${Buffer.from('<script>alert(1)</script>').toString('base64')}` }] });
+  expect(forged.status).toBe(400);
+  expect(MedicalRecord.create).toHaveBeenCalledTimes(1);
+});
 
 beforeEach(() => {
   jest.clearAllMocks();

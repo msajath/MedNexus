@@ -1,5 +1,6 @@
 const { body, query, validationResult } = require('express-validator');
 const { isValidDate } = require('../utils/slots');
+const { isValidReportAttachment } = require('../utils/reportAttachments');
 const text = (field, max, optional = true) => {
   const rule = body(field);
   return (optional ? rule.optional() : rule).isString().bail().trim().isLength({ min: optional ? 0 : 1, max });
@@ -30,16 +31,16 @@ const recordRules = [text('title', 200, false), body('type').optional().isIn(['P
   text('description', 10000), text('diagnosis', 10000), body('date').optional().custom(isValidDate),
   body('isPrivate').optional().isBoolean({ strict: true }), body('medications').optional().isArray({ max: 100 }),
   text('medications.*.name', 200, false), text('medications.*.dosage', 200), text('medications.*.frequency', 200), text('medications.*.duration', 200),
-  body('attachments').optional().isArray({ max: 10 }), text('attachments.*.name', 200, false),
-  body('attachments.*.url').optional().isString().bail().isLength({ max: 1000000 }).custom((value) => /^https:\/\//.test(value) || /^data:(application\/pdf|image\/(png|jpeg|webp));base64,[A-Za-z0-9+/]+=*$/.test(value)),
-  text('attachments.*.type', 100)];
+  body('attachments').optional().isArray({ max: 3 }).bail().custom((items) => items.every(isValidReportAttachment))
+    .withMessage('Attach up to three PDF, PNG, JPEG, or WebP files, each under 700 KB')];
 const scheduleRules = [body('schedule').isArray({ min: 7, max: 7 }).bail().custom((schedule) => {
   const days = new Set(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']);
   for (const item of schedule) {
     if (!item || !days.delete(item.day) || typeof item.enabled !== 'boolean' ||
+        (['Saturday', 'Sunday'].includes(item.day) && item.enabled) ||
         !/^([01]\d|2[0-3]):(00|30)$/.test(item.start) || !/^([01]\d|2[0-3]):(00|30)$/.test(item.end) ||
         (item.enabled && (item.start >= item.end || (Number(item.end.slice(0, 2)) * 60 + Number(item.end.slice(3)) - Number(item.start.slice(0, 2)) * 60 - Number(item.start.slice(3)) < 30)))) return false;
   }
   return days.size === 0;
-}).withMessage('Provide seven unique days with half-hour times and at least 30 minutes for each enabled day')];
+}).withMessage('Provide seven unique days with valid half-hour times; Saturday and Sunday must be closed')];
 module.exports = { body, query, text, password, check, doctorRules, profileRules, recordRules, scheduleRules };

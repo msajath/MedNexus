@@ -38,6 +38,7 @@ export default function DoctorCard({ doctor, index = 0 }) {
           <div className="p-5 flex flex-col items-start bg-white flex-1">
             <h3 className="text-[1.1rem] font-semibold text-slate-800 mb-1">{doctor.name}</h3>
             <p className="text-[0.85rem] text-slate-500 font-normal">{doctor.specialty}</p>
+            {doctor.available === false && <p className="mt-2 text-xs font-medium text-amber-700">Currently unavailable for booking</p>}
           </div>
         </div>
       </Tilt>

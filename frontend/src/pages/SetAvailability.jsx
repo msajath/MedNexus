@@ -35,7 +35,8 @@ export default function SetAvailability() {
         setSchedule(defaultSchedule)
       } else {
         const data = await response.json()
-        setSchedule(data.schedule || data.availability || [])
+        setSchedule((data.schedule || data.availability || []).map(item =>
+          ['Saturday', 'Sunday'].includes(item.day) ? { ...item, enabled: false } : item))
       }
       setError(null)
     } catch (err) {
@@ -62,6 +63,7 @@ export default function SetAvailability() {
   }, [])
 
   const toggleDay = (idx) => {
+    if (['Saturday', 'Sunday'].includes(schedule[idx].day)) return
     const updated = [...schedule]
     updated[idx] = { ...updated[idx], enabled: !updated[idx].enabled }
     setSchedule(updated)
@@ -133,7 +135,7 @@ export default function SetAvailability() {
                 <div key={item.day} className={`flex flex-col md:flex-row items-start md:items-center gap-4 p-4 md:px-6 border-b border-surface-container-high transition-colors ${!item.enabled ? 'bg-surface-container-low' : ''} last:border-b-0`}>
                   <div className="flex items-center gap-4 w-[140px] shrink-0">
                     <label className="relative inline-block w-12 h-[26px] cursor-pointer group">
-                      <input type="checkbox" className="sr-only peer" checked={item.enabled} onChange={() => toggleDay(idx)} />
+                      <input type="checkbox" className="sr-only peer" checked={item.enabled} disabled={['Saturday', 'Sunday'].includes(item.day)} onChange={() => toggleDay(idx)} />
                       <div className="absolute inset-0 bg-surface-container-high rounded-full transition-all duration-300 peer-checked:bg-primary"></div>
                       <div className="absolute left-[3px] bottom-[3px] w-5 h-5 bg-white rounded-full transition-all duration-300 peer-checked:translate-x-[22px]"></div>
                     </label>
@@ -152,7 +154,7 @@ export default function SetAvailability() {
                       </div>
                     </div>
                   ) : (
-                    <span className="text-sm italic text-outline">Closed</span>
+                    <span className="text-sm italic text-outline">{['Saturday', 'Sunday'].includes(item.day) ? 'Closed for weekend bookings' : 'Closed'}</span>
                   )}
                 </div>
               ))}

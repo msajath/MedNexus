@@ -34,7 +34,9 @@ const isFutureSlot = (date, time) => {
 const scheduleMinutes = (time) => { const [h, m] = time.split(':').map(Number); return h * 60 + m; };
 const isWithinSchedule = (date, time, schedule) => {
   if (!isValidDate(date)) return false;
-  const item = schedule.find((s) => s.day === dayNames[new Date(`${date}T00:00:00Z`).getUTCDay()]);
+  const dayIndex = new Date(`${date}T00:00:00Z`).getUTCDay();
+  if (dayIndex === 0 || dayIndex === 6) return false;
+  const item = schedule.find((s) => s.day === dayNames[dayIndex]);
   const minutes = timeToMinutes(time);
   return !!item?.enabled && minutes !== null && minutes >= scheduleMinutes(item.start) &&
     minutes + 30 <= scheduleMinutes(item.end) && minutes % 30 === 0;

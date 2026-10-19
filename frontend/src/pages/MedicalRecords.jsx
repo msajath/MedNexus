@@ -5,6 +5,27 @@ import { getLocalDateString } from '../utils/date'
 import { API_BASE, apiFetch } from '../config'
 
 const RECORD_TYPES = ['All', 'Prescription', 'Lab Report', 'Diagnosis', 'Vaccination', 'Imaging', 'Discharge Summary', 'Other']
+const MAX_REPORT_BYTES = 700 * 1024
+const REPORT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp']
+
+const readReport = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onload = () => resolve({ name: file.name, type: file.type, url: reader.result })
+  reader.onerror = () => reject(new Error(`Could not read ${file.name}`))
+  reader.readAsDataURL(file)
+})
+
+const downloadReport = (attachment) => {
+  const match = attachment.url?.match(/^data:(application\/pdf|image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+=*)$/)
+  if (!match) return
+  const bytes = Uint8Array.from(atob(match[2]), character => character.charCodeAt(0))
+  const url = URL.createObjectURL(new Blob([bytes], { type: match[1] }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = attachment.name
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
 
 const typeColors = {
   Prescription: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -50,6 +71,8 @@ export default function MedicalRecords() {
   const [isSaving, setIsSaving] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
   const [selectedRecord, setSelectedRecord] = useState(null)
+  const [reportFiles, setReportFiles] = useState([])
+  const [formError, setFormError] = useState('')
 
   const fetchRecords = async () => {
     try {
@@ -86,27 +109,42 @@ export default function MedicalRecords() {
     e.preventDefault()
     if (!formData.title || !formData.date) return
     setIsSaving(true)
+    setFormError('')
     try {
+      const attachments = await Promise.all(reportFiles.map(readReport))
       const res = await apiFetch(`${API_BASE}/api/records`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, attachments })
       })
       const data = await res.json()
       if (data.success) {
         setRecords(prev => [data.record, ...prev])
         setShowForm(false)
         setFormData(emptyForm)
-        setMessage({ type: 'success', text: 'Record added successfully!' })
+        setReportFiles([])
+        setMessage({ type: 'success', text: attachments.length ? 'Report uploaded successfully!' : 'Record added successfully!' })
         setTimeout(() => setMessage({ type: '', text: '' }), 3000)
       } else {
-        setMessage({ type: 'error', text: data.message })
+        setFormError(data.message || data.errors?.[0]?.msg || 'Could not save record.')
       }
-    } catch {
-      setMessage({ type: 'error', text: 'Error saving record' })
+    } catch (err) {
+      setFormError(err.message || 'Error saving record')
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const handleReportChange = (event) => {
+    const files = Array.from(event.target.files || [])
+    if (files.length > 3 || files.some(file => !REPORT_TYPES.includes(file.type) || file.size === 0 || file.size > MAX_REPORT_BYTES)) {
+      setFormError('Choose up to three PDF, PNG, JPEG, or WebP files, each under 700 KB.')
+      setReportFiles([])
+      event.target.value = ''
+      return
+    }
+    setFormError('')
+    setReportFiles(files)
   }
 
   const handleDelete = async (id) => {
@@ -146,7 +184,7 @@ export default function MedicalRecords() {
           </div>
           <button
             className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary-dark transition-colors"
-            onClick={() => { setShowForm(true); setFormData(emptyForm) }}
+            onClick={() => { setShowForm(true); setFormData(emptyForm); setReportFiles([]); setFormError('') }}
           >
             <span className="material-icons-outlined text-[18px]">add</span>
             Add Record
@@ -303,6 +341,20 @@ export default function MedicalRecords() {
                       <p className="text-sm text-navy leading-relaxed">{selectedRecord.description}</p>
                     </div>
                   )}
+                  {selectedRecord.attachments?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-outline uppercase tracking-wider mb-2">Reports</p>
+                      <div className="flex flex-col gap-2">
+                        {selectedRecord.attachments.map((attachment, index) => (
+                          <button key={index} type="button" onClick={() => downloadReport(attachment)}
+                            disabled={!attachment.url?.startsWith('data:')}
+                            className="rounded-lg border border-outline-variant p-3 text-left text-sm text-primary hover:bg-surface disabled:text-outline">
+                            <span className="material-icons-outlined mr-2 align-middle text-[18px]">download</span>{attachment.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {selectedRecord.medications?.length > 0 && (
                     <div>
                       <p className="text-xs font-semibold text-outline uppercase tracking-wider mb-2">Medications</p>
@@ -394,6 +446,14 @@ export default function MedicalRecords() {
                   />
                 </div>
 
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="patient-report" className="text-sm font-medium text-navy">Upload patient report</label>
+                  <input id="patient-report" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp"
+                    onChange={handleReportChange} className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-sm" />
+                  <p className="text-xs text-navy-muted">Up to three PDF or image files, 700 KB each. Keep private to hide this record from doctors.</p>
+                  {reportFiles.length > 0 && <p className="text-xs text-navy">Selected: {reportFiles.map(file => file.name).join(', ')}</p>}
+                </div>
+
                 <label className="flex items-start gap-3 text-sm text-navy">
                   <input
                     type="checkbox"
@@ -430,6 +490,7 @@ export default function MedicalRecords() {
                   )}
                 </div>
 
+                {formError && <p role="alert" className="text-sm text-red-600">{formError}</p>}
                 <button
                   type="submit"
                   disabled={isSaving}
