@@ -56,7 +56,10 @@ test('patient messages can be marked read and medical records can be added and r
   const recordTitle = `QA record ${Date.now()}`
   await page.getByPlaceholder('e.g. Blood Test Report June 2025').fill(recordTitle)
   await page.getByLabel('Upload patient report').setInputFiles({ name: 'qa-report.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\nQA report') })
+  const uploadResponsePromise = page.waitForResponse(response => response.url().endsWith('/api/records') && response.request().method() === 'POST')
   await page.locator('form button[type="submit"]').click()
+  const uploadResponse = await uploadResponsePromise
+  expect(uploadResponse.ok(), await uploadResponse.text()).toBe(true)
   await expect(page.getByText('Report uploaded successfully!')).toBeVisible()
   await page.getByText(recordTitle, { exact: true }).first().click()
   const downloadPromise = page.waitForEvent('download')
