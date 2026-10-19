@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test'
+import { Buffer } from 'node:buffer'
+import { bookingDateKey, getBookingDays } from '../src/utils/bookingDates.js'
 
 const password = 'QA-password-123456'
 const login = async (page, role) => {
@@ -51,12 +53,18 @@ test('patient messages can be marked read and medical records can be added and r
   await expect(page.getByText('You have 0 unread messages')).toBeVisible()
   await page.goto('/patient/records')
   await page.getByRole('button', { name: /Add Record/ }).click()
-  await page.getByPlaceholder('e.g. Blood Test Report June 2025').fill(`QA record ${Date.now()}`)
+  const recordTitle = `QA record ${Date.now()}`
+  await page.getByPlaceholder('e.g. Blood Test Report June 2025').fill(recordTitle)
+  await page.getByLabel('Upload patient report').setInputFiles({ name: 'qa-report.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\nQA report') })
   await page.locator('form button[type="submit"]').click()
-  await expect(page.getByText('Record added successfully!')).toBeVisible()
+  await expect(page.getByText('Report uploaded successfully!')).toBeVisible()
+  await page.getByText(recordTitle, { exact: true }).first().click()
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: /qa-report\.pdf/ }).click()
+  expect((await downloadPromise).suggestedFilename()).toBe('qa-report.pdf')
   page.on('dialog', dialog => dialog.accept())
   await page.getByTitle('Delete', { exact: true }).first().click()
-  await expect(page.getByText(/QA record \d+/)).toHaveCount(0)
+  await expect(page.getByText(recordTitle, { exact: true })).toHaveCount(0)
 })
 
 test('doctor pages and availability saving work', async ({ page }) => {
@@ -109,16 +117,16 @@ test('a patient books, reschedules and cancels one appointment without duplicate
   expect(doctor).toBeDefined()
   const doctorId = doctor._id || doctor.id
   let dateIndex, slots
-  for (let index = 1; index < 14; index++) {
-    const date = new Date(); date.setDate(date.getDate() + index)
-    const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  const bookingDays = getBookingDays(10)
+  for (let index = 0; index < bookingDays.length; index++) {
+    const day = bookingDateKey(bookingDays[index])
     const data = await (await page.request.get(`/api/availability/slots/${doctorId}/${day}`)).json()
     const available = data.slots.morning.filter(slot => !data.bookedSlots.includes(slot))
     if (available.length >= 2) { dateIndex = index; slots = available; break }
   }
   expect(dateIndex).toBeDefined()
   const choose = async (slot, button) => {
-    await page.locator('#book-appointment button').filter({ hasText: /Mon|Tue|Wed|Thu|Fri|Sat|Sun/ }).nth(dateIndex).click()
+    await page.locator('#book-appointment button').filter({ hasText: /Mon|Tue|Wed|Thu|Fri/ }).nth(dateIndex).click()
     await page.getByRole('button', { name: slot, exact: true }).click()
     await page.getByRole('button', { name: button, exact: true }).click()
   }
