@@ -113,10 +113,11 @@ export default function DoctorProfile() {
   }
 
   useEffect(() => {
+    const requestCounter = slotsRequest
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedDate(0)
     fetchAvailableSlots(0)
-    return () => { slotsRequest.current++ }
+    return () => { requestCounter.current++ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 

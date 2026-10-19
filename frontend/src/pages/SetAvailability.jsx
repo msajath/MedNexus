@@ -10,48 +10,31 @@ export default function SetAvailability() {
   const [saving, setSaving] = useState(false)
 
   const fetchAvailability = async () => {
+    setLoading(true)
+    setError(null)
     try {
       // First, get the current user's doctor ID
       const userResponse = await apiFetch(`${API_BASE}/api/auth/me`, {
         })
+      if (!userResponse.ok) throw new Error('Could not load your doctor account')
       const userData = await userResponse.json()
-      const doctorId = userData.user?.doctorProfile?._id || userData.user?._id || userData._id
+      const doctorId = userData.user?.doctorProfile?._id
+      if (!doctorId) throw new Error('Doctor profile not found')
 
       // Fetch availability for this doctor
       const response = await apiFetch(`${API_BASE}/api/availability/${doctorId}`, {
         cache: 'no-store',
         })
-      if (!response.ok) {
-        // If no availability set yet, create default schedule
-        const defaultSchedule = [
-          { day: 'Monday', enabled: true, start: '09:00', end: '17:00' },
-          { day: 'Tuesday', enabled: true, start: '09:00', end: '17:00' },
-          { day: 'Wednesday', enabled: true, start: '10:00', end: '16:00' },
-          { day: 'Thursday', enabled: true, start: '09:00', end: '17:00' },
-          { day: 'Friday', enabled: true, start: '09:00', end: '14:00' },
-          { day: 'Saturday', enabled: false, start: '00:00', end: '00:00' },
-          { day: 'Sunday', enabled: false, start: '00:00', end: '00:00' },
-        ]
-        setSchedule(defaultSchedule)
-      } else {
-        const data = await response.json()
-        setSchedule((data.schedule || data.availability || []).map(item =>
-          ['Saturday', 'Sunday'].includes(item.day) ? { ...item, enabled: false } : item))
-      }
-      setError(null)
+      if (!response.ok) throw new Error('Could not load your schedule')
+      const data = await response.json()
+      const loadedSchedule = data.schedule || data.availability
+      if (!Array.isArray(loadedSchedule) || loadedSchedule.length !== 7) throw new Error('Schedule data is incomplete')
+      setSchedule(loadedSchedule.map(item =>
+        ['Saturday', 'Sunday'].includes(item.day) ? { ...item, enabled: false } : item))
     } catch (err) {
       console.error('Error fetching availability:', err)
-      // Set default schedule on error
-      const defaultSchedule = [
-        { day: 'Monday', enabled: true, start: '09:00', end: '17:00' },
-        { day: 'Tuesday', enabled: true, start: '09:00', end: '17:00' },
-        { day: 'Wednesday', enabled: true, start: '10:00', end: '16:00' },
-        { day: 'Thursday', enabled: true, start: '09:00', end: '17:00' },
-        { day: 'Friday', enabled: true, start: '09:00', end: '14:00' },
-        { day: 'Saturday', enabled: false, start: '00:00', end: '00:00' },
-        { day: 'Sunday', enabled: false, start: '00:00', end: '00:00' },
-      ]
-      setSchedule(defaultSchedule)
+      setSchedule([])
+      setError(err.message || 'Could not load your schedule')
     } finally {
       setLoading(false)
     }
@@ -76,6 +59,7 @@ export default function SetAvailability() {
   }
 
   const handleSave = async () => {
+    if (schedule.length !== 7 || loading || error) return
     setSaving(true)
     try {
       const response = await apiFetch(`${API_BASE}/api/availability`, {
@@ -114,7 +98,7 @@ export default function SetAvailability() {
 
         {error && (
           <div className="p-4 mb-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
-            Error: {error}
+            {error} <button type="button" className="ml-2 underline" onClick={fetchAvailability}>Try again</button>
           </div>
         )}
 
@@ -123,8 +107,8 @@ export default function SetAvailability() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-5 md:px-6 border-b border-surface-container-high">
               <h3 className="text-xl font-semibold text-navy">Weekly Schedule</h3>
               <div className="flex gap-3">
-                <button className="px-4 py-2 text-sm font-semibold text-navy bg-transparent hover:bg-surface-container rounded-lg transition-colors" onClick={fetchAvailability}>Reset to Default</button>
-                <button className="px-5 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleSave} disabled={saving}>
+                <button className="px-4 py-2 text-sm font-semibold text-navy bg-transparent hover:bg-surface-container rounded-lg transition-colors" onClick={fetchAvailability}>Reload Schedule</button>
+                <button className="px-5 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleSave} disabled={saving || schedule.length !== 7 || Boolean(error)}>
                   {saving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>

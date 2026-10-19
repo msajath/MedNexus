@@ -46,12 +46,13 @@ export default function BookAppointment() {
   }
 
   useEffect(() => {
+    const requestCounter = slotsRequest
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDoctor()
     setSelectedDate(null)
     setSelectedSlot(null)
     slotsRequest.current++
-    return () => { slotsRequest.current++ }
+    return () => { requestCounter.current++ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
