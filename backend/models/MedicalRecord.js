@@ -1,5 +1,11 @@
 const mongoose = require('mongoose');
 
+const reportAttachmentSchema = new mongoose.Schema({
+  name: String,
+  url: String,
+  type: String,
+}, { _id: false });
+
 const medicalRecordSchema = new mongoose.Schema(
   {
     patient: {
@@ -40,13 +46,7 @@ const medicalRecordSchema = new mongoose.Schema(
         duration: String,
       },
     ],
-    attachments: [
-      {
-        name: String,
-        url: String,   // base64 or file path
-        type: String,  // MIME type
-      },
-    ],
+    attachments: [reportAttachmentSchema],
     date: {
       type: String,
       required: true,
