@@ -32,7 +32,8 @@ export default function ForgotPassword() {
         throw new Error(data.message || 'Failed to send reset code')
       }
 
-      setSuccess('If the email exists, a six-digit reset code has been sent. The code expires in 30 minutes.')
+      setSuccess('If the email exists, a six-digit reset code has been sent. The code expires in 5 minutes.')
+      setResetCode('')
       setStep('reset')
     } catch (err) {
       setError(err.message || 'Something went wrong')
@@ -86,7 +87,7 @@ export default function ForgotPassword() {
           <p className="text-xl text-navy-muted mb-10">Secure password recovery.</p>
           <div className="hidden md:flex flex-col gap-4">
             <div className="flex items-center gap-3 text-base text-navy"><span className="material-icons-outlined text-primary text-[20px]">lock_reset</span> Fast & Secure Reset</div>
-            <div className="flex items-center gap-3 text-base text-navy"><span className="material-icons-outlined text-primary text-[20px]">mark_email_read</span> Instant Email Link</div>
+            <div className="flex items-center gap-3 text-base text-navy"><span className="material-icons-outlined text-primary text-[20px]">mark_email_read</span> Email Reset Code</div>
             <div className="flex items-center gap-3 text-base text-navy"><span className="material-icons-outlined text-primary text-[20px]">security</span> Advanced Account Protection</div>
           </div>
         </div>
@@ -138,11 +139,12 @@ export default function ForgotPassword() {
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium text-navy" htmlFor="new-password">New Password</label>
-                  <input type="password" id="new-password" minLength="15" className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required disabled={loading} />
+                  <input type="password" id="new-password" autoComplete="new-password" minLength="10" maxLength="72" className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required disabled={loading} />
+                  <p className="text-xs text-navy-muted">Use at least 10 characters. Avoid common passwords and your email; passphrases are welcome.</p>
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium text-navy" htmlFor="confirm-password">Confirm Password</label>
-                  <input type="password" id="confirm-password" minLength="15" className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required disabled={loading} />
+                  <input type="password" id="confirm-password" autoComplete="new-password" minLength="10" maxLength="72" className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required disabled={loading} />
                 </div>
               </>
             )}
@@ -157,9 +159,14 @@ export default function ForgotPassword() {
           </form>
 
           {step === 'reset' && (
-            <button type="button" className="w-full mt-3 text-sm text-primary font-semibold hover:underline" onClick={() => { setStep('request'); setError(''); setSuccess('') }}>
-              Use a different email
-            </button>
+            <div className="flex justify-between gap-4 mt-3">
+              <button type="button" className="text-sm text-primary font-semibold hover:underline disabled:opacity-50" onClick={handleSendResetCode} disabled={loading}>
+                Request a new code
+              </button>
+              <button type="button" className="text-sm text-primary font-semibold hover:underline" onClick={() => { setStep('request'); setError(''); setSuccess('') }}>
+                Use a different email
+              </button>
+            </div>
           )}
 
           <p className="text-center text-sm text-navy-muted mb-8 mt-6">

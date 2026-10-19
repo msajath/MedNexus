@@ -45,6 +45,8 @@ Vite proxies `/api` to port 5000. Open http://localhost:5173.
 See [QA_SECURITY_REPORT.md](QA_SECURITY_REPORT.md) for findings, verification
 results, outstanding checks, and reproducible test commands.
 
-New passwords require at least 15 characters and no more than 72 UTF-8 bytes.
+New passwords require at least 10 characters and no more than 72 UTF-8 bytes.
+Common passwords and passwords matching the account name or email are rejected.
+Password reset codes expire after five minutes.
 Production sessions use Secure, HttpOnly cookies; serve the site and API through
 the same HTTPS origin. Configure SMTP for production password recovery.

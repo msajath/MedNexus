@@ -1,13 +1,16 @@
 const { body, query, validationResult } = require('express-validator');
 const { isValidDate } = require('../utils/slots');
 const { isValidReportAttachment } = require('../utils/reportAttachments');
+const { passwordIssue } = require('../utils/passwordPolicy');
 const text = (field, max, optional = true) => {
   const rule = body(field);
   return (optional ? rule.optional() : rule).isString().bail().trim().isLength({ min: optional ? 0 : 1, max });
 };
-const password = (field) => body(field).isString().bail().isLength({ min: 15, max: 72 })
-  .custom((value) => Buffer.byteLength(value, 'utf8') <= 72)
-  .withMessage('Password must be at least 15 characters and at most 72 UTF-8 bytes');
+const password = (field) => body(field).custom((value, { req }) => {
+  const issue = passwordIssue(value, { email: req.body?.email || req.user?.email, name: req.body?.name || req.user?.name });
+  if (issue) throw new Error(issue);
+  return true;
+});
 const check = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array().map(({ msg, path }) => ({ msg, path })) });

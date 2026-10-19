@@ -22,6 +22,43 @@ describe('Auth Routes', () => {
   });
 
   describe('POST /api/auth/register', () => {
+    it('accepts a ten-character password without requiring mixed character classes', async () => {
+      User.findOne.mockResolvedValue(null);
+      User.create.mockResolvedValue({ _id: 'ten-char-user', name: 'Test', email: 'ten@example.test', role: 'patient' });
+
+      const res = await request(app).post('/api/auth/register').send({
+        name: 'Test', email: 'ten@example.test', password: 'abcdefghij', role: 'patient'
+      });
+
+      expect(res.statusCode).toBe(201);
+      expect(User.create).toHaveBeenCalledWith(expect.objectContaining({ password: 'abcdefghij' }));
+    });
+
+    it('rejects a nine-character password before accessing the database', async () => {
+      const res = await request(app).post('/api/auth/register').send({
+        name: 'Test', email: 'short@example.test', password: 'T!ny7Grap', role: 'patient'
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(User.findOne).not.toHaveBeenCalled();
+      expect(User.create).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['common', 'ten@example.test', 'password123'],
+      ['matching email username', 'abcdefghij@example.test', 'abcdefghij'],
+      ['one repeated character', 'ten@example.test', 'aaaaaaaaaa'],
+    ])('rejects a %s password before accessing the database', async (_description, email, password) => {
+      const res = await request(app).post('/api/auth/register').send({
+        name: 'Test', email, password, role: 'patient'
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(JSON.stringify(res.body)).not.toContain(password);
+      expect(User.findOne).not.toHaveBeenCalled();
+      expect(User.create).not.toHaveBeenCalled();
+    });
+
     it('uses a canonical email for duplicate checks and creation', async () => {
       User.findOne.mockResolvedValue(null);
       User.create.mockResolvedValue({ _id: '123', name: 'Test', email: 'test@test.com', role: 'patient' });
@@ -166,6 +203,15 @@ describe('Auth Routes', () => {
   });
 
   describe('POST /api/auth/reset-password', () => {
+    it('rejects a common new password without consuming the reset code', async () => {
+      const res = await request(app).post('/api/auth/reset-password').send({
+        email: 'reset@example.test', resetCode: '123456', newPassword: 'password123'
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(User.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
     it('canonicalizes email and marks doctor credentials as changed', async () => {
       const mockUser = {
         _id: 'doctor-1', role: 'doctor', password: 'old',
@@ -212,14 +258,29 @@ describe('Auth Routes', () => {
 
       const res = await request(app)
         .post('/api/auth/reset-password')
-        .send({ email: 'test@test.com', resetCode: '123456', newPassword: 'QA-new-password-123456' });
+        .send({ email: 'test@test.com', resetCode: '123456', newPassword: 'abcdefghij' });
 
       expect(res.statusCode).toBe(200);
       expect(res.body.success).toBe(true);
       const update = User.findOneAndUpdate.mock.calls[0][1];
-      expect(await require('bcryptjs').compare('QA-new-password-123456', update.$set.password)).toBe(true);
+      expect(await require('bcryptjs').compare('abcdefghij', update.$set.password)).toBe(true);
       expect(update.$set.resetPasswordToken).toBeNull();
       expect(update.$inc.tokenVersion).toBe(1);
+    });
+  });
+
+  describe('PUT /api/auth/password', () => {
+    it('rejects a common new password before changing credentials', async () => {
+      const current = { _id: 'password-test-user', role: 'patient', tokenVersion: 0, isActive: true };
+      User.findById.mockResolvedValue(current);
+      const token = jwt.sign({ id: current._id, version: 0 }, process.env.JWT_SECRET);
+
+      const res = await request(app).put('/api/auth/password')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ currentPassword: 'QA-password-123456', newPassword: 'password123' });
+
+      expect(res.statusCode).toBe(400);
+      expect(User.findById).toHaveBeenCalledTimes(1);
     });
   });
 

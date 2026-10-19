@@ -393,7 +393,7 @@ router.post(
           'We received a request to reset your password.',
           `Your reset code is: ${resetCode}`,
           '',
-          'This code expires in 30 minutes.',
+          'This code expires in 5 minutes.',
           '',
           'If you did not request this change, please contact support immediately.',
         ].join('\n'),
@@ -401,7 +401,7 @@ router.post(
           <p>Hello,</p>
           <p>We received a request to reset your password.</p>
           <p><strong>Your reset code is:</strong> <code>${resetCode}</code></p>
-          <p>This code expires in 30 minutes.</p>
+          <p>This code expires in 5 minutes.</p>
           <p>If you did not request this change, please contact support immediately.</p>
         `,
       });

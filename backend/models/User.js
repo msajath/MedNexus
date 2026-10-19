@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const { passwordIssue } = require('../utils/passwordPolicy');
 
 const userSchema = new mongoose.Schema(
   {
@@ -20,7 +21,13 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: [true, 'Please provide a password'],
-      minlength: 15,
+      minlength: 10,
+      validate: {
+        validator(value) {
+          return !this.isModified('password') || !passwordIssue(value, { email: this.email, name: this.name });
+        },
+        message: 'Choose a password of at least 10 characters that is not common or based on your name or email',
+      },
       select: false, // don't return password by default
     },
     role: {
@@ -95,8 +102,8 @@ userSchema.methods.generateResetToken = function () {
   // Hash the code and store it
   this.resetPasswordToken = crypto.createHash('sha256').update(resetCode).digest('hex');
 
-  // Set expiry to 30 minutes
-  this.resetPasswordExpire = Date.now() + 30 * 60 * 1000;
+  // A short lifetime limits the window for using a stolen reset code.
+  this.resetPasswordExpire = Date.now() + 5 * 60 * 1000;
 
   return resetCode;
 };

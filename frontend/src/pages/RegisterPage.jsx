@@ -100,7 +100,7 @@ export default function RegisterPage() {
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium text-navy" htmlFor="password">Password</label>
               <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} id="password" minLength={15} maxLength={72} className="w-full p-3 pr-12 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" placeholder="Create a password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <input type={showPassword ? 'text' : 'password'} id="password" autoComplete="new-password" minLength={10} maxLength={72} className="w-full p-3 pr-12 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" placeholder="Create a password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 <button 
                   type="button" 
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-muted hover:text-navy transition-colors"
@@ -110,6 +110,7 @@ export default function RegisterPage() {
                   <span className="material-icons-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
                 </button>
               </div>
+              <p className="text-xs text-navy-muted">Use at least 10 characters. Avoid common passwords and your name or email; passphrases are welcome.</p>
             </div>
             
             {role === 'doctor' && (

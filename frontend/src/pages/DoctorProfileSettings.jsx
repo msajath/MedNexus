@@ -148,7 +148,7 @@ export default function DoctorProfileSettings() {
         setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
         setTimeout(() => setPwMessage({ type: '', text: '' }), 3000)
       } else {
-        setPwMessage({ type: 'error', text: data.message || 'Error updating password.' })
+        setPwMessage({ type: 'error', text: data.message || data.errors?.[0]?.msg || 'Error updating password.' })
       }
     } catch {
       setPwMessage({ type: 'error', text: 'An error occurred.' })
@@ -252,7 +252,7 @@ export default function DoctorProfileSettings() {
             {/* Change Password */}
             <div className="p-6 bg-white rounded-xl shadow-sm border border-outline-variant">
               <h3 className="text-xl font-semibold text-navy mb-1">Change Password</h3>
-              <p className="text-sm text-navy-muted mb-5">Update your login password. Use a strong password.</p>
+              <p className="text-sm text-navy-muted mb-5">Use at least 10 characters. Avoid common passwords and your email; passphrases are welcome.</p>
               <form onSubmit={handlePasswordChange} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium text-navy">Current Password</label>
@@ -271,9 +271,10 @@ export default function DoctorProfileSettings() {
                     <input
                       type="password"
                       required
-                      minLength={15}
+                      minLength={10}
+                      maxLength={72}
                       className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base focus:border-primary outline-none transition-colors"
-                      placeholder="At least 15 characters"
+                      placeholder="At least 10 characters"
                       value={pwForm.newPassword}
                       onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
                     />
@@ -283,6 +284,8 @@ export default function DoctorProfileSettings() {
                     <input
                       type="password"
                       required
+                      minLength={10}
+                      maxLength={72}
                       className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base focus:border-primary outline-none transition-colors"
                       placeholder="Repeat new password"
                       value={pwForm.confirmPassword}

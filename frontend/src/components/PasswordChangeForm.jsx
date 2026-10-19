@@ -19,8 +19,9 @@ export default function PasswordChangeForm() {
   }
   return <form onSubmit={submit} className="flex flex-col gap-4">
     {Object.entries({ currentPassword: 'Current Password', newPassword: 'New Password', confirmPassword: 'Confirm New Password' }).map(([field, label]) => <label key={field} className="flex flex-col gap-2 text-sm font-medium text-navy">
-      {label}<input type="password" autoComplete={field === 'currentPassword' ? 'current-password' : 'new-password'} required minLength={field === 'currentPassword' ? 1 : 15} maxLength={72} value={form[field]} onChange={event => setForm({ ...form, [field]: event.target.value })} className="p-3 border border-slate-300 rounded-xl" />
+      {label}<input type="password" autoComplete={field === 'currentPassword' ? 'current-password' : 'new-password'} required minLength={field === 'currentPassword' ? 1 : 10} maxLength={72} value={form[field]} onChange={event => setForm({ ...form, [field]: event.target.value })} className="p-3 border border-slate-300 rounded-xl" />
     </label>)}
+    <p className="text-xs text-navy-muted">New password: at least 10 characters. Avoid common passwords and your email; passphrases are welcome.</p>
     {message && <p role="status" className="text-sm text-navy">{message}</p>}
     <button type="submit" disabled={saving} className="px-5 py-2.5 bg-primary text-white font-semibold rounded-lg disabled:opacity-50">{saving ? 'Updating...' : 'Update Password'}</button>
   </form>
