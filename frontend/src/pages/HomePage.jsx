@@ -192,7 +192,7 @@ export default function HomePage() {
 
       {/* Specialties Section */}
       <section className="py-16 md:py-24" id="specialties">
-        <div className="max-w-[1280px] mx-auto px-4 md:px-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -212,10 +212,10 @@ export default function HomePage() {
             {specialityData.map((spec, idx) => (
               <motion.div variants={itemVariants} key={idx}>
                 <Link to={`/doctors?specialty=${encodeURIComponent(spec.speciality)}`} className="flex flex-col items-center gap-3 group cursor-pointer">
-                  <div className="w-[80px] h-[80px] md:w-[100px] md:h-[100px] rounded-full bg-white shadow-3d flex items-center justify-center group-hover:-translate-y-2 group-hover:shadow-3d-hover transition-all duration-300 border border-transparent group-hover:border-primary">
+                  <div className="w-20 h-20 md:w-25 md:h-25 rounded-full bg-white shadow-3d flex items-center justify-center group-hover:-translate-y-2 group-hover:shadow-3d-hover transition-all duration-300 border border-transparent group-hover:border-primary">
                     <img src={spec.image} alt={spec.speciality} className="w-12 md:w-16 h-12 md:h-16 transition-transform duration-300 group-hover:scale-110" />
                   </div>
-                  <span className="text-sm font-medium text-navy text-center w-full max-w-[100px]">{spec.speciality}</span>
+                  <span className="text-sm font-medium text-navy text-center w-full max-w-25">{spec.speciality}</span>
                 </Link>
               </motion.div>
             ))}
@@ -225,7 +225,7 @@ export default function HomePage() {
 
       {/* Top Doctors Section */}
       <section className="py-16 md:py-24 bg-surface" id="top-doctors">
-        <div className="max-w-[1280px] mx-auto px-4 md:px-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -248,7 +248,7 @@ export default function HomePage() {
 
       {/* How It Works Section */}
       <section className="py-16 md:py-24" id="how-it-works">
-        <div className="max-w-[1280px] mx-auto px-4 md:px-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -260,16 +260,16 @@ export default function HomePage() {
           </motion.div>
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative">
             {/* Horizontal Line for Desktop */}
-            <div className="hidden md:block absolute top-[40px] left-[10%] right-[10%] h-[2px] bg-outline-variant/30 -z-10"></div>
+            <div className="hidden md:block absolute top-10 left-[10%] right-[10%] h-0.5 bg-outline-variant/30 -z-10"></div>
 
             <motion.div 
               initial={{ opacity: 0, scale: 0.8 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="flex flex-col items-center text-center max-w-[300px] relative"
+              className="flex flex-col items-center text-center max-w-75 relative"
             >
-              <div className="w-[80px] h-[80px] rounded-full bg-primary text-white flex items-center justify-center text-3xl font-bold mb-6 border-[8px] border-white shadow-3d z-10 hover:shadow-3d-hover transition-shadow">1</div>
+              <div className="w-20 h-20 rounded-full bg-primary text-white flex items-center justify-center text-3xl font-bold mb-6 border-[8px] border-white shadow-3d z-10 hover:shadow-3d-hover transition-shadow">1</div>
               <h3 className="text-xl font-semibold text-navy mb-3">Find Your Specialist</h3>
               <p className="text-base text-navy-muted leading-relaxed">Search by specialty, location, or insurance provider to find the right doctor for your needs.</p>
             </motion.div>
@@ -289,9 +289,9 @@ export default function HomePage() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ delay: 0.3 }}
-              className="flex flex-col items-center text-center max-w-[300px] relative"
+              className="flex flex-col items-center text-center max-w-75 relative"
             >
-              <div className="w-[80px] h-[80px] rounded-full bg-primary text-white flex items-center justify-center text-3xl font-bold mb-6 border-[8px] border-white shadow-3d z-10 hover:shadow-3d-hover transition-shadow">2</div>
+              <div className="w-20 h-20 rounded-full bg-primary text-white flex items-center justify-center text-3xl font-bold mb-6 border-[8px] border-white shadow-3d z-10 hover:shadow-3d-hover transition-shadow">2</div>
               <h3 className="text-xl font-semibold text-navy mb-3">Pick a Suitable Slot</h3>
               <p className="text-base text-navy-muted leading-relaxed">View real-time availability and select a date and time that fits perfectly into your schedule.</p>
             </motion.div>
@@ -311,9 +311,9 @@ export default function HomePage() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ delay: 0.5 }}
-              className="flex flex-col items-center text-center max-w-[300px] relative"
+              className="flex flex-col items-center text-center max-w-75 relative"
             >
-              <div className="w-[80px] h-[80px] rounded-full bg-primary text-white flex items-center justify-center text-3xl font-bold mb-6 border-[8px] border-white shadow-3d z-10 hover:shadow-3d-hover transition-shadow">3</div>
+              <div className="w-20 h-20 rounded-full bg-primary text-white flex items-center justify-center text-3xl font-bold mb-6 border-[8px] border-white shadow-3d z-10 hover:shadow-3d-hover transition-shadow">3</div>
               <h3 className="text-xl font-semibold text-navy mb-3">Get Confirmed</h3>
               <p className="text-base text-navy-muted leading-relaxed">Complete your booking and receive instant confirmation along with a digital appointment pass.</p>
             </motion.div>
