@@ -2,8 +2,8 @@
 
 Healthcare appointment platform with a React/Vite frontend and Express/MongoDB API.
 
-See [DEVOPS.md](DEVOPS.md) for setup, CI, container releases, deployment, rollback,
-health checks, logs, and database backup/restore.
+See [DATABASE_SECURITY.md](DATABASE_SECURITY.md) for database checks and Atlas
+security settings, and [SHOWCASE.md](SHOWCASE.md) for isolated demonstration accounts.
 
 ## Quick start with Docker
 
@@ -15,9 +15,10 @@ health checks, logs, and database backup/restore.
 
 The browser calls `/api`; only the backend connects to MongoDB. Docker Compose
 creates a restricted MongoDB application account on a new database volume.
-For an existing volume, follow the migration steps in [DEVOPS.md](DEVOPS.md).
-To deploy the container stack with MongoDB Atlas instead, use
-`docker-compose.atlas.yml` and `.env.atlas.example` as described there.
+Existing volumes retain their existing database users; verify their permissions
+before deployment. To use MongoDB Atlas, configure `.env.atlas` from
+`.env.atlas.example`, then run `docker compose --env-file .env.atlas -f
+docker-compose.atlas.yml up --build --detach --wait`.
 
 ## Native development
 
@@ -42,8 +43,10 @@ Vite proxies `/api` to port 5000. Open http://localhost:5173.
 
 ## QA and security
 
-See [QA_SECURITY_REPORT.md](QA_SECURITY_REPORT.md) for findings, verification
-results, outstanding checks, and reproducible test commands.
+Run `npm test` in each component and `npm run lint` / `npm run build` in the
+frontend. Run `npm run audit:db` in the backend for read-only database checks.
+Atlas dashboard settings still need the manual checks in
+[DATABASE_SECURITY.md](DATABASE_SECURITY.md).
 
 New passwords require at least 10 characters and no more than 72 UTF-8 bytes.
 Common passwords and passwords matching the account name or email are rejected.

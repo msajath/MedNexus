@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
+const { assertLocalSeedUris } = require('./utils/databaseSecurity');
 
 // Models
 const User = require('./models/User');
@@ -429,8 +430,6 @@ const seedDB = async () => {
   }
 };
 
-if (process.env.NODE_ENV === 'production') {
-  throw new Error('Demo seeding is disabled in production');
-}
+assertLocalSeedUris([process.env.MONGO_URI, process.env.MONGO_STANDARD_URI], process.env.NODE_ENV);
 
 seedDB();

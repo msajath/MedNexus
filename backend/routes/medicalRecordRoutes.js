@@ -75,7 +75,7 @@ router.delete('/:id/attachments/:index', protect, authorize('patient'), validate
     const record = await MedicalRecord.findById(req.params.id);
     if (!record) return res.status(404).json({ success: false, message: 'Record not found' });
     if (record.patient.toString() !== req.user._id.toString()) return res.status(403).json({ success: false, message: 'Not authorized' });
-    if (record.addedBy !== 'patient') return res.status(403).json({ success: false, message: 'Clinical records cannot be modified' });
+    if (record.addedBy !== 'patient' || record.appointment) return res.status(403).json({ success: false, message: 'Clinical records cannot be modified' });
     const index = parseInt(req.params.index, 10);
     if (Number.isNaN(index) || index < 0 || index >= (record.attachments || []).length) {
       return res.status(400).json({ success: false, message: 'Invalid attachment index' });
@@ -105,8 +105,8 @@ router.delete('/:id', protect, authorize('patient'), validateObjectId('id'), asy
       return res.status(403).json({ success: false, message: 'Not authorized to delete this record' });
     }
 
-    if (record.addedBy !== 'patient' || (record.doctor && !record.doctor._id && record.doctor !== record.doctor) || record.appointment) {
-      // Allow patient to delete their self-uploaded records even if assigned to a specific doctor
+    if (record.addedBy !== 'patient' || record.appointment) {
+      return res.status(403).json({ success: false, message: 'Clinical records cannot be deleted' });
     }
 
     record.deletedAt = new Date();

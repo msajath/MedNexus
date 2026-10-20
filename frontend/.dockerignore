@@ -11,3 +11,5 @@ e2e-ui
 test-results
 playwright-report
 playwright-report-ui
+*.local
+**/*.local

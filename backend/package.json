@@ -8,6 +8,8 @@
     "dev": "node --watch server.js",
     "seed": "node seeder.js",
     "bootstrap-admin": "node scripts/bootstrapAdmin.js",
+    "audit:db": "node scripts/auditDatabaseSecurity.js",
+    "provision-showcase": "node scripts/provisionShowcase.js",
     "test": "jest --runInBand",
     "test:qa": "node scripts/testWithMongo.js",
     "test:coverage": "jest --runInBand --coverage"

@@ -97,3 +97,43 @@ test('requires an appointment belonging to the doctor and patient before adding 
   }));
   expect(MedicalRecord.create).not.toHaveBeenCalled();
 });
+
+test.each([
+  { addedBy: 'doctor' },
+  { addedBy: 'patient', appointment: appointmentId },
+])('patients cannot delete clinical records or their attachments (%j)', async (clinicalFields) => {
+  const record = {
+    patient: '507f1f77bcf86cd799439011',
+    deletedAt: null,
+    attachments: [{ name: 'Clinical report' }],
+    save: jest.fn(),
+    ...clinicalFields,
+  };
+  MedicalRecord.findById.mockResolvedValue(record);
+
+  const res = await request(app).delete(`/api/records/${appointmentId}`).set('x-role', 'patient');
+
+  expect(res.status).toBe(403);
+  const attachmentRes = await request(app).delete(`/api/records/${appointmentId}/attachments/0`).set('x-role', 'patient');
+  expect(attachmentRes.status).toBe(403);
+  expect(record.attachments).toHaveLength(1);
+  expect(record.deletedAt).toBeNull();
+  expect(record.save).not.toHaveBeenCalled();
+});
+
+test('patients can soft-delete their own uploaded report assigned to a doctor', async () => {
+  const record = {
+    patient: '507f1f77bcf86cd799439011',
+    doctor: doctorId,
+    addedBy: 'patient',
+    deletedAt: null,
+    save: jest.fn().mockResolvedValue(),
+  };
+  MedicalRecord.findById.mockResolvedValue(record);
+
+  const res = await request(app).delete(`/api/records/${appointmentId}`).set('x-role', 'patient');
+
+  expect(res.status).toBe(200);
+  expect(record.deletedAt).toBeInstanceOf(Date);
+  expect(record.save).toHaveBeenCalledTimes(1);
+});

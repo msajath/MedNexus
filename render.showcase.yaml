@@ -1,0 +1,28 @@
+# Separate showcase service only. Never use the production database here.
+services:
+  - type: web
+    name: mednexus-showcase-api
+    runtime: docker
+    plan: free
+    branch: main
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    autoDeployTrigger: checksPass
+    healthCheckPath: /api/ready
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '5000'
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRE
+        value: '1h'
+      - key: MONGO_URI
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: CLINIC_TIME_ZONE
+        value: Asia/Colombo
+      - key: TRUST_PROXY
+        value: '1'
