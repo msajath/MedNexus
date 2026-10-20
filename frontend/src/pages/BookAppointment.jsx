@@ -300,7 +300,7 @@ export default function BookAppointment() {
                   {bookingError && <p role="alert" className="mt-3 text-sm text-red-600">{bookingError}</p>}
                   <button 
                     className="w-full mt-4 py-3.5 bg-primary text-white text-base font-semibold rounded-xl hover:bg-primary-dark transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed" 
-                    disabled={doctor.available === false || selectedDate === null || !selectedSlot || isBooking}
+                    disabled={doctor.available === false || selectedDate === null || !selectedSlot || isBooking || booked}
                     onClick={handleBook} 
                     id="confirm-booking"
                   >

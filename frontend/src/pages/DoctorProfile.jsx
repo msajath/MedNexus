@@ -288,7 +288,7 @@ export default function DoctorProfile() {
                 <button 
                   className="px-12 py-3.5 bg-[#5a66ff] text-white text-base font-medium rounded-full hover:bg-indigo-600 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed" 
                   onClick={handleBook}
-                  disabled={doctor.available === false || !selectedSlot || isBooking}
+                  disabled={doctor.available === false || !selectedSlot || isBooking || booked}
                 >
                   {isBooking ? 'Booking...' : 'Book an appointment'}
                 </button>

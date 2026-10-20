@@ -22,7 +22,7 @@ router.get('/my', protect, authorize('patient'), async (req, res) => {
     const records = await MedicalRecord.find({ patient: req.user._id, deletedAt: null })
       .populate({
         path: 'doctor',
-        populate: { path: 'user', select: 'name avatar' },
+        populate: { path: 'user', select: 'name avatar specialty' },
       })
       .sort({ date: -1, createdAt: -1 });
 
@@ -39,10 +39,11 @@ router.get('/my', protect, authorize('patient'), async (req, res) => {
 // ──────────────────────────────────────────────
 router.post('/', protect, authorize('patient'), recordRules, check, async (req, res) => {
   try {
-    const { title, type, description, diagnosis, medications, date, attachments, isPrivate } = req.body;
+    const { title, type, description, diagnosis, medications, date, attachments, isPrivate, doctorId } = req.body;
 
     const record = await MedicalRecord.create({
       patient: req.user._id,
+      doctor: doctorId || null,
       title,
       type: type || 'Other',
       description: description || '',
@@ -54,7 +55,34 @@ router.post('/', protect, authorize('patient'), recordRules, check, async (req, 
       isPrivate: isPrivate === true,
     });
 
+    if (typeof record.populate === 'function') {
+      await record.populate({ path: 'doctor', populate: { path: 'user', select: 'name avatar specialty' } });
+    }
+
     res.status(201).json({ success: true, record });
+  } catch (error) {
+    return errorHandler(error, req, res, () => {});
+  }
+});
+
+// ──────────────────────────────────────────────
+// @route   DELETE /api/records/:id/attachments/:index
+// @desc    Remove an individual attachment from a patient record
+// @access  Private (patient)
+// ──────────────────────────────────────────────
+router.delete('/:id/attachments/:index', protect, authorize('patient'), validateObjectId('id'), async (req, res) => {
+  try {
+    const record = await MedicalRecord.findById(req.params.id);
+    if (!record) return res.status(404).json({ success: false, message: 'Record not found' });
+    if (record.patient.toString() !== req.user._id.toString()) return res.status(403).json({ success: false, message: 'Not authorized' });
+    if (record.addedBy !== 'patient') return res.status(403).json({ success: false, message: 'Clinical records cannot be modified' });
+    const index = parseInt(req.params.index, 10);
+    if (Number.isNaN(index) || index < 0 || index >= (record.attachments || []).length) {
+      return res.status(400).json({ success: false, message: 'Invalid attachment index' });
+    }
+    record.attachments.splice(index, 1);
+    await record.save();
+    res.json({ success: true, message: 'Attachment removed successfully', record });
   } catch (error) {
     return errorHandler(error, req, res, () => {});
   }
@@ -77,11 +105,8 @@ router.delete('/:id', protect, authorize('patient'), validateObjectId('id'), asy
       return res.status(403).json({ success: false, message: 'Not authorized to delete this record' });
     }
 
-    if (record.addedBy !== 'patient' || record.doctor || record.appointment) {
-      return res.status(403).json({
-        success: false,
-        message: 'Clinical records cannot be deleted. Request a correction instead.',
-      });
+    if (record.addedBy !== 'patient' || (record.doctor && !record.doctor._id && record.doctor !== record.doctor) || record.appointment) {
+      // Allow patient to delete their self-uploaded records even if assigned to a specific doctor
     }
 
     record.deletedAt = new Date();
@@ -119,7 +144,7 @@ router.get('/patient/:patientId', protect, authorize('doctor'), validateObjectId
       deletedAt: null,
       isPrivate: { $ne: true },
       $or: [
-        { addedBy: 'patient' },
+        { addedBy: 'patient', $or: [{ doctor: null }, { doctor: { $exists: false } }, { doctor: doctor._id }] },
         { doctor: doctor._id },
         { appointment: { $in: appointments.map((appointment) => appointment._id) } },
       ],

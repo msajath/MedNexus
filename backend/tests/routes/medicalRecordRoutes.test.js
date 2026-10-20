@@ -77,7 +77,7 @@ test('filters private records when treatment relationship exists', async () => {
     deletedAt: null,
     isPrivate: { $ne: true },
     $or: [
-      { addedBy: 'patient' },
+      { addedBy: 'patient', $or: [{ doctor: null }, { doctor: { $exists: false } }, { doctor: doctorId }] },
       { doctor: doctorId },
       { appointment: { $in: [appointmentId] } },
     ],

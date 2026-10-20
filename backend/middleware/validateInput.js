@@ -32,6 +32,7 @@ const profileRules = [text('name', 120), text('phone', 40), text('address', 1000
       /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(value)), ...doctorRules];
 const recordRules = [text('title', 200, false), body('type').optional().isIn(['Prescription', 'Lab Report', 'Diagnosis', 'Vaccination', 'Imaging', 'Discharge Summary', 'Other']),
   text('description', 10000), text('diagnosis', 10000), body('date').optional().custom(isValidDate),
+  body('doctorId').optional({ nullable: true }).isMongoId().withMessage('Invalid doctor ID'),
   body('isPrivate').optional().isBoolean({ strict: true }), body('medications').optional().isArray({ max: 100 }),
   text('medications.*.name', 200, false), text('medications.*.dosage', 200), text('medications.*.frequency', 200), text('medications.*.duration', 200),
   body('attachments').optional().isArray({ max: 3 }).bail().custom((items) => items.every(isValidReportAttachment))

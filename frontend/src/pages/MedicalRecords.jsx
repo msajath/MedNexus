@@ -8,9 +8,30 @@ const RECORD_TYPES = ['All', 'Prescription', 'Lab Report', 'Diagnosis', 'Vaccina
 const MAX_REPORT_BYTES = 700 * 1024
 const REPORT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp']
 
+const mimeByExtension = {
+  pdf: 'application/pdf',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+}
+
+const resolveType = (file) => {
+  if (REPORT_TYPES.includes(file.type)) return file.type
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  return mimeByExtension[ext] || file.type || 'application/pdf'
+}
+
 const readReport = (file) => new Promise((resolve, reject) => {
   const reader = new FileReader()
-  reader.onload = () => resolve({ name: file.name, type: file.type, url: reader.result })
+  const resolvedType = resolveType(file)
+  reader.onload = () => {
+    let result = reader.result
+    if (typeof result === 'string' && resolvedType && !result.startsWith(`data:${resolvedType};base64,`)) {
+      result = result.replace(/^data:[^;,]*;base64,/, `data:${resolvedType};base64,`)
+    }
+    resolve({ name: file.name, type: resolvedType, url: result })
+  }
   reader.onerror = () => reject(new Error(`Could not read ${file.name}`))
   reader.readAsDataURL(file)
 })
@@ -64,6 +85,8 @@ export default function MedicalRecords() {
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState(emptyForm)
+  const [selectedDoctorId, setSelectedDoctorId] = useState('')
+  const [doctors, setDoctors] = useState([])
   const [medName, setMedName] = useState('')
   const [medDosage, setMedDosage] = useState('')
   const [medFrequency, setMedFrequency] = useState('')
@@ -76,8 +99,7 @@ export default function MedicalRecords() {
 
   const fetchRecords = async () => {
     try {
-      const res = await apiFetch(`${API_BASE}/api/records/my`, {
-        })
+      const res = await apiFetch(`${API_BASE}/api/records/my`)
       const data = await res.json()
       setRecords(data.records || [])
     } catch (err) {
@@ -87,9 +109,23 @@ export default function MedicalRecords() {
     }
   }
 
+  const fetchDoctors = async () => {
+    try {
+      const res = await apiFetch(`${API_BASE}/api/doctors`)
+      if (res.ok) {
+        const data = await res.json()
+        setDoctors(data.doctors || [])
+      }
+    } catch (err) {
+      console.error('Error fetching doctors:', err)
+    }
+  }
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchRecords()
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchDoctors()
   }, [])
 
   const handleAddMedication = () => {
@@ -112,16 +148,22 @@ export default function MedicalRecords() {
     setFormError('')
     try {
       const attachments = await Promise.all(reportFiles.map(readReport))
+      const payload = {
+        ...formData,
+        attachments,
+        doctorId: formData.isPrivate ? null : (selectedDoctorId || null),
+      }
       const res = await apiFetch(`${API_BASE}/api/records`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, attachments })
+        body: JSON.stringify(payload)
       })
       const data = await res.json()
       if (data.success) {
         setRecords(prev => [data.record, ...prev])
         setShowForm(false)
         setFormData(emptyForm)
+        setSelectedDoctorId('')
         setReportFiles([])
         setMessage({ type: 'success', text: attachments.length ? 'Report uploaded successfully!' : 'Record added successfully!' })
         setTimeout(() => setMessage({ type: '', text: '' }), 3000)
@@ -137,7 +179,7 @@ export default function MedicalRecords() {
 
   const handleReportChange = (event) => {
     const files = Array.from(event.target.files || [])
-    if (files.length > 3 || files.some(file => !REPORT_TYPES.includes(file.type) || file.size === 0 || file.size > MAX_REPORT_BYTES)) {
+    if (files.length > 3 || files.some(file => (!REPORT_TYPES.includes(file.type) && !resolveType(file)) || file.size === 0 || file.size > MAX_REPORT_BYTES)) {
       setFormError('Choose up to three PDF, PNG, JPEG, or WebP files, each under 700 KB.')
       setReportFiles([])
       event.target.value = ''
@@ -147,18 +189,51 @@ export default function MedicalRecords() {
     setReportFiles(files)
   }
 
+  const removeSelectedFile = (index) => {
+    setReportFiles(prev => {
+      const updated = prev.filter((_, i) => i !== index)
+      const input = document.getElementById('patient-report')
+      if (input && updated.length === 0) input.value = ''
+      return updated
+    })
+  }
+
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this medical record?')) return
     try {
       const res = await apiFetch(`${API_BASE}/api/records/${id}`, {
         method: 'DELETE',
-        })
+      })
       if (res.ok) {
         setRecords(prev => prev.filter(r => (r._id || r.id) !== id))
         if (selectedRecord && (selectedRecord._id || selectedRecord.id) === id) setSelectedRecord(null)
+        setMessage({ type: 'success', text: 'Medical record deleted successfully.' })
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000)
       }
     } catch (err) {
       console.error('Delete error:', err)
+    }
+  }
+
+  const handleRemoveAttachment = async (recordId, index) => {
+    if (!window.confirm('Remove this attached report from the record?')) return
+    try {
+      const res = await apiFetch(`${API_BASE}/api/records/${recordId}/attachments/${index}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json()
+      if (data.success && data.record) {
+        setRecords(prev => prev.map(r => (r._id || r.id) === recordId ? { ...r, attachments: data.record.attachments } : r))
+        if (selectedRecord && (selectedRecord._id || selectedRecord.id) === recordId) {
+          setSelectedRecord(prev => ({ ...prev, attachments: data.record.attachments }))
+        }
+        setMessage({ type: 'success', text: 'Attached report removed successfully!' })
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000)
+      } else {
+        alert(data.message || 'Could not remove report')
+      }
+    } catch (err) {
+      console.error('Attachment removal error:', err)
     }
   }
 
@@ -288,6 +363,11 @@ export default function MedicalRecords() {
                               {record.addedBy === 'doctor' && (
                                 <span className="text-xs text-primary font-medium">· By Doctor</span>
                               )}
+                              {record.isPrivate ? (
+                                <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">🔒 Private</span>
+                              ) : record.doctor ? (
+                                <span className="text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">🩺 Only Dr. {record.doctor.user?.name || record.doctor.name || 'Specific Doctor'}</span>
+                              ) : null}
                             </div>
                           </div>
                         </div>
@@ -323,6 +403,23 @@ export default function MedicalRecords() {
                   </div>
                 </div>
                 <div className="p-5 flex flex-col gap-4">
+                  {selectedRecord.isPrivate ? (
+                    <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      <span className="material-icons-outlined text-[16px]">lock</span>
+                      Private: Hidden from all doctors (only visible to you)
+                    </div>
+                  ) : selectedRecord.doctor ? (
+                    <div className="flex items-center gap-2 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                      <span className="material-icons-outlined text-[16px]">medical_services</span>
+                      Specific Doctor: Only Dr. {selectedRecord.doctor.user?.name || selectedRecord.doctor.name || 'Assigned Doctor'} can access
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                      <span className="material-icons-outlined text-[16px]">group</span>
+                      Shared with all your attending doctors
+                    </div>
+                  )}
+
                   {selectedRecord.addedBy === 'doctor' && (
                     <div className="flex items-center gap-2 text-xs text-primary bg-primary-fixed rounded-lg px-3 py-2">
                       <span className="material-icons-outlined text-[16px]">verified_user</span>
@@ -343,14 +440,28 @@ export default function MedicalRecords() {
                   )}
                   {selectedRecord.attachments?.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-outline uppercase tracking-wider mb-2">Reports</p>
+                      <p className="text-xs font-semibold text-outline uppercase tracking-wider mb-2">Reports & Attachments</p>
                       <div className="flex flex-col gap-2">
                         {selectedRecord.attachments.map((attachment, index) => (
-                          <button key={index} type="button" onClick={() => downloadReport(attachment)}
-                            disabled={!attachment.url?.startsWith('data:')}
-                            className="rounded-lg border border-outline-variant p-3 text-left text-sm text-primary hover:bg-surface disabled:text-outline">
-                            <span className="material-icons-outlined mr-2 align-middle text-[18px]">download</span>{attachment.name}
-                          </button>
+                          <div key={index} className="flex items-center justify-between gap-2 rounded-lg border border-outline-variant p-2.5 bg-surface hover:bg-white transition-colors">
+                            <button type="button" onClick={() => downloadReport(attachment)}
+                              disabled={!attachment.url?.startsWith('data:')}
+                              className="flex items-center gap-2 text-left text-sm text-primary hover:underline disabled:text-outline truncate flex-1 cursor-pointer">
+                              <span className="material-icons-outlined text-[18px]">download</span>
+                              <span className="truncate">{attachment.name}</span>
+                            </button>
+                            {selectedRecord.addedBy === 'patient' && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveAttachment(selectedRecord._id || selectedRecord.id, index)}
+                                className="px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
+                                title="Remove this report file"
+                              >
+                                <span className="material-icons-outlined text-[14px]">delete</span>
+                                Remove
+                              </button>
+                            )}
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -370,6 +481,18 @@ export default function MedicalRecords() {
                           </div>
                         ))}
                       </div>
+                    </div>
+                  )}
+                  {selectedRecord.addedBy === 'patient' && (
+                    <div className="pt-3 border-t border-outline-variant flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(selectedRecord._id || selectedRecord.id)}
+                        className="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-50 transition-colors flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span className="material-icons-outlined text-[18px]">delete</span>
+                        Delete Record
+                      </button>
                     </div>
                   )}
                 </div>
@@ -450,8 +573,55 @@ export default function MedicalRecords() {
                   <label htmlFor="patient-report" className="text-sm font-medium text-navy">Upload patient report</label>
                   <input id="patient-report" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp"
                     onChange={handleReportChange} className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-sm" />
-                  <p className="text-xs text-navy-muted">Up to three PDF or image files, 700 KB each. Keep private to hide this record from doctors.</p>
-                  {reportFiles.length > 0 && <p className="text-xs text-navy">Selected: {reportFiles.map(file => file.name).join(', ')}</p>}
+                  <p className="text-xs text-navy-muted">Up to three PDF or image files, 700 KB each. Remove any mistakenly selected file below.</p>
+                  {reportFiles.length > 0 && (
+                    <div className="flex flex-col gap-1.5 mt-2">
+                      <p className="text-xs font-semibold text-navy">Selected files to upload ({reportFiles.length}/3):</p>
+                      {reportFiles.map((file, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-2 px-3 bg-surface rounded-lg border border-outline-variant text-xs">
+                          <div className="flex items-center gap-2 truncate">
+                            <span className="material-icons-outlined text-[16px] text-primary">description</span>
+                            <span className="truncate font-medium text-navy">{file.name}</span>
+                            <span className="text-navy-muted shrink-0">({(file.size / 1024).toFixed(1)} KB)</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeSelectedFile(idx)}
+                            className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 flex items-center gap-0.5 ml-2 shrink-0 font-medium cursor-pointer"
+                            title="Remove file"
+                          >
+                            <span className="material-icons-outlined text-[14px]">close</span>
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="doctor-access" className="text-sm font-medium text-navy">Doctor Access</label>
+                  <select
+                    id="doctor-access"
+                    disabled={formData.isPrivate}
+                    className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-sm focus:border-primary outline-none bg-white disabled:bg-slate-100 disabled:text-slate-400"
+                    value={selectedDoctorId}
+                    onChange={(e) => setSelectedDoctorId(e.target.value)}
+                  >
+                    <option value="">All Attending Doctors (Default)</option>
+                    {doctors.map(doc => (
+                      <option key={doc.id || doc._id} value={doc.id || doc._id}>
+                        Only Dr. {doc.name} ({doc.specialty})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-navy-muted">
+                    {formData.isPrivate
+                      ? 'Record is marked private and cannot be seen by any doctor.'
+                      : selectedDoctorId
+                        ? 'Only this specific doctor will have access to view this report.'
+                        : 'Any doctor with a confirmed/completed appointment with you can view this record.'}
+                  </p>
                 </div>
 
                 <label className="flex items-start gap-3 text-sm text-navy">
@@ -461,7 +631,7 @@ export default function MedicalRecords() {
                     checked={formData.isPrivate}
                     onChange={(e) => setFormData({ ...formData, isPrivate: e.target.checked })}
                   />
-                  <span>Keep this record private from doctors. You can still view it in your account.</span>
+                  <span>Keep this record private from all doctors. You can still view it in your account.</span>
                 </label>
 
                 {/* Medications */}
