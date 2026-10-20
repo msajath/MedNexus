@@ -9,21 +9,33 @@ import { API_BASE, apiFetch } from '../config'
 
 export default function HomePage() {
   const [topDoctors, setTopDoctors] = useState([])
+  const [doctorsStatus, setDoctorsStatus] = useState('loading')
+  const [doctorsRequest, setDoctorsRequest] = useState(0)
 
   useEffect(() => {
+    const controller = new AbortController()
     const fetchTopDoctors = async () => {
       try {
-        const response = await apiFetch(`${API_BASE}/api/doctors`)
-        if (response.ok) {
-          const data = await response.json()
-          setTopDoctors((data.doctors || data || []).slice(0, 4))
-        }
-      } catch (err) {
-        console.error('Failed to fetch top doctors:', err)
+        const response = await apiFetch(`${API_BASE}/api/doctors`, { signal: controller.signal })
+        if (!response.ok) throw new Error('Failed to fetch doctors')
+        const data = await response.json()
+        const doctors = Array.isArray(data) ? data : data?.doctors
+        if (!Array.isArray(doctors)) throw new Error('Invalid doctors response')
+        if (controller.signal.aborted) return
+        setTopDoctors(doctors.slice(0, 4))
+        setDoctorsStatus('success')
+      } catch {
+        if (!controller.signal.aborted) setDoctorsStatus('error')
       }
     }
     fetchTopDoctors()
-  }, [])
+    return () => controller.abort()
+  }, [doctorsRequest])
+
+  const retryDoctors = () => {
+    setDoctorsStatus('loading')
+    setDoctorsRequest(request => request + 1)
+  }
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -183,8 +195,8 @@ export default function HomePage() {
               <div className="w-14 h-14 rounded-xl bg-warning-bg flex items-center justify-center mb-6">
                 <span className="material-icons-outlined text-warning text-[28px]">bolt</span>
               </div>
-              <h3 className="text-lg font-semibold text-navy mb-3">Instant Confirmation</h3>
-              <p className="text-base text-navy-muted leading-relaxed">No more waiting. Receive instant SMS and email confirmation for your chosen slot.</p>
+              <h3 className="text-lg font-semibold text-navy mb-3">Track Your Booking</h3>
+              <p className="text-base text-navy-muted leading-relaxed">View your appointment details and follow your booking status from My Appointments.</p>
             </motion.div>
           </div>
         </div>
@@ -235,11 +247,26 @@ export default function HomePage() {
             <h2 className="text-2xl md:text-3xl font-semibold text-navy mb-4">Top Doctors to Book</h2>
             <p className="text-base text-navy-muted">Simply browse through our extensive list of trusted doctors.</p>
           </motion.div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {topDoctors.map((doc, index) => (
-              <DoctorCard key={doc.id} doctor={doc} index={index} />
-            ))}
-          </div>
+          {doctorsStatus === 'loading' && (
+            <p role="status" className="text-center text-navy-muted">Loading doctors…</p>
+          )}
+          {doctorsStatus === 'error' && (
+            <div className="text-center">
+              <p role="alert" className="text-navy-muted">We couldn’t load the doctors. Please try again.</p>
+              <button type="button" onClick={retryDoctors} className="mt-4 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors font-semibold">
+                Try again
+              </button>
+            </div>
+          )}
+          {doctorsStatus === 'success' && (topDoctors.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {topDoctors.map((doc, index) => (
+                <DoctorCard key={doc.id || doc._id} doctor={doc} index={index} />
+              ))}
+            </div>
+          ) : (
+            <p role="status" className="text-center text-navy-muted">No doctors are available right now. Please check again later.</p>
+          ))}
           <div className="text-center mt-12">
             <Link to="/doctors" className="inline-flex px-8 py-3 bg-[#f0f4ff] text-primary rounded-full hover:bg-primary hover:text-white transition-colors text-sm font-semibold shadow-sm hover:shadow-md">more</Link>
           </div>
@@ -271,7 +298,7 @@ export default function HomePage() {
             >
               <div className="w-20 h-20 rounded-full bg-primary text-white flex items-center justify-center text-3xl font-bold mb-6 border-8 border-white shadow-3d z-10 hover:shadow-3d-hover transition-shadow">1</div>
               <h3 className="text-xl font-semibold text-navy mb-3">Find Your Specialist</h3>
-              <p className="text-base text-navy-muted leading-relaxed">Search by specialty, location, or insurance provider to find the right doctor for your needs.</p>
+              <p className="text-base text-navy-muted leading-relaxed">Search by name, specialty, or location to find the right doctor for your needs.</p>
             </motion.div>
 
             <motion.div 
@@ -314,8 +341,8 @@ export default function HomePage() {
               className="flex flex-col items-center text-center max-w-75 relative"
             >
               <div className="w-20 h-20 rounded-full bg-primary text-white flex items-center justify-center text-3xl font-bold mb-6 border-8 border-white shadow-3d z-10 hover:shadow-3d-hover transition-shadow">3</div>
-              <h3 className="text-xl font-semibold text-navy mb-3">Get Confirmed</h3>
-              <p className="text-base text-navy-muted leading-relaxed">Complete your booking and receive instant confirmation along with a digital appointment pass.</p>
+              <h3 className="text-xl font-semibold text-navy mb-3">Review Your Booking</h3>
+              <p className="text-base text-navy-muted leading-relaxed">Complete your booking and view its details and status in My Appointments.</p>
             </motion.div>
           </div>
         </div>
