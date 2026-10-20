@@ -8,6 +8,7 @@
     "dev": "node --watch server.js",
     "seed": "node seeder.js",
     "bootstrap-admin": "node scripts/bootstrapAdmin.js",
+    "reset-password": "node scripts/resetDevPassword.js",
     "audit:db": "node scripts/auditDatabaseSecurity.js",
     "test": "jest --runInBand",
     "test:qa": "node scripts/testWithMongo.js",
