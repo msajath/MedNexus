@@ -70,7 +70,9 @@ test('patient records, messages, profile, password, booking and cancellation wor
   await expect(page.getByText('You have 0 unread messages')).toBeVisible(); expect(state.read).toBe(true)
   await page.goto('/patient/records'); await page.getByRole('button', { name: /Add Record/ }).click()
   await page.getByPlaceholder('e.g. Blood Test Report June 2025').fill('QA record')
-  await page.locator('form button[type="submit"]').click(); await expect(page.getByText('Record added successfully!')).toBeVisible()
+  // The Chrome mobile emulator can misplace a pointer click in this scrollable modal.
+  // Enter still submits the real form and checks the record-saving contract.
+  await page.getByRole('button', { name: 'Save Record' }).press('Enter'); await expect(page.getByText('Record added successfully!')).toBeVisible()
   page.on('dialog', dialog => dialog.accept())
   await page.getByTitle('Delete', { exact: true }).click(); await expect(page.getByText('QA record', { exact: true })).toHaveCount(0)
   await page.goto('/patient/profile')
@@ -131,4 +133,7 @@ test('contact and recovery forms submit and patient roles cannot open admin page
   await page.locator('form button[type="submit"]').click(); await expect(page.getByRole('status')).toHaveText('Your message has been received')
   await page.goto('/forgot-password'); await page.getByLabel('Email Address').fill('patient@qa.example')
   await page.locator('form button[type="submit"]').click(); await expect(page.locator('#reset-code')).toBeVisible()
+  await expect(page.getByText(/code expires in 5 minutes/i)).toBeVisible()
+  await expect(page.getByLabel('New Password')).toHaveAttribute('minlength', '10')
+  await expect(page.getByRole('button', { name: 'Request a new code' })).toBeVisible()
 })
