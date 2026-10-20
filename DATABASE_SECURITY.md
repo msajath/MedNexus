@@ -33,9 +33,6 @@ security certification: Atlas dashboard checks below are still required.
 - No doctor document contains the old plaintext `tempPassword` field.
 - A patient deletion permission bypass was fixed: doctor-created or appointment-
   linked clinical records and attachments cannot be removed through patient APIs.
-- A separate `mednexus_showcase` database was provisioned with fictitious data.
-  Patient, doctor, and administrator cookie logins and role boundaries were verified.
-  This does not replace the need for a dedicated least-privilege showcase runtime user.
 
 These results describe the locally configured connection at audit time. Production
 environment values, Atlas management settings, and future changes need separate
@@ -49,7 +46,7 @@ separate protection.
    user with `readWrite` only on the database currently used by the site. Update
    Render's `MONGO_URI`, redeploy, and verify `/api/ready`, login, booking, and a
    record read. Once verified, remove the old administrative credential from the
-   application environment. Use a separate `readWrite` user for `mednexus_showcase`.
+   application environment.
 2. **Database & Network Access → IP Access List**: allow the actual outbound CIDRs
    shown by Render for each API service. Remove `0.0.0.0/0` only after the intended
    CIDRs are active and tested. Use expiring entries for a developer's IP.
@@ -80,7 +77,5 @@ npm test
 ```
 
 Real database and browser integration suites use disposable test databases and
-delete their fixtures. Never point `MONGO_TEST_URI` or `QA_MONGO_URI` at a live or
-showcase database. `npm run seed` is also destructive, requires an explicit localhost
-database, and is not the showcase tool.
-See [SHOWCASE.md](SHOWCASE.md) for isolated demo account setup.
+delete their fixtures. Never point `MONGO_TEST_URI` or `QA_MONGO_URI` at a live database.
+`npm run seed` is also destructive, requires an explicit localhost database, and is for local development only.
