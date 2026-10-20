@@ -174,7 +174,7 @@ export default function AdminUsers() {
                     <tr key={u._id} className="border-b border-surface-container-high hover:bg-surface transition-colors">
                       <td className="p-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-light to-primary text-white flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden">
+                          <div className="w-9 h-9 rounded-full bg-linear-to-br from-primary-light to-primary text-white flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden">
                             {u.avatar ? <img src={u.avatar} alt="" className="w-full h-full object-cover" /> : u.name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                           </div>
                           <div>
@@ -244,7 +244,7 @@ export default function AdminUsers() {
             <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-start justify-between p-6 border-b border-outline-variant">
                 <div className="flex items-center gap-3">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary-light to-primary text-white flex items-center justify-center font-bold overflow-hidden">
+                  <div className="w-14 h-14 rounded-full bg-linear-to-br from-primary-light to-primary text-white flex items-center justify-center font-bold overflow-hidden">
                     {selectedDoctor.avatar ? <img src={selectedDoctor.avatar} alt="" className="w-full h-full object-cover" /> : selectedDoctor.name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                   </div>
                   <div>

@@ -117,11 +117,11 @@ export default function SetAvailability() {
             <div className="flex flex-col">
               {schedule.map((item, idx) => (
                 <div key={item.day} className={`flex flex-col md:flex-row items-start md:items-center gap-4 p-4 md:px-6 border-b border-surface-container-high transition-colors ${!item.enabled ? 'bg-surface-container-low' : ''} last:border-b-0`}>
-                  <div className="flex items-center gap-4 w-[140px] shrink-0">
-                    <label className="relative inline-block w-12 h-[26px] cursor-pointer group">
+                  <div className="flex items-center gap-4 w-35 shrink-0">
+                    <label className="relative inline-block w-12 h-6.5 cursor-pointer group">
                       <input type="checkbox" className="sr-only peer" checked={item.enabled} disabled={['Saturday', 'Sunday'].includes(item.day)} onChange={() => toggleDay(idx)} />
                       <div className="absolute inset-0 bg-surface-container-high rounded-full transition-all duration-300 peer-checked:bg-primary"></div>
-                      <div className="absolute left-[3px] bottom-[3px] w-5 h-5 bg-white rounded-full transition-all duration-300 peer-checked:translate-x-[22px]"></div>
+                      <div className="absolute left-0.75 bottom-0.75 w-5 h-5 bg-white rounded-full transition-all duration-300 peer-checked:translate-x-5.5"></div>
                     </label>
                     <span className={`text-base font-medium ${!item.enabled ? 'text-outline' : 'text-navy'}`}>{item.day}</span>
                   </div>
@@ -129,12 +129,12 @@ export default function SetAvailability() {
                     <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
                       <div className="flex flex-col gap-1">
                         <label className="text-xs font-medium text-navy-muted">Start</label>
-                        <input type="time" step="1800" className="p-2 px-3 w-[130px] font-mono border-[1.5px] border-slate-300 rounded-lg text-sm text-on-surface bg-white focus:border-primary outline-none transition-colors" value={item.start} onChange={(e) => updateTime(idx, 'start', e.target.value)} />
+                        <input type="time" step="1800" className="p-2 px-3 w-32.5 font-mono border-[1.5px] border-slate-300 rounded-lg text-sm text-on-surface bg-white focus:border-primary outline-none transition-colors" value={item.start} onChange={(e) => updateTime(idx, 'start', e.target.value)} />
                       </div>
-                      <span className="text-sm text-outline mt-[18px]">to</span>
+                      <span className="text-sm text-outline mt-4.5">to</span>
                       <div className="flex flex-col gap-1">
                         <label className="text-xs font-medium text-navy-muted">End</label>
-                        <input type="time" step="1800" className="p-2 px-3 w-[130px] font-mono border-[1.5px] border-slate-300 rounded-lg text-sm text-on-surface bg-white focus:border-primary outline-none transition-colors" value={item.end} onChange={(e) => updateTime(idx, 'end', e.target.value)} />
+                        <input type="time" step="1800" className="p-2 px-3 w-32.5 font-mono border-[1.5px] border-slate-300 rounded-lg text-sm text-on-surface bg-white focus:border-primary outline-none transition-colors" value={item.end} onChange={(e) => updateTime(idx, 'end', e.target.value)} />
                       </div>
                     </div>
                   ) : (

@@ -114,7 +114,7 @@ export default function AdminDoctors() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-light to-primary text-white flex items-center justify-center font-bold text-base shrink-0 overflow-hidden">
+                      <div className="w-12 h-12 rounded-full bg-linear-to-br from-primary-light to-primary text-white flex items-center justify-center font-bold text-base shrink-0 overflow-hidden">
                         {doc.avatar ? (
                           <img src={doc.avatar} alt="" className="w-full h-full object-cover" />
                         ) : (
@@ -164,8 +164,8 @@ export default function AdminDoctors() {
               {selected ? (
                 <div className="sticky top-6 bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
                   {/* Header */}
-                  <div className="p-5 border-b border-outline-variant bg-gradient-to-br from-primary/5 to-primary/10 flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary-light to-primary text-white flex items-center justify-center font-bold text-xl overflow-hidden shrink-0">
+                  <div className="p-5 border-b border-outline-variant bg-linear-to-br from-primary/5 to-primary/10 flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-linear-to-br from-primary-light to-primary text-white flex items-center justify-center font-bold text-xl overflow-hidden shrink-0">
                       {selected.avatar ? (
                         <img src={selected.avatar} alt="" className="w-full h-full object-cover" />
                       ) : (

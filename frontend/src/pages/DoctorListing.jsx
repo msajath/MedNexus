@@ -78,7 +78,7 @@ export default function DoctorListing() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1 py-8 pb-12" id="doctor-listing">
-        <div className="max-w-[1280px] mx-auto px-6">
+        <div className="max-w-7xl mx-auto px-6">
           <div className="mb-6">
             <h1 className="text-3xl font-semibold text-navy">Find Your Doctor</h1>
             <p className="mt-2 text-base text-navy-muted">Search from our network of verified healthcare professionals.</p>

@@ -69,7 +69,7 @@ export default function MyAppointments() {
           {tabs.map((t) => (
             <button 
               key={t} 
-              className={`px-5 py-3 text-sm font-medium border-b-2 transition-all -mb-[2px] ${tab === t ? 'text-primary border-primary font-semibold' : 'text-navy-muted border-transparent hover:text-primary'}`} 
+              className={`px-5 py-3 text-sm border-b-2 transition-all -mb-0.5 ${tab === t ? 'text-primary border-primary font-semibold' : 'text-navy-muted border-transparent hover:text-primary font-medium'}`}
               onClick={() => setTab(t)}
             >
               {t.charAt(0).toUpperCase() + t.slice(1)} {t === 'all' && `(${appointments.length})`}
@@ -109,7 +109,7 @@ export default function MyAppointments() {
                     <tr key={appt._id || appt.id} className="hover:bg-accent-blue transition-colors">
                       <td className="p-4 px-5 text-sm text-navy border-b border-surface-container-high">
                         <div className="flex items-center gap-3 font-semibold">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-light to-primary text-white flex items-center justify-center font-bold text-xs shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-linear-to-br from-primary-light to-primary text-white flex items-center justify-center font-bold text-xs shrink-0">
                             {appt.doctor?.name?.split(' ')?.slice(1)?.map(n => n[0])?.join('') || 'D'}
                           </div>
                           {appt.doctor?.name || appt.doctor || 'N/A'}

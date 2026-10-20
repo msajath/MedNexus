@@ -55,7 +55,7 @@ export default function HomePage() {
       <Navbar />
       {/* Hero Section */}
       <section className="py-16 md:py-24" id="hero">
-        <div className="max-w-[1280px] mx-auto px-4 md:px-6 flex flex-col md:flex-row items-center gap-12 md:gap-16">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 flex flex-col md:flex-row items-center gap-12 md:gap-16">
           <motion.div 
             variants={containerVariants}
             initial="hidden"
@@ -70,13 +70,13 @@ export default function HomePage() {
               </span>
             </motion.div>
             <motion.h1 variants={itemVariants} className="text-[28px] md:text-5xl font-bold leading-tight md:leading-[1.2] tracking-tight text-navy mb-6">
-              Book Your Doctor<br />Appointment <span className="bg-gradient-to-br from-primary to-primary-light bg-clip-text text-transparent">Instantly</span>
+              Book Your Doctor<br />Appointment <span className="bg-linear-to-br from-primary to-primary-light bg-clip-text text-transparent">Instantly</span>
             </motion.h1>
-            <motion.p variants={itemVariants} className="text-base md:text-lg text-navy-muted leading-relaxed max-w-[540px] mb-8">
+            <motion.p variants={itemVariants} className="text-base md:text-lg text-navy-muted leading-relaxed max-w-135 mb-8">
               Connect with over 10,000+ verified specialists across the country. Get expert care from the comfort of your home or find a clinic near you.
             </motion.p>
             <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 mb-10">
-              <Link to="/doctors" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white text-base font-semibold rounded-xl hover:bg-primary-dark hover:-translate-y-[1px] hover:shadow-md transition-all">
+              <Link to="/doctors" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white text-base font-semibold rounded-xl hover:bg-primary-dark hover:-translate-y-px hover:shadow-md transition-all">
                 <span className="material-icons-outlined">search</span>
                 Find a Doctor
               </Link>
@@ -91,8 +91,8 @@ export default function HomePage() {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="flex-1 hidden md:block"
           >
-            <div className="relative w-full aspect-square max-w-[500px] mx-auto">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#e0f2fe] to-[#bae6fd] rounded-[2rem] overflow-hidden shadow-3d">
+            <div className="relative w-full aspect-square max-w-125 mx-auto">
+              <div className="absolute inset-0 bg-linear-to-br from-[#e0f2fe] to-[#bae6fd] rounded-4xl overflow-hidden shadow-3d">
                 <motion.img 
                   initial={{ y: 50 }}
                   animate={{ y: 0 }}
@@ -106,7 +106,7 @@ export default function HomePage() {
                 initial={{ opacity: 0, x: -30 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.6 }}
-                className="absolute top-[10%] -left-[5%] glass p-4 rounded-2xl shadow-3d-hover flex items-center gap-3 animate-float-1 z-10"
+                className="absolute top-[10%] left-[-5%] glass p-4 rounded-2xl shadow-3d-hover flex items-center gap-3 animate-float-1 z-10"
               >
                 <span className="material-icons-outlined text-primary text-[32px]">favorite</span>
                 <span className="font-semibold text-navy">Health Monitoring</span>
@@ -115,7 +115,7 @@ export default function HomePage() {
                 initial={{ opacity: 0, x: 30 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.8 }}
-                className="absolute top-[45%] -right-[5%] glass p-4 rounded-2xl shadow-3d-hover flex items-center gap-3 animate-float-2 z-10"
+                className="absolute top-[45%] right-[-5%] glass p-4 rounded-2xl shadow-3d-hover flex items-center gap-3 animate-float-2 z-10"
               >
                 <span className="material-icons-outlined text-success text-[32px]">verified_user</span>
                 <span className="font-semibold text-navy">Verified Doctors</span>
@@ -136,7 +136,7 @@ export default function HomePage() {
 
       {/* Features Section */}
       <section className="py-16 md:py-24 bg-surface" id="features">
-        <div className="max-w-[1280px] mx-auto px-4 md:px-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -269,7 +269,7 @@ export default function HomePage() {
               transition={{ delay: 0.1 }}
               className="flex flex-col items-center text-center max-w-75 relative"
             >
-              <div className="w-20 h-20 rounded-full bg-primary text-white flex items-center justify-center text-3xl font-bold mb-6 border-[8px] border-white shadow-3d z-10 hover:shadow-3d-hover transition-shadow">1</div>
+              <div className="w-20 h-20 rounded-full bg-primary text-white flex items-center justify-center text-3xl font-bold mb-6 border-8 border-white shadow-3d z-10 hover:shadow-3d-hover transition-shadow">1</div>
               <h3 className="text-xl font-semibold text-navy mb-3">Find Your Specialist</h3>
               <p className="text-base text-navy-muted leading-relaxed">Search by specialty, location, or insurance provider to find the right doctor for your needs.</p>
             </motion.div>
@@ -291,7 +291,7 @@ export default function HomePage() {
               transition={{ delay: 0.3 }}
               className="flex flex-col items-center text-center max-w-75 relative"
             >
-              <div className="w-20 h-20 rounded-full bg-primary text-white flex items-center justify-center text-3xl font-bold mb-6 border-[8px] border-white shadow-3d z-10 hover:shadow-3d-hover transition-shadow">2</div>
+              <div className="w-20 h-20 rounded-full bg-primary text-white flex items-center justify-center text-3xl font-bold mb-6 border-8 border-white shadow-3d z-10 hover:shadow-3d-hover transition-shadow">2</div>
               <h3 className="text-xl font-semibold text-navy mb-3">Pick a Suitable Slot</h3>
               <p className="text-base text-navy-muted leading-relaxed">View real-time availability and select a date and time that fits perfectly into your schedule.</p>
             </motion.div>
@@ -313,7 +313,7 @@ export default function HomePage() {
               transition={{ delay: 0.5 }}
               className="flex flex-col items-center text-center max-w-75 relative"
             >
-              <div className="w-20 h-20 rounded-full bg-primary text-white flex items-center justify-center text-3xl font-bold mb-6 border-[8px] border-white shadow-3d z-10 hover:shadow-3d-hover transition-shadow">3</div>
+              <div className="w-20 h-20 rounded-full bg-primary text-white flex items-center justify-center text-3xl font-bold mb-6 border-8 border-white shadow-3d z-10 hover:shadow-3d-hover transition-shadow">3</div>
               <h3 className="text-xl font-semibold text-navy mb-3">Get Confirmed</h3>
               <p className="text-base text-navy-muted leading-relaxed">Complete your booking and receive instant confirmation along with a digital appointment pass.</p>
             </motion.div>

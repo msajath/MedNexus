@@ -125,7 +125,7 @@ export default function AdminRecords() {
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-light to-primary text-white flex items-center justify-center text-xs font-bold shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-linear-to-br from-primary-light to-primary text-white flex items-center justify-center text-xs font-bold shrink-0">
                             {record.patient?.name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                           </div>
                           <div>

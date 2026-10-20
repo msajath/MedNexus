@@ -381,7 +381,7 @@ export default function MedicalRecords() {
                         </div>
                       </div>
                       {record.description && (
-                        <p className="mt-2 ml-[52px] text-sm text-navy-muted line-clamp-2">{record.description}</p>
+                        <p className="mt-2 ml-13 text-sm text-navy-muted line-clamp-2">{record.description}</p>
                       )}
                     </div>
                   )

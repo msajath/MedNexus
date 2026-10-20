@@ -81,7 +81,7 @@ export default function ManageAppointments() {
                 <div key={appt._id || appt.id} className="flex flex-col gap-4 p-6 bg-white rounded-xl shadow-sm border border-outline-variant">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-500 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                      <div className="w-12 h-12 rounded-full bg-linear-to-br from-indigo-400 to-indigo-500 text-white flex items-center justify-center font-bold text-sm shrink-0">
                         {appt.patient?.name?.split(' ')?.map(n => n[0])?.join('') || 'P'}
                       </div>
                       <div>

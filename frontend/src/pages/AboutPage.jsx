@@ -7,7 +7,7 @@ export default function AboutPage() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1 py-16 md:py-24" id="about-page">
-        <div className="max-w-[1280px] mx-auto px-4 md:px-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="text-center mb-16 animate-fade-in-up">
             <h1 className="text-4xl md:text-5xl font-bold text-navy mb-4">About MEDNEXUS</h1>
             <p className="text-lg text-navy-muted">Transforming healthcare accessibility through technology.</p>
@@ -26,7 +26,7 @@ export default function AboutPage() {
               </p>
             </div>
             <div className="flex items-center justify-center">
-              <img src={assets.about_image} alt="About Us" className="w-full max-w-[400px] object-cover rounded-2xl shadow-lg" />
+              <img src={assets.about_image} alt="About Us" className="w-full max-w-100 object-cover rounded-2xl shadow-lg" />
             </div>
           </div>
 

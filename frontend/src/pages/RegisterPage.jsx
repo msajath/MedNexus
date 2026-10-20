@@ -46,10 +46,10 @@ export default function RegisterPage() {
     <div className="grid grid-cols-1 md:grid-cols-2 min-h-screen" id="register-page">
       <div className="relative flex items-center justify-center p-8 md:p-12 overflow-hidden bg-linear-to-br from-teal-light via-accent-blue to-surface border-r border-outline-variant">
         {/* Background Decorative Circles */}
-        <div className="absolute -top-[100px] -right-[100px] w-[500px] h-[500px] rounded-full bg-primary/5 pointer-events-none"></div>
-        <div className="absolute -bottom-[50px] -left-[50px] w-[300px] h-[300px] rounded-full bg-primary/5 pointer-events-none"></div>
+        <div className="absolute -top-25 -right-25 w-125 h-125 rounded-full bg-primary/5 pointer-events-none"></div>
+        <div className="absolute -bottom-12.5 -left-12.5 w-75 h-75 rounded-full bg-primary/5 pointer-events-none"></div>
         
-        <div className="relative z-10 text-navy w-full max-w-[420px]">
+        <div className="relative z-10 text-navy w-full max-w-105">
           <Link to="/" className="flex items-center gap-3 mb-4">
             <img src={assets.logo} alt="MEDNEXUS Logo" className="w-48" />
           </Link>
@@ -63,13 +63,13 @@ export default function RegisterPage() {
       </div>
 
       <div className="flex items-center justify-center p-8 md:p-12 bg-surface-container-lowest">
-        <div className="w-full max-w-[480px]">
+        <div className="w-full max-w-120">
           <h2 className="text-3xl font-semibold text-navy mb-2">Create an Account</h2>
           <p className="text-base text-navy-muted mb-6">Sign up to get started with MEDNEXUS</p>
 
           <div className="flex gap-2 mb-6 p-1 bg-surface-container rounded-lg">
             {['patient', 'doctor'].map((r) => (
-              <button key={r} type="button" className={`flex-1 flex items-center justify-center gap-1.5 p-2 rounded-md text-sm font-medium transition-all ${role === r ? 'bg-white text-primary shadow-sm font-semibold' : 'bg-transparent text-navy-muted hover:text-navy'}`} onClick={() => setRole(r)}>
+              <button key={r} type="button" className={`flex-1 flex items-center justify-center gap-1.5 p-2 rounded-md text-sm transition-all ${role === r ? 'bg-white text-primary shadow-sm font-semibold' : 'bg-transparent text-navy-muted hover:text-navy font-medium'}`} onClick={() => setRole(r)}>
                 <span className="material-icons-outlined text-[18px]">{r === 'patient' ? 'person' : 'medical_services'}</span>
                 {r.charAt(0).toUpperCase() + r.slice(1)}
               </button>

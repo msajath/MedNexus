@@ -111,7 +111,7 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 py-3 bg-gradient-to-r from-primary to-primary-dark text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-60"
+              className="w-full mt-2 py-3 bg-linear-to-r from-primary to-primary-dark text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-60"
               id="admin-login-btn"
             >
               {loading ? 'Verifying...' : 'Sign in to Admin Panel'}
