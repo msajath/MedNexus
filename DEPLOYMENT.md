@@ -21,6 +21,10 @@ requests are forwarded by `frontend/vercel.json` to the Render backend at
    `NODE_ENV=production`, a strong `JWT_SECRET`, the existing `MONGO_URI`, and
    `ALLOWED_ORIGINS=https://med-nexus-pi.vercel.app` (plus any other actual
    frontend domains, separated by commas). Do not copy secrets into Git.
+   Leave `TRUST_PROXY` unset to use the app's Render default of **one trusted hop**, or
+   explicitly set `TRUST_PROXY=1`. An existing `0` or `false` value disables that
+   default and must be corrected for this proxied service. Direct local servers
+   default to no proxy trust. Other values are rejected at startup.
 4. In Atlas, keep the application cluster running and allow the Render service's
    current outbound CIDRs. Keep the existing database name unless migrating its
    data deliberately. See [DATABASE_SECURITY.md](DATABASE_SECURITY.md) for the
@@ -29,6 +33,19 @@ requests are forwarded by `frontend/vercel.json` to the Render backend at
 The application still waits for its database connection and required safety
 indexes before listening. Startup errors must be fixed in Render/Atlas; the
 frontend cannot make an unavailable database operational.
+
+Rate limiting uses Express's trusted `X-Forwarded-For` address and the library's
+default IPv6 subnet protection. It does not take an identity from a raw
+`Forwarded` header. With the proxy configured, the supplied `Forwarded` and
+`X-Forwarded-For` validation warnings are resolved without disabling validation
+or rate limiting. These warnings are logged configuration checks; they do not,
+by themselves, prove a crash or explain an HTTP 502.
+
+The Vercel rewrite adds another proxy path. The one-hop policy intentionally
+selects the nearest untrusted address and may group visitors behind an upstream
+gateway. Verify the provider's address chain before changing this policy; do not
+increase the hop count or trust every forwarded address to recover a visitor IP.
+The direct Render URL also remains reachable, so paths can have different lengths.
 
 ## Application recovery
 
@@ -65,4 +82,7 @@ replacement for an always-on service or a healthy database. No hosting setup or
 retry policy guarantees zero outages.
 
 References: [Render Free limitations](https://render.com/docs/free),
-[Render health checks](https://render.com/docs/health-checks).
+[Render health checks](https://render.com/docs/health-checks),
+[Render environment variables](https://render.com/docs/environment-variables),
+[Express proxy trust](https://expressjs.com/en/guide/behind-proxies/),
+[Rate-limit validation errors](https://express-rate-limit.mintlify.app/reference/error-codes).

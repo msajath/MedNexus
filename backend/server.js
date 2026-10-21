@@ -6,6 +6,7 @@ const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 const { helmet, limiter, validateRequest } = require('./middleware/security');
 const { createAvailability } = require('./middleware/availability');
+const { getTrustProxySetting } = require('./config/proxy');
 
 // Load environment variables
 dotenv.config();
@@ -18,7 +19,7 @@ if (process.env.NODE_ENV === 'production' &&
 const app = express();
 app.disable('x-powered-by');
 app.set('query parser', 'simple');
-app.set('trust proxy', process.env.TRUST_PROXY === '1' ? 1 : false);
+app.set('trust proxy', getTrustProxySetting());
 app.use(helmet({ strictTransportSecurity: process.env.NODE_ENV === 'production' ? undefined : false }));
 app.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 app.use('/api', limiter(300, 60 * 1000, { skip: (req) => ['/health', '/ready'].includes(req.path) }));
