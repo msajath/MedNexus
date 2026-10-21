@@ -3,6 +3,7 @@
 Healthcare appointment platform with a React/Vite frontend and Express/MongoDB API.
 
 See [DATABASE_SECURITY.md](DATABASE_SECURITY.md) for database checks and Atlas security settings.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for production hosting, health checks, and outage recovery.
 
 ## Quick start with Docker
 

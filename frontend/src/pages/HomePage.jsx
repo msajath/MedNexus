@@ -1,41 +1,14 @@
-import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import DoctorCard from '../components/DoctorCard'
 import { assets, specialityData } from '../assets/assets'
 import { motion } from 'framer-motion'
-import { API_BASE, apiFetch } from '../config'
+import useDoctors from '../hooks/useDoctors'
 
 export default function HomePage() {
-  const [topDoctors, setTopDoctors] = useState([])
-  const [doctorsStatus, setDoctorsStatus] = useState('loading')
-  const [doctorsRequest, setDoctorsRequest] = useState(0)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    const fetchTopDoctors = async () => {
-      try {
-        const response = await apiFetch(`${API_BASE}/api/doctors`, { signal: controller.signal })
-        if (!response.ok) throw new Error('Failed to fetch doctors')
-        const data = await response.json()
-        const doctors = Array.isArray(data) ? data : data?.doctors
-        if (!Array.isArray(doctors)) throw new Error('Invalid doctors response')
-        if (controller.signal.aborted) return
-        setTopDoctors(doctors.slice(0, 4))
-        setDoctorsStatus('success')
-      } catch {
-        if (!controller.signal.aborted) setDoctorsStatus('error')
-      }
-    }
-    fetchTopDoctors()
-    return () => controller.abort()
-  }, [doctorsRequest])
-
-  const retryDoctors = () => {
-    setDoctorsStatus('loading')
-    setDoctorsRequest(request => request + 1)
-  }
+  const { doctors, loading, error, retrying, retry } = useDoctors()
+  const topDoctors = doctors.slice(0, 4)
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -247,26 +220,34 @@ export default function HomePage() {
             <h2 className="text-2xl md:text-3xl font-semibold text-navy mb-4">Top Doctors to Book</h2>
             <p className="text-base text-navy-muted">Simply browse through our extensive list of trusted doctors.</p>
           </motion.div>
-          {doctorsStatus === 'loading' && (
+          {loading && (
             <p role="status" className="text-center text-navy-muted">Loading doctors…</p>
           )}
-          {doctorsStatus === 'error' && (
+          {retrying && (
             <div className="text-center">
-              <p role="alert" className="text-navy-muted">We couldn’t load the doctors. Please try again.</p>
-              <button type="button" onClick={retryDoctors} className="mt-4 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors font-semibold">
+              <p role="status" className="text-navy-muted">Doctor information is temporarily unavailable. We’re trying to reconnect…</p>
+              <button type="button" onClick={retry} className="mt-4 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors font-semibold">
                 Try again
               </button>
             </div>
           )}
-          {doctorsStatus === 'success' && (topDoctors.length > 0 ? (
+          {error && (
+            <div className="text-center">
+              <p role="alert" className="text-navy-muted">{error}</p>
+              <button type="button" onClick={retry} className="mt-4 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors font-semibold">
+                Try again
+              </button>
+            </div>
+          )}
+          {topDoctors.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {topDoctors.map((doc, index) => (
                 <DoctorCard key={doc.id || doc._id} doctor={doc} index={index} />
               ))}
             </div>
-          ) : (
+          ) : !loading && !retrying && !error && (
             <p role="status" className="text-center text-navy-muted">No doctors are available right now. Please check again later.</p>
-          ))}
+          )}
           <div className="text-center mt-12">
             <Link to="/doctors" className="inline-flex px-8 py-3 bg-[#f0f4ff] text-primary rounded-full hover:bg-primary hover:text-white transition-colors text-sm font-semibold shadow-sm hover:shadow-md">more</Link>
           </div>

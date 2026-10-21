@@ -64,6 +64,43 @@ test('all public pages and doctor detail render on desktop and mobile', async ({
   expect(errors).toEqual([])
 })
 
+test('doctor pages recover from a temporary service failure without a manual refresh', async ({ page }) => {
+  const { errors } = await mockAPI(page)
+  for (const path of ['/', '/doctors']) {
+    let requests = 0
+    const interruptedRead = async route => {
+      requests += 1
+      if (requests === 1) return route.fulfill({ status: 503, json: { message: 'Temporary backend interruption' } })
+      return route.fallback()
+    }
+    await page.route('**/api/doctors', interruptedRead)
+    await page.goto(path)
+    const doctors = path === '/' ? page.locator('#top-doctors') : page.locator('#doctor-listing')
+    await expect(doctors.getByText('QA Doctor', { exact: true })).toBeVisible()
+    await expect(page.getByRole('alert')).toHaveCount(0)
+    expect(requests).toBe(2)
+    await page.unroute('**/api/doctors', interruptedRead)
+  }
+  expect(errors).toEqual([])
+})
+
+test('doctor listing shows one clear notice during an outage and supports manual recovery', async ({ page }) => {
+  const { errors } = await mockAPI(page)
+  let unavailable = true
+  await page.route('**/api/doctors', route => unavailable
+    ? route.fulfill({ status: 500, json: { message: 'Internal database details must stay private' } })
+    : route.fallback())
+  await page.goto('/doctors')
+  await expect(page.getByRole('alert')).toHaveCount(1)
+  await expect(page.getByRole('alert')).toContainText('Please try again shortly')
+  await expect(page.getByText(/Error loading doctors|Internal database details|The server is taking too long/)).toHaveCount(0)
+  unavailable = false
+  await page.getByRole('button', { name: 'Try again' }).click()
+  await expect(page.getByText('QA Doctor', { exact: true })).toBeVisible()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  expect(errors).toEqual([])
+})
+
 test('patient records, messages, profile, password, booking and cancellation work against API contracts', async ({ page }) => {
   const { state, errors } = await mockAPI(page, 'patient')
   await page.goto('/patient/messages'); await page.getByRole('button', { name: /QA Clinic/ }).click()

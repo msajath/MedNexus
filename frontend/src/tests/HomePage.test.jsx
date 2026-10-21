@@ -1,10 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import HomePage from '../pages/HomePage'
-import { apiFetch } from '../config'
+import { apiFetchJson as apiFetch } from '../config'
 
-vi.mock('../config', () => ({ API_BASE: '', apiFetch: vi.fn() }))
+vi.mock('../config', () => ({ API_BASE: '', apiFetchJson: vi.fn() }))
 vi.mock('../components/Navbar', () => ({ default: () => null }))
 vi.mock('../components/Footer', () => ({ default: () => null }))
 vi.mock('../components/DoctorCard', () => ({
@@ -20,13 +20,16 @@ vi.mock('framer-motion', async () => {
 })
 
 const doctors = Array.from({ length: 6 }, (_, index) => ({ id: `doctor-${index}`, name: `Dr. ${index}` }))
-const response = payload => ({ ok: true, json: async () => payload })
+const response = payload => payload
 const renderPage = () => render(<MemoryRouter><HomePage /></MemoryRouter>)
 
 beforeEach(() => {
   apiFetch.mockReset()
 })
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+})
 
 test('shows a loading status while fetching doctors', () => {
   apiFetch.mockReturnValue(new Promise(() => {}))
@@ -57,8 +60,7 @@ test('explains when no doctors are available', async () => {
 })
 
 test.each([
-  ['an unsuccessful response', () => Promise.resolve({ ok: false, status: 503 })],
-  ['a network failure', () => Promise.reject(new TypeError('Failed to fetch'))],
+  ['an unsuccessful response', () => Promise.reject(Object.assign(new Error('Service failed'), { status: 500 }))],
   ['a malformed doctor list', () => Promise.resolve(response({ doctors: 'invalid' }))],
 ])('offers retry after %s and recovers', async (_, failure) => {
   apiFetch.mockImplementationOnce(failure).mockResolvedValueOnce(response({ doctors: [doctors[0]] }))
@@ -68,6 +70,22 @@ test.each([
   expect(await screen.findByRole('article', { name: 'Dr. 0' })).toBeInTheDocument()
   expect(apiFetch).toHaveBeenCalledTimes(2)
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
+
+test.each([
+  ['a temporary gateway failure', () => Promise.reject(Object.assign(new Error('Service unavailable'), { status: 503 }))],
+  ['a network failure', () => Promise.reject(new TypeError('Failed to fetch'))],
+])('automatically recovers the homepage after %s', async (_, failure) => {
+  vi.useFakeTimers()
+  apiFetch.mockImplementationOnce(failure).mockResolvedValueOnce(response({ doctors }))
+  renderPage()
+  await act(async () => {})
+  expect(screen.getByRole('status')).toHaveTextContent(/temporarily unavailable.*reconnect/i)
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  await act(async () => { await vi.advanceTimersByTimeAsync(15000) })
+  expect(screen.getAllByRole('article')).toHaveLength(4)
+  expect(apiFetch).toHaveBeenCalledTimes(2)
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
 
 test('cancels the doctor request when leaving the homepage', () => {

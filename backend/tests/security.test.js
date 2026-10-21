@@ -1,10 +1,27 @@
 const request = require('supertest');
 const express = require('express');
+// Exercise HTTP validation independently of connectivity. Unexpected model access
+// still fails immediately, rather than buffering against a disconnected database.
+jest.mock('mongoose', () => ({
+  ...jest.requireActual('mongoose'),
+  connection: { readyState: 1 },
+}));
+const User = require('../models/User');
 const { app } = require('../server');
 const { limiter } = require('../middleware/security');
 const errorHandler = require('../middleware/errorHandler');
 
 describe('HTTP security controls', () => {
+  let databaseMethods;
+  beforeAll(() => {
+    databaseMethods = ['findOne', 'findById', 'create'].map((method) =>
+      jest.spyOn(User, method).mockImplementation(() => { throw new Error('Unexpected database query during HTTP validation'); }));
+  });
+  afterEach(() => {
+    databaseMethods.forEach((method) => expect(method).not.toHaveBeenCalled());
+  });
+  afterAll(() => databaseMethods.forEach((method) => method.mockRestore()));
+
   test('security headers protect responses and prevent private API caching', async () => {
     const res = await request(app).get('/api/health');
     expect(res.headers['x-content-type-options']).toBe('nosniff');

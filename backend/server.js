@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 const { helmet, limiter, validateRequest } = require('./middleware/security');
+const { createAvailability } = require('./middleware/availability');
 
 // Load environment variables
 dotenv.config();
@@ -52,24 +53,22 @@ app.use((req, res, next) => {
 // ──────────────────────────────────────────────
 // API Routes
 // ──────────────────────────────────────────────
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/doctors', require('./routes/doctorRoutes'));
-app.use('/api/appointments', require('./routes/appointmentRoutes'));
-app.use('/api/availability', require('./routes/availabilityRoutes'));
-app.use('/api/admin', require('./routes/adminRoutes'));
-app.use('/api/records', require('./routes/medicalRecordRoutes'));
-app.use('/api/contact', require('./routes/contactRoutes'));
-app.use('/api/messages', require('./routes/messageRoutes'));
-
-// Health check
+// Operational endpoints remain responsive when a database connection is lost.
+const { requireDatabase, readiness } = createAvailability(mongoose.connection);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'MEDNEXUS API is running', timestamp: new Date().toISOString() });
 });
+app.get('/api/ready', readiness);
 
-app.get('/api/ready', (req, res) => {
-  const ready = mongoose.connection.readyState === 1;
-  res.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'unavailable' });
-});
+// Reject disconnected requests before Mongoose can buffer database operations.
+app.use('/api/auth', requireDatabase, require('./routes/authRoutes'));
+app.use('/api/doctors', requireDatabase, require('./routes/doctorRoutes'));
+app.use('/api/appointments', requireDatabase, require('./routes/appointmentRoutes'));
+app.use('/api/availability', requireDatabase, require('./routes/availabilityRoutes'));
+app.use('/api/admin', requireDatabase, require('./routes/adminRoutes'));
+app.use('/api/records', requireDatabase, require('./routes/medicalRecordRoutes'));
+app.use('/api/contact', requireDatabase, require('./routes/contactRoutes'));
+app.use('/api/messages', requireDatabase, require('./routes/messageRoutes'));
 
 // ──────────────────────────────────────────────
 // Error Handler (must be after routes)
