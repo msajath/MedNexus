@@ -42,7 +42,7 @@ jobs:
       - run: npm ci
       - run: npm run test:coverage
       - if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-${{ matrix.component }}
           path: ${{ matrix.component }}/coverage
@@ -52,7 +52,7 @@ jobs:
       - if: matrix.component == 'frontend'
         run: npm run build
       - if: matrix.component == 'frontend'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: frontend-dist
           path: frontend/dist
@@ -94,7 +94,7 @@ jobs:
           cat audit-production.json
           exit "$status"
       - if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: npm-audit-${{ matrix.component }}
           path: |
@@ -135,7 +135,7 @@ jobs:
           node -e "const r=require('./integration-results.json'); const suites=r.numPendingTestSuites||0; const tests=r.numPendingTests||0; if (suites || tests) { console.error('Integration tests were skipped: '+suites+' suites, '+tests+' tests'); process.exit(1); }"
         working-directory: backend
       - if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: backend-integration-results
           path: backend/integration-results.json
@@ -177,7 +177,7 @@ jobs:
       - run: npm run test:e2e
         working-directory: frontend
       - if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: browser-qa-report
           path: |
