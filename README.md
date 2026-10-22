@@ -62,6 +62,21 @@ npm audit --audit-level=high
 npm audit --omit=dev --audit-level=high
 ```
 
+Coverage is enforced by the test commands used in CI. The current unit-test
+baselines and minimum global thresholds are:
+
+| Component | Baseline (statements / branches / functions / lines) | Minimum threshold |
+| --- | --- | --- |
+| Backend | 62.21% / 53.18% / 50.50% / 64.60% | 58% / 48% / 45% / 62% |
+| Frontend | 78.91% / 67.32% / 73.63% / 81.67% | 75% / 65% / 70% / 77% |
+
+The backend baseline is unit-only when `MONGO_TEST_URI` is not configured.
+Six MongoDB-backed integration suites (65 tests) remain unverified on a
+machine without a disposable MongoDB service; CI runs them against an
+ephemeral MongoDB service and fails if any suite or test is skipped. The
+authentication middleware, MongoDB security utility, and payment model also
+have stricter module-specific thresholds in `backend/jest.config.js`.
+
 The required GitHub Actions `dependency-audit` job runs full and
 production-only audits for both components. High and critical findings fail
 the job; moderate and low findings remain visible in the audit output and
