@@ -1,20 +1,22 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Sidebar from '../components/Sidebar'
 import StatCard from '../components/StatCard'
 import Footer from '../components/Footer'
 import { getLocalDateString } from '../utils/date'
-import { API_BASE, apiFetch } from '../config'
+import { API_BASE, apiFetchJson } from '../config'
 
 export default function DoctorDashboard() {
   const { user } = useAuth()
   const [appointments, setAppointments] = useState([])
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
     todayCount: 0,
     patientCount: 0,
     pendingCount: 0,
-    totalEarnings: '$0',
+    totalEarnings: '—',
   })
   const now = new Date()
   const [currentMonth] = useState(now.toLocaleString('default', { month: 'long', year: 'numeric' }))
@@ -24,38 +26,40 @@ export default function DoctorDashboard() {
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getDay()
   const calendarOffset = (firstDayOfMonth + 6) % 7
 
-  const fetchTodayAppointments = async () => {
+  const fetchTodayAppointments = useCallback(async () => {
+    setLoading(true)
     try {
-      const response = await apiFetch(`${API_BASE}/api/appointments/my`, {
-        })
-      if (response.ok) {
-        const data = await response.json()
-        const appts = data.appointments || data || []
-        const today = getLocalDateString()
-        const todayList = appts.filter((appointment) => appointment.date === today)
-        setAppointments(todayList.slice(0, 5))
+      const [data, paymentData] = await Promise.all([
+        apiFetchJson(`${API_BASE}/api/appointments/my`),
+        apiFetchJson(`${API_BASE}/api/payments/my`),
+      ])
+      if (!Array.isArray(data?.appointments) || paymentData?.earnings?.basis !== 'recorded_payments'
+        || !Number.isFinite(paymentData.earnings.netReceived)) throw new Error('Incomplete dashboard response')
+      const appts = data.appointments
+      const today = getLocalDateString()
+      const todayList = appts.filter((appointment) => appointment.date === today)
+      setAppointments(todayList.slice(0, 5))
 
-        const patientIds = new Set(appts.map(a => a.patient?._id || a.patient).filter(Boolean))
-        const pending = appts.filter(a => a.status === 'pending').length
-        const fee = user?.doctorProfile?.fee || 100
-        const completedCount = appts.filter(a => ['confirmed', 'completed'].includes(a.status)).length
-        setStats({
-          todayCount: todayList.length,
-          patientCount: patientIds.size,
-          pendingCount: pending,
-          totalEarnings: `$${(completedCount * fee).toLocaleString()}`,
-        })
-      }
-    } catch (err) {
-      console.error('Error fetching appointments:', err)
+      const patientIds = new Set(appts.map(a => a.patient?._id || a.patient).filter(Boolean))
+      const pending = appts.filter(a => a.status === 'pending').length
+      setStats({
+        todayCount: todayList.length,
+        patientCount: patientIds.size,
+        pendingCount: pending,
+        totalEarnings: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(paymentData.earnings.netReceived),
+      })
+      setError('')
+    } catch {
+      setError('We couldn’t load your dashboard. Please try again.')
+    } finally {
+      setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTodayAppointments()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [fetchTodayAppointments])
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-surface">
@@ -64,19 +68,21 @@ export default function DoctorDashboard() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
             <h2 className="text-3xl font-semibold text-navy">Welcome back, {user?.name || 'Doctor'}!</h2>
-            <p className="text-base text-navy-muted mt-1">You have {appointments.length} appointments scheduled today.</p>
+            <p className="text-base text-navy-muted mt-1">{loading ? 'Loading today’s appointments…' : error ? 'Schedule data is unavailable.' : `You have ${stats.todayCount} appointments scheduled today.`}</p>
           </div>
           <Link to="/doctor/appointments" className="flex items-center gap-2 px-6 py-3 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary-dark transition-colors">
             <span className="material-icons-outlined text-[18px]">calendar_today</span>Manage Calendar
           </Link>
         </div>
 
+        {error && <div role="alert" className="mb-5 rounded-xl bg-error-bg p-4 text-error">{error} <button type="button" onClick={fetchTodayAppointments} className="ml-2 underline">Try again</button></div>}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard icon="calendar_today" value={stats.todayCount.toString()} label="Today's Appointments" color="var(--color-primary)" />
-          <StatCard icon="people" value={stats.patientCount.toString()} label="Total Patients" color="var(--color-success)" />
-          <StatCard icon="pending_actions" value={stats.pendingCount.toString()} label="Pending Requests" color="var(--color-warning)" />
-          <StatCard icon="payments" value={stats.totalEarnings} label="Total Earnings" color="#8b5cf6" />
+          <StatCard icon="calendar_today" value={loading || error ? '—' : stats.todayCount.toString()} label="Today's Appointments" color="var(--color-primary)" />
+          <StatCard icon="people" value={loading || error ? '—' : stats.patientCount.toString()} label="Total Patients" color="var(--color-success)" />
+          <StatCard icon="pending_actions" value={loading || error ? '—' : stats.pendingCount.toString()} label="Pending Requests" color="var(--color-warning)" />
+          <StatCard icon="payments" value={loading || error ? '—' : stats.totalEarnings} label="Net Received" color="#8b5cf6" />
         </div>
+        <p className="mb-6 text-sm text-navy-muted">Net received is based on payments recorded by an administrator, less recorded refunds.</p>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 mb-8">
           <div>
@@ -85,7 +91,7 @@ export default function DoctorDashboard() {
               <Link to="/doctor/appointments" className="px-4 py-2 text-sm font-semibold text-primary bg-transparent hover:bg-primary-fixed rounded-lg transition-colors">View Full Calendar</Link>
             </div>
             <div className="flex flex-col gap-3">
-              {appointments.length > 0 ? (
+              {loading ? <p role="status" className="p-8 text-navy-muted">Loading schedule...</p> : error ? <p className="p-8 text-navy-muted">Schedule unavailable. Use Try again to reload.</p> : appointments.length > 0 ? (
                 appointments.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-4 p-4 px-5 bg-white rounded-xl shadow-sm border border-outline-variant">
                     <div className="text-sm font-semibold text-primary min-w-20">{item.time || 'TBD'}</div>

@@ -12,15 +12,17 @@ const Appointment = require('../models/Appointment');
 const Availability = require('../models/Availability');
 const Message = require('../models/Message');
 const ContactMessage = require('../models/ContactMessage');
+const DoctorLeave = require('../models/DoctorLeave');
+const Payment = require('../models/Payment');
 const assertTestDatabase = require('../tests/helpers/testDatabase');
 
 async function main() {
   const mongo = process.env.QA_MONGO_URI ? null : await MongoMemoryServer.create({ binary: { version: '7.0.14' }, instance: { dbName: 'mednexus_browser_qa' } });
-  const uri = process.env.QA_MONGO_URI || mongo.getUri();
+  const uri = process.env.QA_MONGO_URI || mongo.getUri('mednexus_browser_qa');
   assertTestDatabase(uri);
   await mongoose.connect(uri);
   await mongoose.connection.dropDatabase();
-  await Promise.all([User.createIndexes(), Appointment.createIndexes(), Availability.createIndexes()]);
+  await Promise.all([User.createIndexes(), Appointment.createIndexes(), Availability.createIndexes(), DoctorLeave.createIndexes(), Payment.createIndexes()]);
   const password = 'QA-password-123456';
   for (const role of ['patient', 'doctor', 'admin']) {
     const user = await User.create({ name: `QA ${role}`, email: `${role}@qa.example`, password, role, isVerified: true });

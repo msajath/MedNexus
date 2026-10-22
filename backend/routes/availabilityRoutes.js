@@ -8,6 +8,7 @@ const Doctor = require('../models/Doctor');
 const User = require('../models/User');
 const { protect, authorize } = require('../middleware/auth');
 const validateObjectId = require('../middleware/validateObjectId');
+const { cleanExpiredBookingWork, blockingLeave } = require('../utils/bookingCoordination');
 
 const router = express.Router();
 
@@ -120,18 +121,21 @@ router.get('/slots/:doctorId/:date', validateObjectId('doctorId'), async (req, r
     const daySchedule = schedule.find((s) => s.day === dayOfWeek);
     const allSlots = getAllSlots();
 
-    if (dayIndex === 0 || dayIndex === 6 || !daySchedule || !daySchedule.enabled) {
+    const leave = await blockingLeave(doctorId, date);
+    if (dayIndex === 0 || dayIndex === 6 || !daySchedule || !daySchedule.enabled || leave) {
       return res.json({
         success: true,
         slots: { morning: [], afternoon: [], evening: [] },
         unavailableSlots: { morning: [], afternoon: [], evening: [] },
         bookedSlots: [],
+        ...(leave ? { onLeave: true } : {}),
       });
     }
 
     const availableSlots = getSlotsForSchedule(daySchedule);
     for (const period of Object.keys(availableSlots)) availableSlots[period] = availableSlots[period].filter((time) => isFutureSlot(date, time));
 
+    await cleanExpiredBookingWork(doctorId);
     // Query existing appointments for this doctor on this date
     // that are not cancelled (i.e., pending or confirmed)
     const existingAppointments = await Appointment.find({

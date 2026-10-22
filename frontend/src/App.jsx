@@ -20,13 +20,14 @@ const PatientProfile = lazy(() => import('./pages/PatientProfile'))
 const DoctorDashboard = lazy(() => import('./pages/DoctorDashboard'))
 const ManageAppointments = lazy(() => import('./pages/ManageAppointments'))
 const SetAvailability = lazy(() => import('./pages/SetAvailability'))
+const DoctorLeave = lazy(() => import('./pages/DoctorLeave'))
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 const Messages = lazy(() => import('./pages/Messages'))
 const DoctorProfileSettings = lazy(() => import('./pages/DoctorProfileSettings'))
 const MedicalRecords = lazy(() => import('./pages/MedicalRecords'))
 const AdminLogin = lazy(() => import('./pages/AdminLogin'))
 const AdminAppointments = lazy(() => import('./pages/AdminAppointments'))
-const AdminRecords = lazy(() => import('./pages/AdminRecords'))
+const AdminLeaves = lazy(() => import('./pages/AdminLeaves'))
 const AdminUsers = lazy(() => import('./pages/AdminUsers'))
 const AdminDoctors = lazy(() => import('./pages/AdminDoctors'))
 
@@ -148,6 +149,11 @@ export default function App() {
             <SetAvailability />
           </ProtectedRoute>
         } />
+        <Route path="/doctor/leave" element={
+          <ProtectedRoute allowedRoles={['doctor']}>
+            <DoctorLeave />
+          </ProtectedRoute>
+        } />
         <Route path="/doctor/profile" element={
           <ProtectedRoute allowedRoles={['doctor']}>
             <DoctorProfileSettings />
@@ -162,7 +168,8 @@ export default function App() {
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         <Route path="/admin/appointments" element={<AdminRoute><AdminAppointments /></AdminRoute>} />
-        <Route path="/admin/records" element={<AdminRoute><AdminRecords /></AdminRoute>} />
+        <Route path="/admin/records" element={<AdminRoute><Navigate to="/admin/dashboard" replace /></AdminRoute>} />
+        <Route path="/admin/leaves" element={<AdminRoute><AdminLeaves /></AdminRoute>} />
         <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
         <Route path="/admin/doctors" element={<AdminRoute><AdminDoctors /></AdminRoute>} />
         <Route path="/admin/messages" element={<AdminRoute><Messages /></AdminRoute>} />

@@ -44,7 +44,7 @@ describe('Operational health endpoints', () => {
     }
   );
 
-  test.each(['auth/me', 'doctors', 'appointments/my', 'availability', 'admin/stats', 'records/my', 'contact', 'messages'])(
+  test.each(['auth/me', 'doctors', 'appointments/my', 'availability', 'leaves/my', 'payments/my', 'admin/stats', 'records/my', 'contact', 'messages'])(
     'disconnected database returns a retryable response for /api/%s',
     async (path) => {
       const response = await request(app).get(`/api/${path}`);

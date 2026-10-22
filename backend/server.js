@@ -66,6 +66,8 @@ app.use('/api/auth', requireDatabase, require('./routes/authRoutes'));
 app.use('/api/doctors', requireDatabase, require('./routes/doctorRoutes'));
 app.use('/api/appointments', requireDatabase, require('./routes/appointmentRoutes'));
 app.use('/api/availability', requireDatabase, require('./routes/availabilityRoutes'));
+app.use('/api/leaves', requireDatabase, require('./routes/leaveRoutes'));
+app.use('/api/payments', requireDatabase, require('./routes/paymentRoutes'));
 app.use('/api/admin', requireDatabase, require('./routes/adminRoutes'));
 app.use('/api/records', requireDatabase, require('./routes/medicalRecordRoutes'));
 app.use('/api/contact', requireDatabase, require('./routes/contactRoutes'));

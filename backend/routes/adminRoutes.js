@@ -6,17 +6,20 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const Appointment = require('../models/Appointment');
+const Payment = require('../models/Payment');
 const Availability = require('../models/Availability');
-const MedicalRecord = require('../models/MedicalRecord');
-const Message = require('../models/Message');
 const ContactMessage = require('../models/ContactMessage');
 const { protect, authorize } = require('../middleware/auth');
 const validateObjectId = require('../middleware/validateObjectId');
+const { isValidDate } = require('../utils/slots');
+const { adminAppointmentFilter, adminAppointmentSelection, serializeAdminAppointment, summarizeAppointments } = require('../utils/adminAppointments');
+const { summarizePayments, withAppointmentPayments } = require('../utils/payments');
 
 const router = express.Router();
 
 // All admin routes require admin role
 router.use(protect, authorize('admin'));
+router.use(require('./adminPaymentRoutes'));
 
 // ──────────────────────────────────────────────
 // @route   GET /api/admin/stats
@@ -29,15 +32,15 @@ router.get('/stats', async (req, res) => {
     const totalUsers = await User.countDocuments(active);
     const totalDoctors = await User.countDocuments({ ...active, role: 'doctor' });
     const totalPatients = await User.countDocuments({ ...active, role: 'patient' });
-    const totalAppointments = await Appointment.countDocuments();
+    const appointments = await Appointment.find(adminAppointmentFilter).select('status rescheduleHistory');
+    const { appointmentSummary } = summarizeAppointments(appointments);
+    const earnings = summarizePayments(await Payment.find());
+    const totalAppointments = appointmentSummary.total;
     const monthlyAppointments = await Appointment.countDocuments({
+      ...adminAppointmentFilter,
       createdAt: { $gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) }, // from 1st of current month
     });
     const pendingApprovals = await User.countDocuments({ ...active, role: 'doctor', isVerified: false });
-
-    // Calculate revenue (sum of all confirmed appointment fees)
-    const confirmedAppointments = await Appointment.find({ status: { $in: ['confirmed', 'completed'] } }).populate('doctor');
-    const revenue = confirmedAppointments.reduce((sum, appt) => sum + (appt.doctor?.fee || 0), 0);
 
     res.json({
       success: true,
@@ -48,9 +51,44 @@ router.get('/stats', async (req, res) => {
         totalAppointments: totalAppointments.toLocaleString(),
         monthlyAppointments: monthlyAppointments.toLocaleString(),
         pendingApprovals: pendingApprovals.toString(),
-        revenue: `$${revenue.toLocaleString()}`,
+        revenue: `$${earnings.netReceived.toLocaleString()}`,
       },
+      appointmentSummary,
+      earnings,
     });
+  } catch (error) {
+    return errorHandler(error, req, res, () => {});
+  }
+});
+
+// Earnings include only manually verified payment receipts. Booking status and
+// consultation fees never imply that money has been received.
+router.get('/earnings', async (req, res) => {
+  try {
+    const [doctors, appointments, payments] = await Promise.all([
+      Doctor.find().populate('user', 'name isActive'),
+      Appointment.find(adminAppointmentFilter).select('doctor status'),
+      Payment.find(),
+    ]);
+    const rowFor = (doctorId) => ({ doctorId, userId: null, name: 'Removed doctor', specialty: '', isActive: false, completedAppointments: 0, payments: [] });
+    const rows = new Map(doctors.map((doctor) => [String(doctor._id), {
+      ...rowFor(String(doctor._id)), userId: doctor.user?._id || null,
+      name: doctor.user?.name || 'Removed doctor', specialty: doctor.specialty,
+      isActive: Boolean(doctor.user && doctor.user.isActive !== false),
+    }]));
+    for (const appointment of appointments) {
+      const key = String(appointment.doctor);
+      if (!rows.has(key)) rows.set(key, rowFor(key));
+      if (appointment.status === 'completed') rows.get(key).completedAppointments += 1;
+    }
+    for (const payment of payments) {
+      const key = String(payment.doctor);
+      if (!rows.has(key)) rows.set(key, rowFor(key));
+      rows.get(key).payments.push(payment);
+    }
+    const result = [...rows.values()].map(({ payments: receipts, ...row }) => ({ ...row, ...summarizePayments(receipts) }));
+    result.sort((a, b) => b.netReceived - a.netReceived || a.name.localeCompare(b.name));
+    res.json({ success: true, earnings: summarizePayments(payments), doctors: result });
   } catch (error) {
     return errorHandler(error, req, res, () => {});
   }
@@ -67,7 +105,7 @@ router.get('/users', [query('role').optional().isIn(['patient', 'doctor', 'admin
     let query = { isActive: { $ne: false } };
     if (role) query.role = role;
 
-    const users = await User.find(query).select('-password').sort({ createdAt: -1 });
+    const users = await User.find(query).select('_id name email phone avatar role isVerified isActive createdAt updatedAt').sort({ createdAt: -1 });
     res.json({ success: true, count: users.length, users });
   } catch (error) {
     return errorHandler(error, req, res, () => {});
@@ -213,13 +251,16 @@ router.get('/doctors/:userId', validateObjectId('userId'), async (req, res) => {
       return res.status(404).json({ success: false, message: 'Doctor not found' });
     }
 
-    const appointments = await Appointment.find({ doctor: doctor._id })
+    const appointments = await Appointment.find({ ...adminAppointmentFilter, doctor: doctor._id })
+      .select(adminAppointmentSelection)
       .populate('patient', 'name email phone avatar createdAt')
       .sort({ date: -1, time: -1 });
 
-    const earningAppointments = appointments.filter((appointment) =>
-      ['confirmed', 'completed'].includes(appointment.status)
-    );
+    const { appointmentSummary } = summarizeAppointments(appointments);
+    const earnings = summarizePayments(await Payment.find({ doctor: doctor._id }));
+    const administrativeAppointments = await withAppointmentPayments(appointments.map((appointment) => serializeAdminAppointment({
+      ...appointment.toObject(), doctor,
+    })));
     const patients = [...new Map(
       appointments
         .filter((appointment) => appointment.patient)
@@ -248,9 +289,11 @@ router.get('/doctors/:userId', validateObjectId('userId'), async (req, res) => {
         totalAppointments: appointments.length,
         completedAppointments: appointments.filter((appointment) => appointment.status === 'completed').length,
         totalPatients: patients.length,
-        earnings: earningAppointments.length * doctor.fee,
+        earnings: earnings.netReceived,
+        earningsSummary: earnings,
+        appointmentSummary,
         patients,
-        appointments,
+        appointments: administrativeAppointments,
       },
     });
   } catch (error) {
@@ -302,7 +345,8 @@ router.delete('/users/:userId', validateObjectId('userId'), async (req, res) => 
 router.get('/recent-activity', async (req, res) => {
   try {
     // Fetch recent appointments
-    const recentAppointments = await Appointment.find()
+    const recentAppointments = await Appointment.find(adminAppointmentFilter)
+      .select('_id patient doctor createdAt')
       .populate({ path: 'doctor', populate: { path: 'user', select: 'name' } })
       .populate('patient', 'name')
       .sort({ createdAt: -1 })
@@ -373,13 +417,33 @@ router.put('/contact-messages/:id/status', validateObjectId('id'), async (req, r
 // @desc    Get all appointments with full patient/doctor info
 // @access  Private (admin only)
 // ──────────────────────────────────────────────
-router.get('/appointments', async (req, res) => {
+router.get('/appointments', [
+  query('status').optional().isString().bail().isIn(['pending', 'confirmed', 'completed', 'cancelled', 'rescheduled']),
+  query('doctorId').optional().isString().bail().isMongoId(),
+  query('dateFrom').optional().isString().bail().custom(isValidDate),
+  query('dateTo').optional().isString().bail().custom(isValidDate),
+], check, async (req, res) => {
   try {
-    const appointments = await Appointment.find()
+    const filter = { ...adminAppointmentFilter };
+    if (req.query.status === 'rescheduled') filter['rescheduleHistory.0'] = { $exists: true };
+    else if (req.query.status) filter.status = req.query.status;
+    if (req.query.doctorId) filter.doctor = req.query.doctorId;
+    if (req.query.dateFrom && req.query.dateTo && req.query.dateFrom > req.query.dateTo) {
+      return res.status(400).json({ success: false, message: 'Start date must not be after end date' });
+    }
+    if (req.query.dateFrom || req.query.dateTo) filter.date = {
+      ...(req.query.dateFrom ? { $gte: req.query.dateFrom } : {}),
+      ...(req.query.dateTo ? { $lte: req.query.dateTo } : {}),
+    };
+    const appointments = await Appointment.find(filter)
+      .select(adminAppointmentSelection)
       .populate({ path: 'doctor', populate: { path: 'user', select: 'name email avatar' } })
       .populate('patient', 'name email phone avatar')
       .sort({ createdAt: -1 });
-    res.json({ success: true, count: appointments.length, appointments });
+    res.json({ success: true, count: appointments.length,
+      appointmentSummary: summarizeAppointments(appointments).appointmentSummary,
+      appointments: await withAppointmentPayments(appointments.map(serializeAdminAppointment)),
+    });
   } catch (error) {
     return errorHandler(error, req, res, () => {});
   }
@@ -396,14 +460,15 @@ router.put('/appointments/:id/status', validateObjectId('id'), async (req, res) 
     if (!['confirmed', 'cancelled', 'completed'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid status' });
     }
-    const current = await Appointment.findById(req.params.id);
+    const current = await Appointment.findOne({ _id: req.params.id, ...adminAppointmentFilter }).select('_id status');
     if (!current) return res.status(404).json({ success: false, message: 'Appointment not found' });
     if (!allowedTransitions[current.status]?.includes(status)) return res.status(409).json({ success: false, message: 'Invalid appointment status transition' });
     const appointment = await Appointment.findOneAndUpdate(
-      { _id: current._id, status: current.status }, { status }, { new: true, runValidators: true }
-    );
+      { _id: current._id, status: current.status, ...adminAppointmentFilter },
+      { $set: { status }, $unset: { rescheduleIntent: '' } }, { new: true, runValidators: true }
+    ).select(adminAppointmentSelection);
     if (!appointment) return res.status(409).json({ success: false, message: 'Appointment changed. Refresh and retry.' });
-    res.json({ success: true, appointment });
+    res.json({ success: true, appointment: (await withAppointmentPayments([serializeAdminAppointment(appointment)]))[0] });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(409).json({ success: false, message: 'This time slot is already booked' });
@@ -414,19 +479,11 @@ router.put('/appointments/:id/status', validateObjectId('id'), async (req, res) 
 
 // ──────────────────────────────────────────────
 // @route   GET /api/admin/records
-// @desc    Get all medical records (admin view)
+// @desc    Explicitly reject clinical-record access for administrators
 // @access  Private (admin only)
 // ──────────────────────────────────────────────
-router.get('/records', async (req, res) => {
-  try {
-    const records = await MedicalRecord.find()
-      .populate('patient', 'name email')
-      .populate({ path: 'doctor', populate: { path: 'user', select: 'name' } })
-      .sort({ createdAt: -1 });
-    res.json({ success: true, count: records.length, records });
-  } catch (error) {
-    return errorHandler(error, req, res, () => {});
-  }
-});
+router.get('/records', (req, res) => res.status(403).json({
+  success: false, message: 'Administrators cannot access clinical records',
+}));
 
 module.exports = router;

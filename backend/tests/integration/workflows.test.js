@@ -10,6 +10,7 @@ const Availability = require('../../models/Availability');
 const MedicalRecord = require('../../models/MedicalRecord');
 const Message = require('../../models/Message');
 const ContactMessage = require('../../models/ContactMessage');
+const Payment = require('../../models/Payment');
 const { defaultSchedule } = require('../../utils/slots');
 const assertTestDatabase = require('../helpers/testDatabase');
 jest.mock('../../utils/mailer', () => ({ sendMail: jest.fn().mockResolvedValue({}) }));
@@ -30,7 +31,7 @@ withMongo('Real database API workflows', () => {
     await Promise.all([User.createIndexes(), Appointment.createIndexes(), Availability.createIndexes()]);
   });
   beforeEach(async () => {
-    for (const model of [User, Doctor, Appointment, Availability, MedicalRecord, Message, ContactMessage]) await model.deleteMany({});
+    for (const model of [User, Doctor, Appointment, Availability, MedicalRecord, Message, ContactMessage, Payment]) await model.deleteMany({});
     const create = (role, suffix = '') => User.create({ name: `QA ${role}${suffix}`, email: `${role}${suffix}@example.test`, password, role, isVerified: true });
     [patient, otherPatient, doctorUser, admin] = await Promise.all([create('patient'), create('patient', '2'), create('doctor'), create('admin')]);
     doctor = await Doctor.create({ user: doctorUser._id, specialty: 'General Practice', fee: 125 });
@@ -188,10 +189,11 @@ withMongo('Real database API workflows', () => {
     expect(profile.body.doctor.fee).toBe(0);
     expect((await request(app).get('/api/admin/doctors-detail').set(auth(admin))).body.count).toBe(2);
     expect((await request(app).put(`/api/admin/verify-doctor/${userId}`).set(auth(admin))).status).toBe(200);
-    for (const endpoint of ['stats', 'users', 'recent-activity', 'appointments', 'records']) {
+    for (const endpoint of ['stats', 'users', 'recent-activity', 'appointments', 'earnings']) {
       expect((await request(app).get(`/api/admin/${endpoint}`).set(auth(admin))).status).toBe(200);
       expect((await request(app).get(`/api/admin/${endpoint}`).set(auth(patient))).status).toBe(403);
     }
+    expect((await request(app).get('/api/admin/records').set(auth(admin))).status).toBe(403);
     expect((await request(app).get('/api/admin/users').set(auth(admin))).text).not.toMatch(/password|resetPasswordToken|resetPasswordExpire/);
     expect((await request(app).delete(`/api/admin/users/${admin._id}`).set(auth(admin))).status).toBe(403);
   });

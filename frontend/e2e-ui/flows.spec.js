@@ -3,8 +3,18 @@ import { test, expect } from '@playwright/test'
 const doctorId = '507f1f77bcf86cd799439012'
 const patientId = '507f1f77bcf86cd799439013'
 const schedule = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => ({ day, enabled: true, start: '09:00', end: '17:00' }))
+const dateAhead = (days = 0) => {
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+const paymentSummary = payments => {
+  const receivedAmount = payments.reduce((total, payment) => total + payment.amount, 0)
+  const refundedAmount = payments.filter(payment => payment.status === 'refunded').reduce((total, payment) => total + payment.amount, 0)
+  return { receivedAmount, refundedAmount, netReceived: receivedAmount - refundedAmount, receivedPayments: payments.filter(payment => payment.status === 'received').length, currency: 'USD', basis: 'recorded_payments' }
+}
 const mockAPI = async (page, role = null) => {
-  const state = { role, records: [], read: false, status: 'new', appointment: null }
+  const state = { role, records: [], read: false, status: 'new', appointment: null, leaves: [], payments: [], adminRecordRequests: 0 }
   const doctor = { id: doctorId, _id: doctorId, userId: doctorId, name: 'QA Doctor', email: 'doctor@qa.example', specialty: 'General Practice', fee: 125, available: true, languages: ['English'], education: [], experienceHistory: [], bio: 'QA clinician', isVerified: true }
   const errors = []; page.on('pageerror', error => errors.push(error.message))
   await page.route('**/api/**', async route => {
@@ -20,7 +30,7 @@ const mockAPI = async (page, role = null) => {
     else if (path.startsWith('/api/doctors/')) data.doctor = doctor
     else if (path.startsWith('/api/availability/slots/')) { data.slots = { morning: ['09:00 AM', '09:30 AM', '10:00 AM'], afternoon: [], evening: [] }; data.unavailableSlots = { morning: [], afternoon: [], evening: [] }; data.bookedSlots = [] }
     else if (path.startsWith('/api/availability')) data.schedule = method === 'PUT' ? request.postDataJSON().schedule : schedule
-    else if (path === '/api/appointments' && method === 'POST') { state.appointment = { _id: 'appointment-1', id: 'appointment-1', ...request.postDataJSON(), status: 'pending', doctor, patient: { name: 'QA Patient', _id: patientId } }; data.appointment = state.appointment }
+    else if (path === '/api/appointments' && method === 'POST') { state.appointment = { _id: 'appointment-1', id: 'appointment-1', ...request.postDataJSON(), status: 'pending', feeAtBooking: 125, doctor: { ...doctor, user: { name: doctor.name } }, patient: { name: 'QA Patient', _id: patientId } }; data.appointment = state.appointment }
     else if (path === '/api/appointments/my') data.appointments = state.appointment ? [state.appointment] : []
     else if (path.startsWith('/api/appointments/')) {
       if (state.appointment) {
@@ -36,12 +46,24 @@ const mockAPI = async (page, role = null) => {
     else if (path === '/api/messages/message-1/read') state.read = true
     else if (path === '/api/admin/contact-messages') data.messages = [{ _id: 'contact-1', name: 'QA Visitor', email: 'visitor@qa.example', subject: 'QA contact', message: 'Support request', status: state.status }]
     else if (path === '/api/admin/contact-messages/contact-1/status') state.status = 'in-progress'
-    else if (path === '/api/admin/stats') data.stats = { totalDoctors: '1', totalPatients: '1', monthlyAppointments: '0', pendingApprovals: '2', revenue: '$0' }
+    else if (path === '/api/payments/my') data.earnings = paymentSummary(state.payments)
+    else if (path === '/api/leaves/my') { data.leaves = state.leaves; data.clinicDate = dateAhead() }
+    else if (path === '/api/leaves' && method === 'POST') { const leave = { _id: `leave-${state.leaves.length + 1}`, ...request.postDataJSON(), status: 'pending', doctor: { ...doctor, user: { name: doctor.name, email: doctor.email } }, createdAt: new Date().toISOString() }; state.leaves.unshift(leave); data.leave = leave }
+    else if (path === '/api/leaves') data.leaves = state.leaves
+    else if (/^\/api\/leaves\/[^/]+\/cancel$/.test(path)) { const leave = state.leaves.find(item => item._id === path.split('/')[3]); leave.status = 'cancelled'; data.leave = leave }
+    else if (/^\/api\/leaves\/[^/]+\/conflicts$/.test(path)) { const leave = state.leaves.find(item => item._id === path.split('/')[3]); data.conflicts = state.appointment && ['pending', 'confirmed'].includes(state.appointment.status) && state.appointment.date >= leave.startDate && state.appointment.date <= leave.endDate ? [{ id: state.appointment._id, patientName: state.appointment.patient?.name, date: state.appointment.date, time: state.appointment.time, status: state.appointment.status }] : []; data.conflictCount = data.conflicts.length; data.overlapLeaveCount = 0; data.processingCount = 0; data.doctor = { active: true, verified: true } }
+    else if (/^\/api\/leaves\/[^/]+\/review$/.test(path)) { const leave = state.leaves.find(item => item._id === path.split('/')[3]); Object.assign(leave, request.postDataJSON()); data.leave = leave }
+    else if (path === '/api/admin/stats') { data.stats = { totalDoctors: '1', totalPatients: '1', monthlyAppointments: state.appointment ? '1' : '0', pendingApprovals: '2' }; data.appointmentSummary = { total: state.appointment ? 1 : 0, pending: 0, confirmed: 0, completed: 0, cancelled: 0, rescheduled: 0 }; if (state.appointment) { data.appointmentSummary[state.appointment.status] = 1; data.appointmentSummary.rescheduled = state.appointment.rescheduleHistory?.length ? 1 : 0 } data.earnings = paymentSummary(state.payments) }
+    else if (path === '/api/admin/earnings') { data.earnings = paymentSummary(state.payments); data.doctors = [{ doctorId, userId: doctorId, name: doctor.name, specialty: doctor.specialty, isActive: true, completedAppointments: state.appointment?.status === 'completed' ? 1 : 0, ...data.earnings }] }
     else if (path === '/api/admin/recent-activity') data.activity = [{ id: '1', type: 'registration', message: 'QA patient registered', time: '2026-10-11T00:00:00Z' }]
     else if (path === '/api/admin/users') data.users = [{ _id: doctorId, name: 'QA Doctor', role: 'doctor', email: 'doctor@qa.example', isVerified: true }]
     else if (path === '/api/admin/doctors-detail') data.doctors = [doctor]
-    else if (path === '/api/admin/records') data.records = []
-    else if (path === '/api/admin/appointments') data.appointments = []
+    else if (path === '/api/admin/records') { state.adminRecordRequests += 1; status = 403; data.message = 'Clinical records are not available to administrators.' }
+    else if (path === '/api/admin/appointments') { const payment = state.payments.findLast(item => item.status === 'received') || state.payments.at(-1) || null; data.appointments = state.appointment ? [{ ...state.appointment, paymentStatus: payment?.status || 'unpaid', payment }] : [] }
+    else if (/^\/api\/admin\/appointments\/[^/]+\/status$/.test(path)) { state.appointment.status = request.postDataJSON().status; data.appointment = state.appointment }
+    else if (/^\/api\/admin\/appointments\/[^/]+\/payment$/.test(path)) { const payment = { id: `payment-${state.payments.length + 1}`, appointmentId: state.appointment._id, ...request.postDataJSON(), status: 'received', receivedAt: new Date().toISOString(), recordedAt: new Date().toISOString() }; state.payments.push(payment); data.payment = payment }
+    else if (/^\/api\/admin\/payments\/[^/]+\/refund$/.test(path)) { const payment = state.payments.find(item => item.id === path.split('/')[4]); Object.assign(payment, { status: 'refunded', refundReason: request.postDataJSON().reason, refundedAt: new Date().toISOString() }); data.payment = payment }
+    else if (path === '/api/admin/payments') data.payments = state.payments
     else if (path === '/api/admin/doctors') { data.user = { id: doctorId }; data.doctor = doctor }
     else if (path === '/api/contact') data.message = 'Your message has been received'
     else if (path === '/api/ready') data.status = 'ready'
@@ -151,12 +173,15 @@ test('doctor routes load and weekly availability saves', async ({ page }) => {
 test('administrator dashboard, report download, navigation and message triage work', async ({ page }) => {
   const { state, errors } = await mockAPI(page, 'admin')
   await page.goto('/admin/dashboard'); await expect(page.getByText('QA patient registered')).toBeVisible()
-  const download = page.waitForEvent('download'); await page.getByRole('button', { name: /Download Report/ }).click()
+  const download = page.waitForEvent('download'); await page.getByRole('button', { name: /Download Operations Report/ }).click()
   expect((await download).suggestedFilename()).toBe('mednexus-report.json')
   await page.getByRole('button', { name: 'Review Now' }).click(); await expect(page).toHaveURL(/\/admin\/doctors/)
-  for (const path of ['/admin/users', '/admin/records', '/admin/appointments', '/admin/doctors']) {
+  for (const path of ['/admin/users', '/admin/appointments', '/admin/doctors', '/admin/leaves']) {
     await page.goto(path); await expect(page.locator('h1').first()).toBeVisible()
   }
+  await page.goto('/admin/records'); await expect(page).toHaveURL(/\/admin\/dashboard/)
+  await expect(page.getByRole('link', { name: /Medical Records/i })).toHaveCount(0)
+  expect(state.adminRecordRequests).toBe(0)
   await page.goto('/admin/messages'); await page.getByRole('button', { name: /QA contact/ }).click()
   await expect(page.getByText('You have 0 unread messages')).toBeVisible(); expect(state.status).toBe('in-progress'); expect(errors).toEqual([])
 })

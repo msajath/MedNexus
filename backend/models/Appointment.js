@@ -42,6 +42,27 @@ const appointmentSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    // Snapshot the agreed consultation fee. Missing legacy values stay unknown.
+    feeAtBooking: { type: Number, min: 0, max: 1000000 },
+    rescheduleHistory: {
+      type: [{
+        _id: false,
+        fromDate: String, fromTime: String, toDate: String, toTime: String,
+        changedAt: { type: Date, required: true },
+        changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+      }],
+      default: [],
+    },
+    // Provisional records reserve the unique slot but never appear as bookings.
+    bookingHold: {
+      type: new mongoose.Schema({ token: String, expiresAt: Date }, { _id: false }),
+      select: false,
+    },
+    // Preserve the original booking while a new date is checked against leave.
+    rescheduleIntent: {
+      type: new mongoose.Schema({ token: String, date: String, time: String, expiresAt: Date }, { _id: false }),
+      select: false,
+    },
   },
   { timestamps: true }
 );

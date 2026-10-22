@@ -10,6 +10,9 @@ const validateObjectId = require('../middleware/validateObjectId');
 
 const router = express.Router();
 
+// Administrative accounts never enter the clinical-record API, including direct URLs.
+router.use(protect, authorize('patient', 'doctor'));
+
 
 
 // ──────────────────────────────────────────────
@@ -17,7 +20,7 @@ const router = express.Router();
 // @desc    Get all medical records for the logged-in patient
 // @access  Private (patient)
 // ──────────────────────────────────────────────
-router.get('/my', protect, authorize('patient'), async (req, res) => {
+router.get('/my', authorize('patient'), async (req, res) => {
   try {
     const records = await MedicalRecord.find({ patient: req.user._id, deletedAt: null })
       .populate({
@@ -37,7 +40,7 @@ router.get('/my', protect, authorize('patient'), async (req, res) => {
 // @desc    Create a new medical record (patient self-upload)
 // @access  Private (patient)
 // ──────────────────────────────────────────────
-router.post('/', protect, authorize('patient'), recordRules, check, async (req, res) => {
+router.post('/', authorize('patient'), recordRules, check, async (req, res) => {
   try {
     const { title, type, description, diagnosis, medications, date, attachments, isPrivate, doctorId } = req.body;
 
@@ -70,7 +73,7 @@ router.post('/', protect, authorize('patient'), recordRules, check, async (req, 
 // @desc    Remove an individual attachment from a patient record
 // @access  Private (patient)
 // ──────────────────────────────────────────────
-router.delete('/:id/attachments/:index', protect, authorize('patient'), validateObjectId('id'), async (req, res) => {
+router.delete('/:id/attachments/:index', authorize('patient'), validateObjectId('id'), async (req, res) => {
   try {
     const record = await MedicalRecord.findById(req.params.id);
     if (!record) return res.status(404).json({ success: false, message: 'Record not found' });
@@ -93,7 +96,7 @@ router.delete('/:id/attachments/:index', protect, authorize('patient'), validate
 // @desc    Soft-delete a patient-uploaded record (clinical records are immutable)
 // @access  Private (patient)
 // ──────────────────────────────────────────────
-router.delete('/:id', protect, authorize('patient'), validateObjectId('id'), async (req, res) => {
+router.delete('/:id', authorize('patient'), validateObjectId('id'), async (req, res) => {
   try {
     const record = await MedicalRecord.findById(req.params.id);
 
@@ -122,7 +125,7 @@ router.delete('/:id', protect, authorize('patient'), validateObjectId('id'), asy
 // @desc    Get medical records for a specific patient (doctor view)
 // @access  Private (doctor)
 // ──────────────────────────────────────────────
-router.get('/patient/:patientId', protect, authorize('doctor'), validateObjectId('patientId'), async (req, res) => {
+router.get('/patient/:patientId', authorize('doctor'), validateObjectId('patientId'), async (req, res) => {
   try {
     if (req.user.isVerified !== true) {
       return res.status(403).json({ success: false, message: 'Doctor approval is required' });
@@ -164,7 +167,6 @@ router.get('/patient/:patientId', protect, authorize('doctor'), validateObjectId
 // ──────────────────────────────────────────────
 router.post(
   '/doctor-add',
-  protect,
   authorize('doctor'),
   recordRules, check,
   validateObjectId('patientId', { source: 'body' }),

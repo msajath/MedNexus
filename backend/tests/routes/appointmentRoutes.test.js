@@ -5,12 +5,14 @@ const Appointment = require('../../models/Appointment');
 const Doctor = require('../../models/Doctor');
 const Availability = require('../../models/Availability');
 const User = require('../../models/User');
+const DoctorLeave = require('../../models/DoctorLeave');
 const { protect, authorize } = require('../../middleware/auth');
 
 jest.mock('../../models/Appointment');
 jest.mock('../../models/Doctor');
 jest.mock('../../models/Availability');
 jest.mock('../../models/User');
+jest.mock('../../models/DoctorLeave');
 jest.mock('../../middleware/auth', () => ({
   protect: jest.fn((req, res, next) => {
     req.user = { _id: '507f1f77bcf86cd799439011', role: 'patient', name: 'John Doe' };
@@ -38,6 +40,10 @@ describe('Appointment Routes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     User.findById.mockResolvedValue({ isVerified: true, isActive: true });
+    DoctorLeave.findOne.mockResolvedValue(null);
+    Appointment.updateMany.mockResolvedValue({});
+    Appointment.updateOne.mockResolvedValue({});
+    Appointment.findOne.mockResolvedValue(null);
 
     // Default mock auth middleware to pass through with a mock patient
     protect.mockImplementation((req, res, next) => {
@@ -126,6 +132,7 @@ describe('Appointment Routes', () => {
         status: 'pending',
       };
       Appointment.create.mockResolvedValue(mockCreated);
+      Appointment.findOneAndUpdate.mockResolvedValue(mockCreated);
 
       const populatedData = {
         ...mockCreated,
@@ -200,7 +207,7 @@ describe('Appointment Routes', () => {
     let appointment;
     beforeEach(() => {
       appointment = { _id: id, patient: '507f1f77bcf86cd799439011', doctor: '507f1f77bcf86cd799439012', status: 'confirmed', date: futureMonday(), time: '10:00 AM' };
-      Appointment.findById.mockResolvedValue(appointment);
+      Appointment.findOne.mockResolvedValue(appointment);
       Doctor.findById.mockResolvedValue({ _id: appointment.doctor, user: 'doctor-user', available: true });
       Availability.findOne.mockResolvedValue(null);
     });
@@ -209,17 +216,17 @@ describe('Appointment Routes', () => {
       const res = await request(app).put(`/api/appointments/${id}/reschedule`).send({ date: futureMonday(), time: '11:00am' });
       expect(res.status).toBe(200);
       expect(res.body.appointment.time).toBe('11:00 AM');
-      expect(Appointment.findOneAndUpdate).toHaveBeenCalledWith(expect.objectContaining({ patient: appointment.patient, status: 'confirmed', date: appointment.date, time: '10:00 AM' }), { date: futureMonday(), time: '11:00 AM', status: 'pending' }, { new: true, runValidators: true });
+      expect(Appointment.findOneAndUpdate).toHaveBeenNthCalledWith(2, expect.objectContaining({ patient: appointment.patient, status: 'confirmed', date: appointment.date, time: '10:00 AM', 'rescheduleIntent.token': expect.any(String), $expr: { $gt: ['$rescheduleIntent.expiresAt', '$$NOW'] } }), expect.objectContaining({ $set: { date: futureMonday(), time: '11:00 AM', status: 'pending' }, $push: { rescheduleHistory: expect.objectContaining({ fromTime: '10:00 AM', toTime: '11:00 AM', changedBy: appointment.patient }) } }), { new: true, runValidators: true });
       expect(Appointment.create).not.toHaveBeenCalled();
     });
     it.each([['different-patient', 'pending', 403], ['507f1f77bcf86cd799439011', 'completed', 409]])('rejects foreign and terminal bookings (%#)', async (patient, status, expected) => {
-      Appointment.findById.mockResolvedValue({ ...appointment, patient, status });
+      Appointment.findOne.mockResolvedValue({ ...appointment, patient, status });
       const res = await request(app).put(`/api/appointments/${id}/reschedule`).send({ date: futureMonday(), time: '11:00 AM' });
       expect(res.status).toBe(expected);
       expect(Appointment.findOneAndUpdate).not.toHaveBeenCalled();
     });
     it('rejects occupied slots and concurrent changes without creating a second booking', async () => {
-      Appointment.findOneAndUpdate.mockRejectedValueOnce({ code: 11000 }).mockResolvedValueOnce(null);
+      Appointment.findOneAndUpdate.mockResolvedValueOnce(appointment).mockRejectedValueOnce({ code: 11000 }).mockResolvedValueOnce(null);
       for (let attempt = 0; attempt < 2; attempt++) {
         const res = await request(app).put(`/api/appointments/${id}/reschedule`).send({ date: futureMonday(), time: '11:00 AM' });
         expect(res.status).toBe(409);
@@ -238,7 +245,7 @@ describe('Appointment Routes', () => {
         status: 'pending',
         save: jest.fn().mockResolvedValue(true),
       };
-      Appointment.findById.mockResolvedValue(mockAppt);
+      Appointment.findOne.mockResolvedValue(mockAppt);
 
       Appointment.findOneAndUpdate.mockResolvedValue({ ...mockAppt, status: 'cancelled' });
       const res = await request(app).put(`/api/appointments/${validApptId}/cancel`);
@@ -246,7 +253,7 @@ describe('Appointment Routes', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.appointment.status).toBe('cancelled');
-      expect(Appointment.findOneAndUpdate).toHaveBeenCalledWith({ _id: validApptId, status: 'pending' }, { status: 'cancelled' }, { new: true, runValidators: true });
+      expect(Appointment.findOneAndUpdate).toHaveBeenCalledWith({ _id: validApptId, status: 'pending', bookingHold: { $exists: false } }, { $set: { status: 'cancelled' }, $unset: { rescheduleIntent: '' } }, { new: true, runValidators: true });
     });
 
     it('should reject cancellation if user is not the owner', async () => {
@@ -256,7 +263,7 @@ describe('Appointment Routes', () => {
         status: 'pending',
         save: jest.fn(),
       };
-      Appointment.findById.mockResolvedValue(mockAppt);
+      Appointment.findOne.mockResolvedValue(mockAppt);
 
       const res = await request(app).put(`/api/appointments/${validApptId}/cancel`);
 
@@ -272,7 +279,7 @@ describe('Appointment Routes', () => {
         status: 'completed',
         save: jest.fn(),
       };
-      Appointment.findById.mockResolvedValue(mockAppt);
+      Appointment.findOne.mockResolvedValue(mockAppt);
 
       const res = await request(app).put(`/api/appointments/${validApptId}/cancel`);
 

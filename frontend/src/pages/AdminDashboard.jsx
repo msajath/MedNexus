@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import StatCard from '../components/StatCard'
 import Footer from '../components/Footer'
 import { specialties } from '../data/mockData'
 import { API_BASE, apiFetch } from '../config'
+import { appointmentStatuses, formatMoney } from '../utils/admin'
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
@@ -13,9 +14,12 @@ export default function AdminDashboard() {
     totalDoctors: 0,
     totalPatients: 0,
     monthlyAppointments: 0,
-    revenue: '$0'
   })
   const [recentActivity, setRecentActivity] = useState([])
+  const [appointmentSummary, setAppointmentSummary] = useState(null)
+  const [earnings, setEarnings] = useState(null)
+  const [doctorEarnings, setDoctorEarnings] = useState([])
+  const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
   const [showAddDoctor, setShowAddDoctor] = useState(false)
@@ -25,34 +29,26 @@ export default function AdminDashboard() {
   const [createdCredentials, setCreatedCredentials] = useState(null) // Store new doctor credentials
 
   const fetchAdminStats = async () => {
+    setLoading(true)
+    setError('')
     try {
       const started = performance.now()
-      const ready = await apiFetch(`${API_BASE}/api/ready`)
-      setHealth({ api: 'Reachable', database: ready.ok ? 'Ready' : 'Unavailable', latency: Math.round(performance.now() - started) })
-      const response = await apiFetch(`${API_BASE}/api/admin/stats`, {
-        })
-      if (response.ok) {
-        const data = await response.json()
-        setStats(data.stats || data || {
-          totalDoctors: 0,
-          totalPatients: 0,
-          monthlyAppointments: 0,
-          revenue: '$0'
-        })
-        const activityResponse = await apiFetch(`${API_BASE}/api/admin/recent-activity`)
-        if (!activityResponse.ok) throw new Error('Unable to load recent activity')
-        const activityData = await activityResponse.json()
-        setRecentActivity(activityData.activity || [])
-      }
+      const [response, earningsResponse, activityResponse, ready] = await Promise.all([
+        apiFetch(`${API_BASE}/api/admin/stats`),
+        apiFetch(`${API_BASE}/api/admin/earnings`),
+        apiFetch(`${API_BASE}/api/admin/recent-activity`),
+        apiFetch(`${API_BASE}/api/ready`).catch(() => null),
+      ])
+      setHealth({ api: 'Reachable', database: ready?.ok ? 'Ready' : 'Unavailable', latency: Math.round(performance.now() - started) })
+      if (!response.ok || !earningsResponse.ok || !activityResponse.ok) throw new Error('Unable to load dashboard data. Please try again.')
+      const [data, earningsData, activityData] = await Promise.all([response.json(), earningsResponse.json(), activityResponse.json()])
+      setStats(data.stats)
+      setAppointmentSummary(data.appointmentSummary || null)
+      setEarnings(earningsData.earnings || null)
+      setDoctorEarnings(earningsData.doctors || [])
+      setRecentActivity(activityData.activity || [])
     } catch (err) {
-      console.error('Error fetching admin stats:', err)
-      // Set default values on error
-      setStats({
-        totalDoctors: 0,
-        totalPatients: 0,
-        monthlyAppointments: 0,
-        revenue: '$0'
-      })
+      setError(err.message || 'Unable to load dashboard data. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -99,7 +95,7 @@ export default function AdminDashboard() {
   }
 
   const downloadReport = () => {
-    const blob = new Blob([JSON.stringify({ generatedAt: new Date().toISOString(), stats, recentActivity }, null, 2)], { type: 'application/json' })
+    const blob = new Blob([JSON.stringify({ generatedAt: new Date().toISOString(), stats, appointmentSummary, earnings, doctorEarnings }, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -115,10 +111,10 @@ export default function AdminDashboard() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-semibold text-navy">Admin Overview</h1>
-            <p className="mt-2 text-base text-navy-muted">Platform performance and user activity.</p>
+            <p className="mt-2 text-base text-navy-muted">Appointments, doctor earnings, and leave approvals.</p>
           </div>
           <div className="flex gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 border border-outline text-navy text-sm font-semibold rounded-lg hover:bg-surface-container-lowest transition-colors" onClick={downloadReport}><span className="material-icons-outlined text-[18px]">download</span> Download Report</button>
+            <button disabled={loading || Boolean(error)} className="flex items-center gap-2 px-4 py-2 border border-outline text-navy text-sm font-semibold rounded-lg hover:bg-surface-container-lowest transition-colors disabled:opacity-50" onClick={downloadReport}><span className="material-icons-outlined text-[18px]">download</span> Download Operations Report</button>
             <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary-dark transition-colors" onClick={() => setShowAddDoctor(true)}><span className="material-icons-outlined text-[18px]">person_add</span> Add Doctor</button>
           </div>
         </div>
@@ -215,17 +211,32 @@ export default function AdminDashboard() {
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard icon="medical_services" value={stats.totalDoctors} label="Registered Doctors" color="var(--color-primary)" trend={5} />
-          <StatCard icon="groups" value={stats.totalPatients} label="Registered Patients" color="var(--color-success)" trend={12} />
-          <StatCard icon="calendar_month" value={stats.monthlyAppointments} label="Monthly Appointments" color="var(--color-warning)" trend={8} />
-          <StatCard icon="account_balance" value={stats.revenue} label="Total Revenue" color="#8b5cf6" trend={15} />
+          <StatCard icon="medical_services" value={loading || error ? '—' : stats.totalDoctors} label="Registered Doctors" color="var(--color-primary)" />
+          <StatCard icon="groups" value={loading || error ? '—' : stats.totalPatients} label="Registered Patients" color="var(--color-success)" />
+          <StatCard icon="calendar_month" value={loading || error ? '—' : stats.monthlyAppointments} label="Monthly Appointments" color="var(--color-warning)" />
+          <StatCard icon="account_balance" value={loading || error ? '—' : formatMoney(earnings?.netReceived)} label="Net Received" color="#8b5cf6" />
         </div>
+
+        {error && <div role="alert" className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl">{error} <button onClick={fetchAdminStats} className="underline font-semibold">Try again</button></div>}
+
+        {!loading && !error && <>
+          <section className="mb-8" aria-labelledby="appointment-summary-title">
+            <div className="flex flex-wrap justify-between gap-3 mb-4"><h2 id="appointment-summary-title" className="text-xl font-semibold text-navy">Appointment Summary</h2><Link className="text-primary font-semibold" to="/admin/appointments">View all appointments</Link></div>
+            {appointmentSummary ? <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">{appointmentStatuses.map(status => <div key={status} className="p-4 bg-white rounded-xl border border-outline-variant"><p className="text-2xl font-semibold text-navy">{appointmentSummary[status] ?? 0}</p><p className="capitalize text-sm text-navy-muted">{status}</p></div>)}</div> : <p role="status">Appointment summary unavailable.</p>}
+            <p className="text-xs text-navy-muted mt-3">Rescheduled counts appointments with a recorded date or time change. These appointments are also counted under their current status.</p>
+          </section>
+          <section className="mb-8 bg-white rounded-xl border border-outline-variant overflow-hidden" aria-labelledby="doctor-earnings-title">
+            <div className="p-5"><h2 id="doctor-earnings-title" className="text-xl font-semibold text-navy">Doctor Earnings</h2><p className="text-sm text-navy-muted mt-2">Based only on manually verified receipts for money already received, less recorded refunds. Appointment status and historical consultation fees do not count as payment.</p><div className="flex flex-wrap gap-5 text-sm mt-4"><p>Received payments: <strong>{formatMoney(earnings?.receivedAmount)}</strong></p><p>Refunded: <strong>{formatMoney(earnings?.refundedAmount)}</strong></p><p>Net received: <strong>{formatMoney(earnings?.netReceived)}</strong></p></div><p className="text-xs text-navy-muted mt-2">Received payments is the gross amount recorded, including receipts subsequently refunded. Refunds are subtracted in net received.</p></div>
+            <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-surface-container-low"><tr>{['Doctor', 'Specialty', 'Received payments', 'Refunded', 'Net received', 'Unrefunded receipts'].map(label => <th key={label} className="p-4 text-left">{label}</th>)}</tr></thead><tbody>{doctorEarnings.map(doctor => <tr key={doctor.doctorId} className="border-t border-outline-variant"><td className="p-4 font-semibold">{doctor.name || 'Unavailable doctor'}{doctor.isActive === false && <span className="text-xs font-normal block text-navy-muted">Inactive</span>}</td><td className="p-4">{doctor.specialty || '—'}</td><td className="p-4">{formatMoney(doctor.receivedAmount)}</td><td className="p-4">{formatMoney(doctor.refundedAmount)}</td><td className="p-4 font-semibold">{formatMoney(doctor.netReceived)}</td><td className="p-4">{doctor.receivedPayments ?? 0}</td></tr>)}</tbody></table></div>
+            {doctorEarnings.length === 0 && <p className="p-5 text-navy-muted">No doctors found.</p>}
+          </section>
+        </>}
 
         {loading ? (
           <div className="text-center p-8 text-navy-muted">
             <p>Loading dashboard data...</p>
           </div>
-        ) : (
+        ) : error ? null : (
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
           <div>
@@ -261,6 +272,11 @@ export default function AdminDashboard() {
               <p className="text-sm text-navy-muted">Health check latency: <strong>{health.latency === null ? 'Unavailable' : health.latency + ' ms'}</strong></p>
             </div>
 
+            <div className="p-6 mt-5 bg-white rounded-xl shadow-sm border border-outline-variant">
+              <h4 className="text-lg font-semibold text-navy mb-2">Doctor Leave Requests</h4>
+              <p className="text-sm text-navy-muted">Review requests and resolve appointment conflicts before approving leave.</p>
+              <Link className="inline-block mt-3 text-primary font-semibold" to="/admin/leaves">Review leave requests</Link>
+            </div>
             <div className="p-6 mt-5 bg-white rounded-xl shadow-sm border border-outline-variant">
               <h4 className="text-lg font-semibold text-navy mb-2">Pending Doctor Approvals</h4>
               <p className="text-sm text-navy-muted">There are <strong>{stats.pendingApprovals || 0}</strong> new doctor profiles awaiting verification.</p>

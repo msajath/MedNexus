@@ -14,6 +14,7 @@ const doctorLinks = [
   { to: '/doctor/dashboard', icon: 'dashboard', label: 'Dashboard' },
   { to: '/doctor/appointments', icon: 'calendar_today', label: 'My Appointments' },
   { to: '/doctor/availability', icon: 'schedule', label: 'Set Availability' },
+  { to: '/doctor/leave', icon: 'event_busy', label: 'Leave Requests' },
   { to: '/doctor/messages', icon: 'mail', label: 'Messages' },
   { to: '/doctor/profile', icon: 'settings', label: 'Settings' },
 ]
@@ -22,7 +23,8 @@ const adminLinks = [
   { to: '/admin/dashboard', icon: 'dashboard', label: 'Dashboard' },
   { to: '/admin/users', icon: 'group', label: 'Manage Users' },
   { to: '/admin/appointments', icon: 'calendar_today', label: 'All Appointments' },
-  { to: '/admin/records', icon: 'description', label: 'Medical Records' },
+  { to: '/admin/doctors', icon: 'medical_services', label: 'Doctors & Earnings' },
+  { to: '/admin/leaves', icon: 'event_busy', label: 'Leave Approvals' },
   { to: '/admin/messages', icon: 'mail', label: 'Messages' },
 ]
 

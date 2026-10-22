@@ -4,12 +4,14 @@ const Availability = require('../../models/Availability');
 const Appointment = require('../../models/Appointment');
 const Doctor = require('../../models/Doctor');
 const User = require('../../models/User');
+const DoctorLeave = require('../../models/DoctorLeave');
 const { defaultSchedule } = require('../../utils/slots');
 
 jest.mock('../../models/Availability');
 jest.mock('../../models/Appointment');
 jest.mock('../../models/Doctor');
 jest.mock('../../models/User');
+jest.mock('../../models/DoctorLeave');
 jest.mock('../../middleware/auth', () => ({
   protect: (req, res, next) => { req.user = { _id: '507f1f77bcf86cd799439011', role: 'doctor' }; next(); },
   authorize: (...roles) => (req, res, next) => roles.includes(req.user.role) ? next() : res.sendStatus(403),
@@ -33,6 +35,8 @@ describe('doctor availability API', () => {
     User.findById.mockResolvedValue({ isVerified: true, isActive: true });
     Appointment.find.mockResolvedValue([]);
     Availability.findOne.mockResolvedValue(null);
+    DoctorLeave.findOne.mockResolvedValue(null);
+    Appointment.updateMany.mockResolvedValue({});
   });
 
   test('saves a valid seven-day schedule with one atomic upsert', async () => {
@@ -84,6 +88,16 @@ describe('doctor availability API', () => {
   test('rejects nonexistent calendar dates', async () => {
     const result = await request(app).get(`/api/availability/slots/${doctorId}/2026-02-30`);
     expect(result.status).toBe(400);
+    expect(Appointment.find).not.toHaveBeenCalled();
+  });
+
+  test.each(['approved', 'reviewing'])('blocks all public slots for %s leave without exposing the reason', async (status) => {
+    DoctorLeave.findOne.mockResolvedValue({ status, reason: 'Private reason' });
+    const result = await request(app).get(`/api/availability/slots/${doctorId}/${nextMonday()}`);
+    expect(result.status).toBe(200);
+    expect(result.body.onLeave).toBe(true);
+    expect(result.body.slots).toEqual({ morning: [], afternoon: [], evening: [] });
+    expect(JSON.stringify(result.body)).not.toContain('Private reason');
     expect(Appointment.find).not.toHaveBeenCalled();
   });
 });

@@ -3,12 +3,16 @@ const User = require('../models/User');
 const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
 const Availability = require('../models/Availability');
+const DoctorLeave = require('../models/DoctorLeave');
+const Payment = require('../models/Payment');
 
 const ensureStorageReady = async () => {
   // autoIndex is disabled for normal queries; explicitly require these safety indexes.
   await User.createIndexes();
   await Appointment.createIndexes();
   await Availability.createIndexes();
+  await DoctorLeave.createIndexes();
+  await Payment.createIndexes();
   // Remove legacy plaintext doctor credentials before accepting requests.
   await Doctor.collection.updateMany(
     { tempPassword: { $exists: true } },

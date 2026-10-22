@@ -2,21 +2,30 @@ import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
 import { API_BASE, apiFetch } from '../config'
+import { formatMoney } from '../utils/admin'
 
 export default function AdminDoctors() {
   const [doctors, setDoctors] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
+  const [doctorEarnings, setDoctorEarnings] = useState([])
+  const [earnings, setEarnings] = useState(null)
+  const [error, setError] = useState('')
+  const [updating, setUpdating] = useState(null)
 
   const fetchDoctors = async () => {
+    setLoading(true)
+    setError('')
     try {
-      const res = await apiFetch(`${API_BASE}/api/admin/doctors-detail`, {
-        })
-      const data = await res.json()
+      const [res, earningsRes] = await Promise.all([apiFetch(`${API_BASE}/api/admin/doctors-detail`), apiFetch(`${API_BASE}/api/admin/earnings`)])
+      const [data, earningsData] = await Promise.all([res.json(), earningsRes.json()])
+      if (!res.ok || !earningsRes.ok) throw new Error(data.message || earningsData.message || 'Unable to load doctors and earnings.')
       setDoctors(data.doctors || [])
+      setDoctorEarnings(earningsData.doctors || [])
+      setEarnings(earningsData.earnings || null)
     } catch (err) {
-      console.error(err)
+      setError(err.message || 'Unable to load doctors and earnings.')
     } finally {
       setLoading(false)
     }
@@ -28,19 +37,28 @@ export default function AdminDoctors() {
   }, [])
 
   const handleDelete = async (userId, name) => {
-    if (!window.confirm(`Deactivate Dr. ${name}? Their clinical history will be retained.`)) return
+    if (!window.confirm(`Deactivate ${name}'s account?`)) return
+    setUpdating(userId)
+    setError('')
     try {
       const res = await apiFetch(`${API_BASE}/api/admin/users/${userId}`, {
         method: 'DELETE',
         })
       if (res.ok) {
         setDoctors(prev => prev.filter(d => d.userId !== userId))
+        setDoctorEarnings(prev => prev.map(doctor => doctor.userId === userId ? { ...doctor, isActive: false } : doctor))
         if (selected?.userId === userId) setSelected(null)
+      } else {
+        const data = await res.json()
+        throw new Error(data.message || 'Unable to deactivate doctor.')
       }
-    } catch (err) { console.error(err) }
+    } catch (err) { setError(err.message || 'Unable to deactivate doctor.') }
+    finally { setUpdating(null) }
   }
 
   const handleVerify = async (userId) => {
+    setUpdating(userId)
+    setError('')
     try {
       const res = await apiFetch(`${API_BASE}/api/admin/verify-doctor/${userId}`, {
         method: 'PUT',
@@ -48,8 +66,12 @@ export default function AdminDoctors() {
       if (res.ok) {
         setDoctors(prev => prev.map(d => d.userId === userId ? { ...d, isVerified: true } : d))
         if (selected?.userId === userId) setSelected(prev => ({ ...prev, isVerified: true }))
+      } else {
+        const data = await res.json()
+        throw new Error(data.message || 'Unable to verify doctor.')
       }
-    } catch (err) { console.error(err) }
+    } catch (err) { setError(err.message || 'Unable to verify doctor.') }
+    finally { setUpdating(null) }
   }
 
   const copyToClipboard = (text) => navigator.clipboard.writeText(text)
@@ -67,11 +89,11 @@ export default function AdminDoctors() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-surface">
       <Sidebar />
-      <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 lg:ml-64 transition-all duration-300" id="admin-doctors">
+      <main className="flex-1 min-w-0 flex flex-col p-6 md:p-8 ml-0 lg:ml-64 transition-all duration-300" id="admin-doctors">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-semibold text-navy">Manage Doctors</h1>
-            <p className="mt-1 text-base text-navy-muted">All doctor accounts with credentials and profile details.</p>
+            <h1 className="text-3xl font-semibold text-navy">Doctors &amp; Earnings</h1>
+            <p className="mt-1 text-base text-navy-muted">Review received payments and refunds, and manage active doctor accounts.</p>
           </div>
           <div className="flex gap-2 text-sm font-semibold">
             <span className="px-3 py-1.5 bg-green-50 text-green-700 rounded-xl border border-green-200">
@@ -83,10 +105,16 @@ export default function AdminDoctors() {
           </div>
         </div>
 
-        {/* Search */}
+        {error && <div role="alert" className="p-4 mb-5 bg-red-50 text-red-700 rounded-xl">{error} <button onClick={fetchDoctors} className="underline font-semibold">Reload doctors</button></div>}
+        {!loading && <section className="mb-8 bg-white rounded-xl border border-outline-variant overflow-hidden" aria-labelledby="all-doctor-earnings">
+          <div className="p-5"><h2 id="all-doctor-earnings" className="text-xl font-semibold text-navy">Earnings from received payments</h2><p className="text-sm text-navy-muted mt-2">Manually verified receipts and refunds across all doctors, including inactive accounts. Completed appointments and historical fees never automatically count as paid.</p><div className="flex flex-wrap gap-5 text-sm mt-4"><p>Received payments: <strong>{formatMoney(earnings?.receivedAmount)}</strong></p><p>Refunded: <strong>{formatMoney(earnings?.refundedAmount)}</strong></p><p>Net received: <strong>{formatMoney(earnings?.netReceived)}</strong></p></div><p className="text-xs text-navy-muted mt-2">Received payments is the gross amount recorded, including receipts subsequently refunded. Refunds are subtracted in net received.</p></div>
+          <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-surface-container-low"><tr>{['Doctor', 'Specialty', 'Received payments', 'Refunded', 'Net received', 'Unrefunded receipts'].map(label => <th key={label} className="p-4 text-left">{label}</th>)}</tr></thead><tbody>{doctorEarnings.map(doctor => <tr key={doctor.doctorId} className="border-t border-outline-variant"><td className="p-4 font-semibold">{doctor.name || 'Unavailable doctor'}{doctor.isActive === false && <span className="block text-xs font-normal text-navy-muted">Inactive</span>}</td><td className="p-4">{doctor.specialty || '—'}</td><td className="p-4">{formatMoney(doctor.receivedAmount)}</td><td className="p-4">{formatMoney(doctor.refundedAmount)}</td><td className="p-4 font-semibold">{formatMoney(doctor.netReceived)}</td><td className="p-4">{doctor.receivedPayments ?? 0}</td></tr>)}</tbody></table></div>{doctorEarnings.length === 0 && <p className="p-5 text-navy-muted">No earnings data available.</p>}
+        </section>}
+        <h2 className="text-xl font-semibold text-navy mb-4">Active Doctor Accounts</h2>
         <div className="flex items-center gap-2 px-4 py-2.5 border-[1.5px] border-slate-300 rounded-xl bg-white mb-6 max-w-md">
           <span className="material-icons-outlined text-outline text-[20px]">search</span>
           <input
+            aria-label="Search doctor accounts"
             type="text"
             placeholder="Search by name, email, specialty..."
             className="flex-1 border-none outline-none text-sm bg-transparent"
@@ -255,14 +283,16 @@ export default function AdminDoctors() {
                       {!selected.isVerified && (
                         <button
                           onClick={() => handleVerify(selected.userId)}
-                          className="w-full py-2.5 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 transition-colors"
+                          disabled={updating !== null}
+                          className="w-full py-2.5 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
                         >
                           ✓ Verify Doctor Account
                         </button>
                       )}
                       <button
                         onClick={() => handleDelete(selected.userId, selected.name)}
-                        className="w-full py-2.5 bg-red-50 text-red-600 border border-red-200 text-sm font-semibold rounded-xl hover:bg-red-100 transition-colors"
+                        disabled={updating !== null}
+                        className="w-full py-2.5 bg-red-50 text-red-600 border border-red-200 text-sm font-semibold rounded-xl hover:bg-red-100 transition-colors disabled:opacity-50"
                       >
                         Deactivate Doctor Account
                       </button>
