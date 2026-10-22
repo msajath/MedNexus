@@ -5,7 +5,7 @@ Healthcare appointment platform with a React/Vite frontend and Express/MongoDB A
 See [DATABASE_SECURITY.md](DATABASE_SECURITY.md) for database checks and Atlas security settings.
 See [DEPLOYMENT.md](DEPLOYMENT.md) for production hosting, health checks, and outage recovery.
 
-## Quick start with Docker
+## Local development with Docker
 
 1. Copy root `.env.example` to `.env`.
 2. Generate separate random values for `MONGO_PASSWORD`, `MONGO_APP_PASSWORD`, and `JWT_SECRET` using the
@@ -14,11 +14,33 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for production hosting, health checks, and ou
 4. Open http://localhost:8080 and check http://localhost:8080/api/ready.
 
 The browser calls `/api`; only the backend connects to MongoDB. Docker Compose
-creates a restricted MongoDB application account on a new database volume.
-Existing volumes retain their existing database users; verify their permissions
-before deployment. To use MongoDB Atlas, configure `.env.atlas` from
+uses `NODE_ENV=development`, the separate `mednexus_development` database, and
+the `mednexus-dev` project with its own `mongo_dev_data` volume. It creates a
+restricted application user on that new volume. MongoDB is on an internal
+network; neither MongoDB nor the backend publishes a host port. The frontend
+is fixed to `127.0.0.1`, even if `HTTP_BIND` is set. Do not expose this HTTP
+development stack or use it for real patient records.
+
+Its explicit `DEV_COMPOSE_MONGO=1` opt-in permits plaintext only to authenticated
+`mongodb:27017/mednexus_development` in development. Other remote connections
+require TLS. Production cannot activate this exception, including for localhost;
+certificate and hostname bypass options remain prohibited in every environment.
+The old project's volumes are left intact; this change does not migrate data or
+reset existing volumes. Do not delete a volume to repair a configuration error.
+
+For production-like Atlas configuration, configure `.env.atlas` from
 `.env.atlas.example`, then run `docker compose --env-file .env.atlas -f
 docker-compose.atlas.yml up --build --detach --wait`.
+That separate file retains `NODE_ENV=production` and requires remote TLS. Use a
+separate database/user for staging. Render continues to use `backend/Dockerfile`
+and its production environment, not the local-development Compose configuration.
+
+Validate both files and the isolation rules without starting any containers or
+reading real environment files:
+
+```powershell
+node scripts/checkComposeConfig.js
+```
 
 ## Native development
 
@@ -40,6 +62,8 @@ npm run dev
 ```
 
 Vite proxies `/api` to port 5000. Open http://localhost:5173.
+Native development supports plaintext loopback MongoDB; use TLS for remote
+MongoDB/Atlas. Do not set `DEV_COMPOSE_MONGO` in native or hosted environments.
 
 ## QA and security
 

@@ -184,6 +184,7 @@ jobs:
             frontend/playwright-report
             frontend/playwright-report-ui
             frontend/test-results
+            frontend/test-results-ui
           retention-days: 7
   containers:
     needs: [checks, backend-integration]
@@ -197,12 +198,8 @@ jobs:
       JWT_SECRET: ci-only-jwt-secret-not-for-deployment
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - run: docker compose config --quiet
-      - name: Validate Atlas Compose configuration
-        env:
-          ATLAS_MONGO_URI: mongodb+srv://ci_app:ci-only-password@example.mongodb.net/medibook
-          ALLOWED_ORIGINS: https://example.test
-        run: docker compose -f docker-compose.atlas.yml config --quiet
+      - name: Validate development isolation and production Compose configuration
+        run: node scripts/checkComposeConfig.js
       - run: docker compose up --build --detach --wait --wait-timeout 180
       - name: Verify SPA and proxied API
         run: |

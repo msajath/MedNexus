@@ -1,3 +1,4 @@
+# Production-like Atlas configuration; supply a separate URI/user for staging.
 name: mednexus
 services:
   backend:

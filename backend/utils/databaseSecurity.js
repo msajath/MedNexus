@@ -51,6 +51,13 @@ const inspectMongoUri = (uri) => {
       database: options.dbName || 'test',
       explicitDatabase,
       local,
+      // The only non-loopback plaintext exception is the opt-in development
+      // Compose target, with its own database and authenticated private service.
+      devComposeTarget: !options.srvHost && hosts.length === 1 &&
+        hosts[0].host === 'mongodb' && hosts[0].port === 27017 &&
+        options.dbName === 'mednexus_development' &&
+        options.credentials?.source === 'mednexus_development' &&
+        Boolean(options.credentials?.username && options.credentials?.password),
       credentialsPresent: Boolean(options.credentials?.username),
       tlsRequired: options.tls === true,
       tlsEnabled: options.tls === true,
@@ -65,7 +72,8 @@ const inspectMongoUri = (uri) => {
   }
 };
 
-const validateMongoUriSecurity = (uri, environment = process.env.NODE_ENV) => {
+const validateMongoUriSecurity = (uri, environment = process.env.NODE_ENV,
+  { devComposeMongo = process.env.DEV_COMPOSE_MONGO } = {}) => {
   const details = inspectMongoUri(uri);
   if (!details.valid) throw new Error('Invalid MongoDB connection string');
   if (details.duplicateOptions.length || details.conflictingOptions.length) {
@@ -74,19 +82,19 @@ const validateMongoUriSecurity = (uri, environment = process.env.NODE_ENV) => {
   if (details.insecureOptions.length) {
     throw new Error('MongoDB TLS verification cannot be disabled');
   }
-  if (environment !== 'production') return details;
-  if (!details.explicitDatabase) {
+  if (environment === 'production' && !details.explicitDatabase) {
     throw new Error('Production MongoDB connections require an explicit database name');
   }
-  if (details.local) return details;
+  if (environment !== 'production' && details.local) return details;
+  if (environment === 'development' && devComposeMongo === '1' && details.devComposeTarget) return details;
   if (details.scheme === 'mongodb+srv') {
     if (!details.tlsEnabled || details.tlsExplicitlyDisabled) {
-      throw new Error('Production MongoDB SRV connections require TLS');
+      throw new Error('MongoDB TLS is required for SRV connections');
     }
     return details;
   }
   if (!details.tlsExplicitlyEnabled || !details.tlsEnabled || details.tlsExplicitlyDisabled) {
-    throw new Error('Production remote MongoDB connections require explicit TLS');
+    throw new Error('MongoDB TLS: remote and production standard connections require explicit TLS');
   }
   return details;
 };

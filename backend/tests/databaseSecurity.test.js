@@ -48,6 +48,35 @@ describe('read-only database security audit', () => {
     expect(validateMongoUriSecurity('mongodb://127.0.0.1:27017/medibook', 'development').local).toBe(true);
     expect(validateMongoUriSecurity('mongodb://127.0.0.1:27017/medibook', 'test').local).toBe(true);
   });
+  test('only the authenticated private development Compose target can opt into plaintext', () => {
+    const uri = 'mongodb://dev_user:synthetic-password@mongodb:27017/mednexus_development?authSource=mednexus_development';
+    expect(validateMongoUriSecurity(uri, 'development', { devComposeMongo: '1' }).devComposeTarget).toBe(true);
+    expect(() => validateMongoUriSecurity(uri, 'development', { devComposeMongo: '' })).toThrow(/TLS/);
+    expect(() => validateMongoUriSecurity(uri, 'development', { devComposeMongo: 'true' })).toThrow(/TLS/);
+    for (const environment of ['production', 'test', undefined]) {
+      expect(() => validateMongoUriSecurity(uri, environment, { devComposeMongo: '1' })).toThrow(/TLS/);
+    }
+  });
+  test.each([
+    'mongodb://dev:synthetic-password@mongodb.example.test:27017/mednexus_development',
+    'mongodb://dev:synthetic-password@mongodb:27018/mednexus_development',
+    'mongodb://dev:synthetic-password@mongodb:27017/medibook',
+    'mongodb://dev:synthetic-password@mongodb:27017/mednexus_development?authSource=admin',
+    'mongodb://mongodb:27017/mednexus_development',
+    'mongodb://dev:synthetic-password@mongodb:27017,db.example.test:27017/mednexus_development',
+  ])('the development opt-in cannot allow an arbitrary plaintext target: %s', uri => {
+    expect(() => validateMongoUriSecurity(uri, 'development', { devComposeMongo: '1' })).toThrow(/TLS/);
+  });
+  test.each(['mongodb://127.0.0.1/mednexus_development', 'mongodb://dev:synthetic-password@mongodb:27017/mednexus_development'])(
+    'production never activates the plaintext development exception: %s', uri => {
+      expect(() => validateMongoUriSecurity(uri, 'production', { devComposeMongo: '1' })).toThrow(/TLS/);
+    }
+  );
+  test('the private development exception cannot bypass certificate validation', () => {
+    expect(() => validateMongoUriSecurity('mongodb://dev:synthetic-password@mongodb:27017/mednexus_development?tls=true&tlsAllowInvalidCertificates=true', 'development', { devComposeMongo: '1' })).toThrow();
+    expect(() => validateMongoUriSecurity('mongodb://dev:synthetic-password@db.example.test/medibook', 'development', { devComposeMongo: '' })).toThrow(/TLS/);
+    expect(validateMongoUriSecurity('mongodb://dev:synthetic-password@db.example.test/medibook?tls=true', 'development').tlsEnabled).toBe(true);
+  });
   test.each(['tls=true&tls=false', 'TLS=true&tls=false', 'tls=true&tls=true'])(
     'rejects duplicate or conflicting TLS options: %s', (options) => {
       expect(() => validateMongoUriSecurity(`mongodb://user:password@db.example.test/medibook?${options}`, 'production'))
