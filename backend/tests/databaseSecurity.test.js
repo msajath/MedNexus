@@ -1,5 +1,7 @@
-const { inspectMongoUri, assessDatabaseRoles, assertLocalSeedUris } = require('../utils/databaseSecurity');
+const { inspectMongoUri, validateMongoUriSecurity, assessDatabaseRoles, assertLocalSeedUris } = require('../utils/databaseSecurity');
 const { auditDatabaseSecurity } = require('../scripts/auditDatabaseSecurity');
+const mongoose = require('mongoose');
+const connectDB = require('../config/db');
 
 describe('read-only database security audit', () => {
   test('SRV enables TLS and audit metadata does not reveal credentials or hosts', () => {
@@ -9,6 +11,52 @@ describe('read-only database security audit', () => {
   });
   test.each(['tlsInsecure', 'tlsAllowInvalidCertificates', 'tlsAllowInvalidHostnames'])('detects %s certificate bypass', (option) => {
     expect(inspectMongoUri(`mongodb://user:password@db.example.test/medibook?tls=true&${option}=true`).insecureOptions).toContain(option);
+  });
+  test('accepts a secure SRV URI in production', () => {
+    expect(validateMongoUriSecurity('mongodb+srv://user:password@cluster.example.test/medibook', 'production').tlsEnabled).toBe(true);
+  });
+  test.each(['tls=false', 'ssl=false', 'tlsInsecure=true', 'tlsAllowInvalidCertificates=true', 'tlsAllowInvalidHostnames=true'])(
+    'rejects insecure SRV option %s in production', (option) => {
+      expect(() => validateMongoUriSecurity(`mongodb+srv://user:password@cluster.example.test/medibook?${option}`, 'production')).toThrow();
+    }
+  );
+  test('requires explicit TLS for a remote standard URI in production', () => {
+    expect(() => validateMongoUriSecurity('mongodb://user:password@db.example.test/medibook', 'production')).toThrow(/explicit TLS/);
+    expect(validateMongoUriSecurity('mongodb://user:password@db.example.test/medibook?tls=true', 'production').tlsEnabled).toBe(true);
+  });
+  test('allows isolated localhost development and test URIs without TLS', () => {
+    expect(validateMongoUriSecurity('mongodb://127.0.0.1:27017/medibook', 'development').local).toBe(true);
+    expect(validateMongoUriSecurity('mongodb://127.0.0.1:27017/medibook', 'test').local).toBe(true);
+  });
+  test.each(['tls=true&tls=false', 'TLS=true&tls=false', 'tls=true&tls=true'])(
+    'rejects duplicate or conflicting TLS options: %s', (options) => {
+      expect(() => validateMongoUriSecurity(`mongodb://user:password@db.example.test/medibook?${options}`, 'production'))
+        .toThrow(/duplicated or conflicting|Invalid MongoDB connection string/);
+    }
+  );
+  test('malformed URI fails without revealing credentials', () => {
+    expect(() => validateMongoUriSecurity('mongodb://user:secret@bad uri/medibook', 'production'))
+      .toThrow();
+  });
+  test('connection errors do not log credentials', async () => {
+    const previousEnvironment = process.env.NODE_ENV;
+    const previousStandardUri = process.env.MONGO_STANDARD_URI;
+    const log = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const connect = jest.spyOn(mongoose, 'connect').mockRejectedValue(new Error('mongodb://user:secret@db.example.test/medibook'));
+    process.env.NODE_ENV = 'production';
+    process.env.MONGO_STANDARD_URI = 'mongodb://user:secret@db.example.test/medibook?tls=true';
+    try {
+      await expect(connectDB()).rejects.toThrow('All MongoDB connection attempts failed');
+      expect(log.mock.calls.flat().join(' ')).not.toContain('secret');
+      expect(log.mock.calls.flat().join(' ')).toContain('could not be established');
+    } finally {
+      connect.mockRestore();
+      log.mockRestore();
+      if (previousEnvironment === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previousEnvironment;
+      if (previousStandardUri === undefined) delete process.env.MONGO_STANDARD_URI;
+      else process.env.MONGO_STANDARD_URI = previousStandardUri;
+    }
   });
   test('does not treat a lookalike localhost host as local', () => {
     expect(inspectMongoUri('mongodb://localhost.evil.example/medibook').local).toBe(false);

@@ -5,12 +5,14 @@ const errorHandler = require('../middleware/errorHandler');
 const Appointment = require('../models/Appointment');
 const Payment = require('../models/Payment');
 const { adminAppointmentFilter } = require('../utils/adminAppointments');
-const { serializePayment, summarizePayments } = require('../utils/payments');
+const { serializePayment, summarizePayments, normalizePaymentReference, paymentFingerprint } = require('../utils/payments');
 
 // Mounted after the admin authentication/authorization middleware.
 const router = express.Router();
 const validAmount = (value) => typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= 1000000 &&
   /^\d+(?:\.\d{1,2})?$/.test(String(value));
+const idempotencyKey = (req) => req.get('Idempotency-Key')?.trim() || '';
+const validIdempotencyKey = (value) => !value || (value.length <= 128 && /^[A-Za-z0-9._~-]+$/.test(value));
 
 router.post('/appointments/:id/payment', validateObjectId('id'), [
   body('amount').custom(validAmount).withMessage('Use a positive amount with at most two decimal places, up to 1,000,000'),
@@ -21,18 +23,55 @@ router.post('/appointments/:id/payment', validateObjectId('id'), [
     .custom((value) => /T.*(?:Z|[+-]\d{2}:\d{2})$/i.test(value) && Date.parse(value) <= Date.now()),
 ], check, async (req, res) => {
   try {
+    const key = idempotencyKey(req);
+    if (!validIdempotencyKey(key)) return res.status(400).json({ success: false, message: 'Invalid Idempotency-Key' });
+    const reference = normalizePaymentReference(req.body.reference);
     const appointment = await Appointment.findOne({ _id: req.params.id, ...adminAppointmentFilter }).select('_id doctor patient status');
     if (!appointment) return res.status(404).json({ success: false, message: 'Appointment not found' });
     if (appointment.status === 'cancelled') return res.status(409).json({ success: false, message: 'Cannot record a payment for a cancelled appointment' });
+    const amountMinor = Math.round(req.body.amount * 100);
+    const fingerprint = paymentFingerprint({
+      appointmentId: appointment._id, amountMinor, currency: 'USD', method: req.body.method, reference,
+    });
+    if (key) {
+      const existing = await Payment.findOne({ recordedBy: req.user._id, idempotencyKey: key });
+      if (existing) {
+        if (existing.idempotencyFingerprint !== fingerprint) {
+          return res.status(409).json({ success: false, message: 'Idempotency-Key was already used for different payment data' });
+        }
+        if (key) res.set('Idempotency-Key', key);
+        return res.status(200).json({ success: true, payment: serializePayment(existing) });
+      }
+    }
     const payment = await Payment.create({
       appointment: appointment._id, doctor: appointment.doctor, patient: appointment.patient,
-      amountMinor: Math.round(req.body.amount * 100), currency: 'USD', method: req.body.method,
-      reference: req.body.reference || '', receivedAt: req.body.receivedAt ? new Date(req.body.receivedAt) : new Date(),
+      amountMinor, currency: 'USD', method: req.body.method, reference,
+      receivedAt: req.body.receivedAt ? new Date(req.body.receivedAt) : new Date(),
       recordedAt: new Date(), recordedBy: req.user._id, status: 'received',
+      ...(key && { idempotencyKey: key, idempotencyFingerprint: fingerprint }),
     });
+    res.set('Idempotency-Key', key);
     res.status(201).json({ success: true, payment: serializePayment(payment) });
   } catch (error) {
-    if (error.code === 11000) return res.status(409).json({ success: false, message: 'This appointment already has a received payment. Refund it before recording another receipt.' });
+    if (error.code === 11000) {
+      const key = idempotencyKey(req);
+      if (key) {
+        const existing = await Payment.findOne({ recordedBy: req.user._id, idempotencyKey: key });
+        if (existing) {
+          const reference = normalizePaymentReference(req.body.reference);
+          const fingerprint = paymentFingerprint({ appointmentId: req.params.id, amountMinor: Math.round(req.body.amount * 100), currency: 'USD', method: req.body.method, reference });
+          if (existing.idempotencyFingerprint === fingerprint) {
+            res.set('Idempotency-Key', key);
+            return res.status(200).json({ success: true, payment: serializePayment(existing) });
+          }
+          return res.status(409).json({ success: false, message: 'Idempotency-Key was already used for different payment data' });
+        }
+      }
+      return res.status(409).json({ success: false, message: 'This appointment already has a received payment. Refund it before recording another receipt.' });
+    }
+    if (error.message === 'Payment reference contains invalid control characters') {
+      return res.status(400).json({ success: false, message: error.message });
+    }
     return errorHandler(error, req, res, () => {});
   }
 });

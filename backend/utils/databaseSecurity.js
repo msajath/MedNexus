@@ -2,6 +2,10 @@ const { MongoClient } = require('mongoose').mongo;
 
 // Parse locally through the same driver used by the application. Never return a URI,
 // host, username, password, or certificate path in an audit result.
+const SECURITY_OPTIONS = ['tls', 'ssl', 'tlsInsecure', 'tlsAllowInvalidCertificates', 'tlsAllowInvalidHostnames'];
+const truthy = (value) => /^(true|1|yes)$/i.test(value);
+const falsy = (value) => /^(false|0|no)$/i.test(value);
+
 const inspectMongoUri = (uri) => {
   if (typeof uri !== 'string' || !uri) return { valid: false };
   try {
@@ -14,10 +18,33 @@ const inspectMongoUri = (uri) => {
     // The driver normalizes some URI flags into rejectUnauthorized and
     // checkServerIdentity, so inspect decoded query keys after validating the URI.
     const query = new URLSearchParams(uri.includes('?') ? uri.slice(uri.indexOf('?') + 1) : '');
-    const enabledFlags = new Set([...query].filter(([, value]) => /^(true|1|yes)$/i.test(value))
-      .map(([key]) => key.toLowerCase()));
-    const insecureOptions = ['tlsInsecure', 'tlsAllowInvalidCertificates', 'tlsAllowInvalidHostnames']
-      .filter((key) => enabledFlags.has(key.toLowerCase()) || options[key] === true);
+    const valuesByOption = new Map();
+    for (const [key, value] of query) {
+      const normalizedKey = key.toLowerCase();
+      if (!SECURITY_OPTIONS.some((option) => option.toLowerCase() === normalizedKey)) continue;
+      const values = valuesByOption.get(normalizedKey) || [];
+      values.push(value);
+      valuesByOption.set(normalizedKey, values);
+    }
+    const duplicateOptions = [...valuesByOption.entries()]
+      .filter(([, values]) => values.length > 1)
+      .map(([key]) => key);
+    const conflictingOptions = [...valuesByOption.entries()]
+      .filter(([, values]) => new Set(values.map((value) => {
+        if (truthy(value)) return 'true';
+        if (falsy(value)) return 'false';
+        return value.toLowerCase();
+      })).size > 1)
+      .map(([key]) => key);
+    const insecureOptions = ['tls', 'ssl', 'tlsInsecure', 'tlsAllowInvalidCertificates', 'tlsAllowInvalidHostnames']
+      .filter((key) => [...valuesByOption.entries()]
+        .some(([option, values]) => option === key.toLowerCase() && values.some(truthy))
+        || options[key] === true)
+      .filter((key) => key === 'tls' || key === 'ssl' ? options.tls === false : true);
+    const tlsExplicitlyDisabled = [...valuesByOption.entries()]
+      .some(([key, values]) => ['tls', 'ssl'].includes(key) && values.some(falsy)) || options.tls === false;
+    const tlsExplicitlyEnabled = [...valuesByOption.entries()]
+      .some(([key, values]) => ['tls', 'ssl'].includes(key) && values.some(truthy)) || options.tls === true;
     return {
       valid: true,
       scheme: uri.startsWith('mongodb+srv:') ? 'mongodb+srv' : 'mongodb',
@@ -28,10 +55,36 @@ const inspectMongoUri = (uri) => {
       tlsRequired: options.tls === true,
       tlsEnabled: options.tls === true,
       insecureOptions,
+      tlsExplicitlyDisabled,
+      tlsExplicitlyEnabled,
+      duplicateOptions,
+      conflictingOptions,
     };
   } catch {
     return { valid: false };
   }
+};
+
+const validateMongoUriSecurity = (uri, environment = process.env.NODE_ENV) => {
+  const details = inspectMongoUri(uri);
+  if (!details.valid) throw new Error('Invalid MongoDB connection string');
+  if (details.duplicateOptions.length || details.conflictingOptions.length) {
+    throw new Error('MongoDB TLS options are duplicated or conflicting');
+  }
+  if (details.insecureOptions.length) {
+    throw new Error('MongoDB TLS verification cannot be disabled');
+  }
+  if (environment !== 'production' || details.local) return details;
+  if (details.scheme === 'mongodb+srv') {
+    if (!details.tlsEnabled || details.tlsExplicitlyDisabled) {
+      throw new Error('Production MongoDB SRV connections require TLS');
+    }
+    return details;
+  }
+  if (!details.tlsExplicitlyEnabled || !details.tlsEnabled || details.tlsExplicitlyDisabled) {
+    throw new Error('Production remote MongoDB connections require explicit TLS');
+  }
+  return details;
 };
 
 const assessDatabaseRoles = (roles, database) => {
@@ -57,4 +110,4 @@ const assertLocalSeedUris = (uris, environment) => {
   }
 };
 
-module.exports = { inspectMongoUri, assessDatabaseRoles, assertLocalSeedUris };
+module.exports = { inspectMongoUri, validateMongoUriSecurity, assessDatabaseRoles, assertLocalSeedUris };

@@ -17,11 +17,19 @@ const paymentSchema = new mongoose.Schema({
   refundedAt: Date,
   refundedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   refundReason: { type: String, maxlength: 1000 },
+  // Optional retry key supplied by the admin client. It is scoped to the
+  // authenticated recorder and never replaces the appointment uniqueness rule.
+  idempotencyKey: { type: String, maxlength: 128, match: /^[A-Za-z0-9._~-]+$/ },
+  idempotencyFingerprint: { type: String, match: /^[a-f0-9]{64}$/ },
 }, { timestamps: true });
 
 paymentSchema.index({ appointment: 1 }, {
   unique: true, name: 'one_received_payment_per_appointment', partialFilterExpression: { status: 'received' },
 });
 paymentSchema.index({ doctor: 1, recordedAt: -1 });
+paymentSchema.index({ recordedBy: 1, idempotencyKey: 1 }, {
+  unique: true, name: 'one_payment_per_idempotency_key',
+  partialFilterExpression: { idempotencyKey: { $type: 'string' } },
+});
 
 module.exports = mongoose.model('Payment', paymentSchema);

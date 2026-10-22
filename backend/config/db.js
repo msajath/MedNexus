@@ -5,6 +5,7 @@ const Doctor = require('../models/Doctor');
 const Availability = require('../models/Availability');
 const DoctorLeave = require('../models/DoctorLeave');
 const Payment = require('../models/Payment');
+const { validateMongoUriSecurity } = require('../utils/databaseSecurity');
 
 const ensureStorageReady = async () => {
   // autoIndex is disabled for normal queries; explicitly require these safety indexes.
@@ -32,9 +33,14 @@ const connectDB = async () => {
   const tryConnect = async (uri, label) => {
     let conn;
     try {
+      validateMongoUriSecurity(uri, process.env.NODE_ENV);
       conn = await mongoose.connect(uri, { autoIndex: false });
     } catch (err) {
-      console.error(`❌ MongoDB Connection Error (${label}):`, err.message || err);
+      const message = err?.message?.startsWith('Production MongoDB') || err?.message?.startsWith('MongoDB TLS') ||
+        err?.message === 'Invalid MongoDB connection string'
+        ? err.message
+        : 'Database connection could not be established';
+      console.error(`❌ MongoDB Connection Error (${label}): ${message}`);
       return false;
     }
     // Index or migration failure is a data-integrity problem, not a reason to

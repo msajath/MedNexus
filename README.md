@@ -43,8 +43,57 @@ Vite proxies `/api` to port 5000. Open http://localhost:5173.
 
 ## QA and security
 
-Run `npm test` in each component and `npm run lint` / `npm run build` in the
-frontend. Run `npm run audit:db` in the backend for read-only database checks.
+Run the local checks from PowerShell:
+
+```powershell
+Set-Location "D:\4th sem\MedNexus\backend"
+npm ci
+npm test
+npm audit --audit-level=high
+npm audit --omit=dev --audit-level=high
+npm run audit:db
+
+Set-Location "D:\4th sem\MedNexus\frontend"
+npm ci
+npm test
+npm run lint
+npm run build
+npm audit --audit-level=high
+npm audit --omit=dev --audit-level=high
+```
+
+The required GitHub Actions `dependency-audit` job runs full and
+production-only audits for both components. High and critical findings fail
+the job; moderate and low findings remain visible in the audit output and
+uploaded JSON artifacts. Audit failures caused by registry or network errors
+also fail the job. Dependency updates are not applied automatically.
+
+Backend integration tests run in GitHub Actions against an ephemeral MongoDB
+service at `127.0.0.1`, never against Atlas. Locally, set `MONGO_TEST_URI`
+only to a localhost database whose name ends in `_test`, `_ci`, or `_qa`, then
+run:
+
+```powershell
+Set-Location "D:\4th sem\MedNexus\backend"
+$env:NODE_ENV = "test"
+$env:MONGO_TEST_URI = "mongodb://127.0.0.1:27017/mednexus_ci"
+npx jest --runInBand --testPathPatterns=tests/integration
+Remove-Item Env:MONGO_TEST_URI
+Remove-Item Env:NODE_ENV
+```
+
+To inspect CI results, open the repository's **Actions** tab, select the
+workflow run, and open `dependency-audit`, `backend-integration`, or `checks`.
+Failed tests appear in the job log. Skipped tests appear in Jest's summary and
+are not treated as successful integration coverage; the CI integration job
+fails if any integration suite or test is skipped. Audit JSON reports are
+available under the workflow run's **Artifacts** section.
+
+To rerun a failed workflow, open the failed run, choose **Re-run failed jobs**,
+and inspect the new run rather than assuming the previous result changed.
+Never use `npm audit fix --force` without reviewing compatibility and a
+separate dependency change.
+
 Atlas dashboard settings still need the manual checks in
 [DATABASE_SECURITY.md](DATABASE_SECURITY.md).
 

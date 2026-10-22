@@ -29,6 +29,7 @@ withMongo('Audited manual payment receipts', () => {
   });
   afterAll(async () => mongoose.disconnect());
   const receive = (body = payload) => request(app).post(`/api/admin/appointments/${booking._id}/payment`).set(auth(admin)).send(body);
+  const receiveWithKey = (key, body = payload) => request(app).post(`/api/admin/appointments/${booking._id}/payment`).set(auth(admin)).set('Idempotency-Key', key).send(body);
 
   test('records only the actual received amount, snapshots server-side attribution and returns safe audit fields', async () => {
     const result = await receive({ ...payload, doctor: new mongoose.Types.ObjectId(), patient: new mongoose.Types.ObjectId(), recordedBy: patient._id, status: 'refunded', amountMinor: 1, cardNumber: 'SECRET_CARD', notes: 'SECRET_NOTE' });
@@ -54,6 +55,36 @@ withMongo('Audited manual payment receipts', () => {
     expect(results.map((result) => result.status).sort()).toEqual([201, 409]);
     expect(await Payment.countDocuments()).toBe(1);
     expect((await request(app).get('/api/admin/earnings').set(auth(admin))).body.earnings.netReceived).toBe(80.29);
+  });
+
+  test('idempotent retry returns the original receipt without a second financial effect', async () => {
+    const first = await receiveWithKey('payment-retry-1');
+    const retry = await receiveWithKey('payment-retry-1');
+    expect(first.status).toBe(201);
+    expect(retry.status).toBe(200);
+    expect(retry.body.payment.id).toBe(first.body.payment.id);
+    expect(await Payment.countDocuments()).toBe(1);
+  });
+
+  test('reusing an idempotency key with different payment data is rejected', async () => {
+    expect((await receiveWithKey('payment-reuse-1')).status).toBe(201);
+    const result = await receiveWithKey('payment-reuse-1', { ...payload, amount: 81 });
+    expect(result.status).toBe(409);
+    expect(result.body.message).toMatch(/different payment data/);
+    expect(await Payment.countDocuments()).toBe(1);
+  });
+
+  test('invalid references are rejected while cash references remain valid', async () => {
+    const invalid = await receive({ ...payload, reference: 'CASH\u0000-1' });
+    expect(invalid.status).toBe(400);
+    expect((await receive({ ...payload, method: 'cash', reference: 'CASH-001' })).status).toBe(201);
+  });
+
+  test('unauthorized users cannot record or refund payments', async () => {
+    const users = [patient, doctorUser];
+    for (const user of users) {
+      expect((await request(app).post(`/api/admin/appointments/${booking._id}/payment`).set(auth(user)).send(payload)).status).toBe(403);
+    }
   });
 
   test('refund is audited once, retained in history, and a later receipt is independent', async () => {

@@ -1,6 +1,18 @@
 const Payment = require('../models/Payment');
+const crypto = require('crypto');
 
 const idOf = (value) => value == null ? null : String(value._id || value);
+const normalizePaymentReference = (value) => {
+  const reference = typeof value === 'string' ? value.trim() : '';
+  if (/[\u0000-\u001f\u007f]/.test(reference)) throw new Error('Payment reference contains invalid control characters');
+  return reference;
+};
+
+const paymentFingerprint = ({ appointmentId, amountMinor, currency, method, reference }) =>
+  crypto.createHash('sha256').update(JSON.stringify({
+    appointmentId: String(appointmentId), amountMinor, currency, method,
+    reference: normalizePaymentReference(reference),
+  })).digest('hex');
 
 const serializePayment = (payment) => ({
   id: idOf(payment), appointmentId: idOf(payment.appointment), doctorId: idOf(payment.doctor),
@@ -39,4 +51,27 @@ const withAppointmentPayments = async (appointments) => {
   });
 };
 
-module.exports = { serializePayment, summarizePayments, withAppointmentPayments };
+const findPaymentDuplicates = async (model = Payment) => {
+  const [references, appointments, invalidReferences] = await Promise.all([
+    model.aggregate([
+      { $match: { reference: { $type: 'string', $ne: '' } } },
+      { $group: { _id: '$reference', count: { $sum: 1 }, paymentIds: { $push: '$_id' }, methods: { $addToSet: '$method' } } },
+      { $match: { count: { $gt: 1 } } },
+      { $project: { _id: 0, reference: '$_id', count: 1, paymentIds: 1, methods: 1 } },
+    ]),
+    model.aggregate([
+      { $match: { status: 'received' } },
+      { $group: { _id: '$appointment', count: { $sum: 1 }, paymentIds: { $push: '$_id' } } },
+      { $match: { count: { $gt: 1 } } },
+      { $project: { _id: 0, appointmentId: '$_id', count: 1, paymentIds: 1 } },
+    ]),
+    model.find({ reference: { $type: 'string', $regex: /[\u0000-\u001f\u007f]/ } })
+      .select('_id reference').lean(),
+  ]);
+  return { reusedReferences: references, multipleReceivedPayments: appointments, invalidReferences };
+};
+
+module.exports = {
+  serializePayment, summarizePayments, withAppointmentPayments, normalizePaymentReference,
+  paymentFingerprint, findPaymentDuplicates,
+};
