@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { API_BASE, apiFetch } from '../config'
 import { formatMoney } from '../utils/admin'
 
@@ -14,6 +14,9 @@ export default function AdminAppointmentPayment({ appointment, onRefresh }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  // Retain the same key after an ambiguous network failure. Editing the receipt
+  // creates a new intent; simply retrying must return the original receipt.
+  const receiptIntent = useRef(null)
   const payment = appointment.payment
   const status = appointment.paymentStatus || payment?.status || 'unpaid'
   const canRecord = appointment.status !== 'cancelled' && !appointment.bookingHold && status !== 'received'
@@ -30,7 +33,15 @@ export default function AdminAppointmentPayment({ appointment, onRefresh }) {
     try {
       const url = refund ? `${API_BASE}/api/admin/payments/${payment.id}/refund` : `${API_BASE}/api/admin/appointments/${appointment._id}/payment`
       const payload = refund ? { reason: refundReason.trim() } : { amount: Number(amount), currency: 'USD', method, reference: reference.trim() }
-      const response = await apiFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const headers = { 'Content-Type': 'application/json' }
+      if (!refund) {
+        const fingerprint = JSON.stringify({ appointmentId: appointment._id, ...payload })
+        if (receiptIntent.current?.fingerprint !== fingerprint) {
+          receiptIntent.current = { fingerprint, key: crypto.randomUUID() }
+        }
+        headers['Idempotency-Key'] = receiptIntent.current.key
+      }
+      const response = await apiFetch(url, { method: 'POST', headers, body: JSON.stringify(payload) })
       const data = await response.json()
       if (!response.ok) {
         if (response.status === 409) {
@@ -41,12 +52,13 @@ export default function AdminAppointmentPayment({ appointment, onRefresh }) {
       }
       saved = true
       await onRefresh()
+      receiptIntent.current = null
       setAmount('')
       setReference('')
       setReceivedConfirmed(false)
       setRefundConfirmed(false)
       setRefundReason('')
-      setNotice(refund ? 'Already issued refund recorded.' : 'Received payment recorded.')
+      setNotice(refund ? 'Already issued refund recorded.' : data.payment?.status === 'refunded' ? 'The original receipt was already refunded. Its history has been refreshed.' : 'Received payment recorded.')
     } catch (err) {
       setError(saved ? 'The record was saved, but the refreshed receipt could not be loaded. Reload appointments before making another change.' : err.message || 'Unable to save the payment record.')
     } finally {

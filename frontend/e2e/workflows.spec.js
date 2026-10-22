@@ -87,7 +87,7 @@ test('admin pages, real report download, and contact message triage work', async
   await login(page, 'admin')
   await page.goto('/admin/dashboard')
   const downloadPromise = page.waitForEvent('download')
-  await page.getByRole('button', { name: /Download Report/ }).click()
+  await page.getByRole('button', { name: /Download Operations Report/ }).click()
   expect((await downloadPromise).suggestedFilename()).toBe('mednexus-report.json')
   await page.getByRole('button', { name: 'Review Now' }).click()
   await expect(page).toHaveURL(/\/admin\/doctors/)

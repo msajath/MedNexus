@@ -97,6 +97,23 @@ Remove-Item Env:MONGO_TEST_URI
 Remove-Item Env:NODE_ENV
 ```
 
+When Docker is unavailable, the backend also provides a disposable
+`mongodb-memory-server` runner that requires no database setup:
+
+```powershell
+Set-Location "D:\4th sem\MedNexus\backend"
+npm run test:qa -- --testPathPatterns=tests/integration --coverage=false
+```
+
+This runner creates synthetic data, uses a temporary database, and stops the
+MongoDB process after Jest exits. It must not be configured with an Atlas URI.
+Browser QA uses the same isolated strategy through `scripts/qaServer.js`:
+
+```powershell
+Set-Location "D:\4th sem\MedNexus\frontend"
+npm run test:e2e
+```
+
 To inspect CI results, open the repository's **Actions** tab, select the
 workflow run, and open `dependency-audit`, `backend-integration`, or `checks`.
 Failed tests appear in the job log. Skipped tests appear in Jest's summary and

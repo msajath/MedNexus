@@ -128,7 +128,7 @@ jobs:
       - run: npm ci
         working-directory: backend
       - name: Run integration tests against disposable MongoDB
-        run: npx jest --runInBand --coverage --testPathPatterns=tests/integration --json --outputFile=integration-results.json
+        run: npx jest --runInBand --testPathPatterns=tests/integration --json --outputFile=integration-results.json
         working-directory: backend
       - name: Reject skipped integration suites
         run: |

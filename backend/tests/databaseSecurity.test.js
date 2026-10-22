@@ -15,6 +15,26 @@ describe('read-only database security audit', () => {
   test('accepts a secure SRV URI in production', () => {
     expect(validateMongoUriSecurity('mongodb+srv://user:password@cluster.example.test/medibook', 'production').tlsEnabled).toBe(true);
   });
+  test.each(['mongodb+srv://user:password@cluster.example.test/', 'mongodb://127.0.0.1/'])(
+    'rejects implicit database selection in production: %s', (uri) => {
+      expect(() => validateMongoUriSecurity(uri, 'production')).toThrow(/explicit database name/);
+    }
+  );
+  test('rejects a fallback to a different production database before connecting', async () => {
+    const previous = { NODE_ENV: process.env.NODE_ENV, MONGO_URI: process.env.MONGO_URI, MONGO_STANDARD_URI: process.env.MONGO_STANDARD_URI };
+    const connect = jest.spyOn(mongoose, 'connect');
+    Object.assign(process.env, { NODE_ENV: 'production', MONGO_URI: 'mongodb+srv://user:password@cluster.example.test/medibook', MONGO_STANDARD_URI: 'mongodb://user:password@db.example.test/other?tls=true' });
+    try {
+      await expect(connectDB()).rejects.toThrow(/same database name/);
+      expect(connect).not.toHaveBeenCalled();
+    } finally {
+      connect.mockRestore();
+      for (const [key, value] of Object.entries(previous)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  });
   test.each(['tls=false', 'ssl=false', 'tlsInsecure=true', 'tlsAllowInvalidCertificates=true', 'tlsAllowInvalidHostnames=true'])(
     'rejects insecure SRV option %s in production', (option) => {
       expect(() => validateMongoUriSecurity(`mongodb+srv://user:password@cluster.example.test/medibook?${option}`, 'production')).toThrow();

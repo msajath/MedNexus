@@ -67,4 +67,17 @@ describe('Admin Routes', () => {
     expect(JSON.stringify(res.body)).not.toContain('plaintext-from-client');
     expect(res.body.user).not.toHaveProperty('password');
   });
+
+  it('doctor verification returns only account identity and verification fields', async () => {
+    const userId = '507f1f77bcf86cd799439011';
+    const user = { _id: userId, name: 'QA Doctor', email: 'doctor@example.test', role: 'doctor',
+      isVerified: false, isActive: true, dob: '1990-01-01', bloodType: 'AB+', address: 'PRIVATE_ADDRESS',
+      tokenVersion: 9, password: 'PRIVATE_PASSWORD', resetPasswordToken: 'PRIVATE_RESET', save: jest.fn() };
+    User.findById.mockResolvedValue(user);
+    const response = await request(app).put(`/api/admin/verify-doctor/${userId}`);
+    expect(response.status).toBe(200);
+    expect(response.body.user).toEqual({ _id: userId, name: 'QA Doctor', email: 'doctor@example.test', role: 'doctor', isVerified: true, isActive: true });
+    expect(response.text).not.toMatch(/PRIVATE_|dob|bloodType|address|tokenVersion|password|resetPassword/);
+    expect(user.save).toHaveBeenCalledTimes(1);
+  });
 });

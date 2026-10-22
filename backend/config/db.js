@@ -30,6 +30,15 @@ const connectDB = async () => {
     throw new Error('No MongoDB connection string provided');
   }
 
+  // Validate every configured target before attempting a connection. A fallback
+  // must not silently select a different dataset after a primary failure.
+  const targets = [srvUri, standardUri].filter(Boolean)
+    .map((uri) => validateMongoUriSecurity(uri, process.env.NODE_ENV));
+  if (process.env.NODE_ENV === 'production' &&
+      new Set(targets.map((target) => target.database)).size > 1) {
+    throw new Error('Production MongoDB fallback must use the same database name');
+  }
+
   const tryConnect = async (uri, label) => {
     let conn;
     try {

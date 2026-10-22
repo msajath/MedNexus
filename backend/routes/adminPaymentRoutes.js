@@ -26,12 +26,11 @@ router.post('/appointments/:id/payment', validateObjectId('id'), [
     const key = idempotencyKey(req);
     if (!validIdempotencyKey(key)) return res.status(400).json({ success: false, message: 'Invalid Idempotency-Key' });
     const reference = normalizePaymentReference(req.body.reference);
-    const appointment = await Appointment.findOne({ _id: req.params.id, ...adminAppointmentFilter }).select('_id doctor patient status');
-    if (!appointment) return res.status(404).json({ success: false, message: 'Appointment not found' });
-    if (appointment.status === 'cancelled') return res.status(409).json({ success: false, message: 'Cannot record a payment for a cancelled appointment' });
     const amountMinor = Math.round(req.body.amount * 100);
+    // Replays return the original audit metadata, including receivedAt. A later
+    // cancellation, refund or account cleanup must not turn a retry into a new receipt.
     const fingerprint = paymentFingerprint({
-      appointmentId: appointment._id, amountMinor, currency: 'USD', method: req.body.method, reference,
+      appointmentId: req.params.id.toLowerCase(), amountMinor, currency: 'USD', method: req.body.method, reference,
     });
     if (key) {
       const existing = await Payment.findOne({ recordedBy: req.user._id, idempotencyKey: key });
@@ -43,6 +42,9 @@ router.post('/appointments/:id/payment', validateObjectId('id'), [
         return res.status(200).json({ success: true, payment: serializePayment(existing) });
       }
     }
+    const appointment = await Appointment.findOne({ _id: req.params.id, ...adminAppointmentFilter }).select('_id doctor patient status');
+    if (!appointment) return res.status(404).json({ success: false, message: 'Appointment not found' });
+    if (appointment.status === 'cancelled') return res.status(409).json({ success: false, message: 'Cannot record a payment for a cancelled appointment' });
     const payment = await Payment.create({
       appointment: appointment._id, doctor: appointment.doctor, patient: appointment.patient,
       amountMinor, currency: 'USD', method: req.body.method, reference,
@@ -54,20 +56,24 @@ router.post('/appointments/:id/payment', validateObjectId('id'), [
     res.status(201).json({ success: true, payment: serializePayment(payment) });
   } catch (error) {
     if (error.code === 11000) {
-      const key = idempotencyKey(req);
-      if (key) {
-        const existing = await Payment.findOne({ recordedBy: req.user._id, idempotencyKey: key });
-        if (existing) {
-          const reference = normalizePaymentReference(req.body.reference);
-          const fingerprint = paymentFingerprint({ appointmentId: req.params.id, amountMinor: Math.round(req.body.amount * 100), currency: 'USD', method: req.body.method, reference });
-          if (existing.idempotencyFingerprint === fingerprint) {
-            res.set('Idempotency-Key', key);
-            return res.status(200).json({ success: true, payment: serializePayment(existing) });
+      try {
+        const key = idempotencyKey(req);
+        if (key) {
+          const existing = await Payment.findOne({ recordedBy: req.user._id, idempotencyKey: key });
+          if (existing) {
+            const reference = normalizePaymentReference(req.body.reference);
+            const fingerprint = paymentFingerprint({ appointmentId: req.params.id.toLowerCase(), amountMinor: Math.round(req.body.amount * 100), currency: 'USD', method: req.body.method, reference });
+            if (existing.idempotencyFingerprint === fingerprint) {
+              res.set('Idempotency-Key', key);
+              return res.status(200).json({ success: true, payment: serializePayment(existing) });
+            }
+            return res.status(409).json({ success: false, message: 'Idempotency-Key was already used for different payment data' });
           }
-          return res.status(409).json({ success: false, message: 'Idempotency-Key was already used for different payment data' });
         }
+        return res.status(409).json({ success: false, message: 'This appointment already has a received payment. Refund it before recording another receipt.' });
+      } catch (recoveryError) {
+        return errorHandler(recoveryError, req, res, () => {});
       }
-      return res.status(409).json({ success: false, message: 'This appointment already has a received payment. Refund it before recording another receipt.' });
     }
     if (error.message === 'Payment reference contains invalid control characters') {
       return res.status(400).json({ success: false, message: error.message });

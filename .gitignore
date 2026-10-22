@@ -10,6 +10,7 @@ coverage/
 playwright-report/
 playwright-report-ui/
 test-results/
+test-results-ui/
 .vite/
 backups/
 *.archive.gz

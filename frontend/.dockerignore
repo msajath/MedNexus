@@ -9,6 +9,7 @@ coverage
 e2e
 e2e-ui
 test-results
+test-results-ui
 playwright-report
 playwright-report-ui
 *.local

@@ -74,7 +74,11 @@ const validateMongoUriSecurity = (uri, environment = process.env.NODE_ENV) => {
   if (details.insecureOptions.length) {
     throw new Error('MongoDB TLS verification cannot be disabled');
   }
-  if (environment !== 'production' || details.local) return details;
+  if (environment !== 'production') return details;
+  if (!details.explicitDatabase) {
+    throw new Error('Production MongoDB connections require an explicit database name');
+  }
+  if (details.local) return details;
   if (details.scheme === 'mongodb+srv') {
     if (!details.tlsEnabled || details.tlsExplicitlyDisabled) {
       throw new Error('Production MongoDB SRV connections require TLS');

@@ -66,6 +66,37 @@ withMongo('Audited manual payment receipts', () => {
     expect(await Payment.countDocuments()).toBe(1);
   });
 
+  test('an original receipt can be replayed after cancellation, refund and booking removal', async () => {
+    const first = await receiveWithKey('payment-lifecycle-retry');
+    expect(first.status).toBe(201);
+    const receiptId = first.body.payment.id;
+    await Appointment.updateOne({ _id: booking._id }, { status: 'cancelled' });
+    let replay = await receiveWithKey('payment-lifecycle-retry');
+    expect(replay.status).toBe(200);
+    expect(replay.body.payment).toMatchObject({ id: receiptId, status: 'received' });
+    const refund = await request(app).post(`/api/admin/payments/${receiptId}/refund`).set(auth(admin)).send({ reason: 'Verified refund after cancellation' });
+    expect(refund.status).toBe(200);
+    replay = await receiveWithKey('payment-lifecycle-retry');
+    expect(replay.status).toBe(200);
+    expect(replay.body.payment).toMatchObject({ id: receiptId, status: 'refunded' });
+    await Appointment.deleteOne({ _id: booking._id });
+    replay = await receiveWithKey('payment-lifecycle-retry');
+    expect(replay.status).toBe(200);
+    expect(replay.body.payment).toMatchObject({ id: receiptId, status: 'refunded' });
+    expect(await Payment.countDocuments()).toBe(1);
+    expect((await request(app).get('/api/admin/earnings').set(auth(admin))).body.earnings.netReceived).toBe(0);
+  });
+
+  test('retry preserves the original received timestamp and normalizes appointment ID casing', async () => {
+    const body = { ...payload, receivedAt: '2020-01-01T10:00:00Z' };
+    const first = await request(app).post(`/api/admin/appointments/${String(booking._id).toUpperCase()}/payment`).set(auth(admin)).set('Idempotency-Key', 'payment-case-retry').send(body);
+    expect(first.status).toBe(201);
+    const replay = await receiveWithKey('payment-case-retry', { ...body, receivedAt: '2021-01-01T10:00:00Z' });
+    expect(replay.status).toBe(200);
+    expect(replay.body.payment).toMatchObject({ id: first.body.payment.id, receivedAt: '2020-01-01T10:00:00.000Z' });
+    expect(await Payment.countDocuments()).toBe(1);
+  });
+
   test('reusing an idempotency key with different payment data is rejected', async () => {
     expect((await receiveWithKey('payment-reuse-1')).status).toBe(201);
     const result = await receiveWithKey('payment-reuse-1', { ...payload, amount: 81 });

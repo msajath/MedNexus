@@ -132,7 +132,10 @@ router.put('/verify-doctor/:userId', validateObjectId('userId'), async (req, res
     user.isVerified = true;
     await user.save();
 
-    res.json({ success: true, message: `Dr. ${user.name} has been verified`, user });
+    res.json({ success: true, message: `Dr. ${user.name} has been verified`, user: {
+      _id: user._id, name: user.name, email: user.email, role: user.role,
+      isVerified: user.isVerified, isActive: user.isActive,
+    } });
   } catch (error) {
     return errorHandler(error, req, res, () => {});
   }
