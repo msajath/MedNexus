@@ -1,0 +1,145 @@
+{
+  "total_count": 7,
+  "artifacts": [
+    {
+      "id": 12442235389,
+      "node_id": "MDg6QXJ0aWZhY3QxMjQ0MjIzNTM4OQ==",
+      "name": "npm-audit-backend",
+      "size_in_bytes": 622,
+      "url": "https://api.github.com/repos/msajath/MedNexus/actions/artifacts/12442235389",
+      "archive_download_url": "https://api.github.com/repos/msajath/MedNexus/actions/artifacts/12442235389/zip",
+      "expired": false,
+      "digest": "sha256:9ed9db5f3d8e6970442d48ac4cf129e7c50517e2a6f29cfb7e4ac0329e5975ba",
+      "created_at": "2026-10-22T16:29:59Z",
+      "updated_at": "2026-10-22T16:29:59Z",
+      "expires_at": "2026-11-05T16:29:58Z",
+      "workflow_run": {
+        "id": 39814536964,
+        "repository_id": 1285418533,
+        "head_repository_id": 1285418533,
+        "head_branch": "main",
+        "head_sha": "17f69c2d671117a6edee4d1a2e00b4199812e9a6"
+      }
+    },
+    {
+      "id": 12442060799,
+      "node_id": "MDg6QXJ0aWZhY3QxMjQ0MjA2MDc5OQ==",
+      "name": "frontend-dist",
+      "size_in_bytes": 4270556,
+      "url": "https://api.github.com/repos/msajath/MedNexus/actions/artifacts/12442060799",
+      "archive_download_url": "https://api.github.com/repos/msajath/MedNexus/actions/artifacts/12442060799/zip",
+      "expired": false,
+      "digest": "sha256:7b845c8bc69792cf9a4c45a7d2720fbd9dbdeedfb50814a284b47be3771809f4",
+      "created_at": "2026-10-22T16:30:22Z",
+      "updated_at": "2026-10-22T16:30:22Z",
+      "expires_at": "2026-10-29T16:30:21Z",
+      "workflow_run": {
+        "id": 39814536964,
+        "repository_id": 1285418533,
+        "head_repository_id": 1285418533,
+        "head_branch": "main",
+        "head_sha": "17f69c2d671117a6edee4d1a2e00b4199812e9a6"
+      }
+    },
+    {
+      "id": 12441911031,
+      "node_id": "MDg6QXJ0aWZhY3QxMjQ0MTkxMTAzMQ==",
+      "name": "npm-audit-frontend",
+      "size_in_bytes": 624,
+      "url": "https://api.github.com/repos/msajath/MedNexus/actions/artifacts/12441911031",
+      "archive_download_url": "https://api.github.com/repos/msajath/MedNexus/actions/artifacts/12441911031/zip",
+      "expired": false,
+      "digest": "sha256:de14ff64dcdcd4d9272afab939a7d850f8462296bebb0e354527afb7b0f04b58",
+      "created_at": "2026-10-22T16:30:01Z",
+      "updated_at": "2026-10-22T16:30:01Z",
+      "expires_at": "2026-11-05T16:30:00Z",
+      "workflow_run": {
+        "id": 39814536964,
+        "repository_id": 1285418533,
+        "head_repository_id": 1285418533,
+        "head_branch": "main",
+        "head_sha": "17f69c2d671117a6edee4d1a2e00b4199812e9a6"
+      }
+    },
+    {
+      "id": 12441107873,
+      "node_id": "MDg6QXJ0aWZhY3QxMjQ0MTEwNzg3Mw==",
+      "name": "coverage-frontend",
+      "size_in_bytes": 2258865,
+      "url": "https://api.github.com/repos/msajath/MedNexus/actions/artifacts/12441107873",
+      "archive_download_url": "https://api.github.com/repos/msajath/MedNexus/actions/artifacts/12441107873/zip",
+      "expired": false,
+      "digest": "sha256:68cdf2248166f87253bf1888b6b4d41d2d7a3cf1ee7b7566ee42eca86d4aa717",
+      "created_at": "2026-10-22T16:30:15Z",
+      "updated_at": "2026-10-22T16:30:15Z",
+      "expires_at": "2026-10-29T16:30:14Z",
+      "workflow_run": {
+        "id": 39814536964,
+        "repository_id": 1285418533,
+        "head_repository_id": 1285418533,
+        "head_branch": "main",
+        "head_sha": "17f69c2d671117a6edee4d1a2e00b4199812e9a6"
+      }
+    },
+    {
+      "id": 12440998757,
+      "node_id": "MDg6QXJ0aWZhY3QxMjQ0MDk5ODc1Nw==",
+      "name": "coverage-backend",
+      "size_in_bytes": 228356,
+      "url": "https://api.github.com/repos/msajath/MedNexus/actions/artifacts/12440998757",
+      "archive_download_url": "https://api.github.com/repos/msajath/MedNexus/actions/artifacts/12440998757/zip",
+      "expired": false,
+      "digest": "sha256:644e129b1f9bf8ac1626f295ce8b8d76557d89076d3beb9149283a8d26f12d0c",
+      "created_at": "2026-10-22T16:30:10Z",
+      "updated_at": "2026-10-22T16:30:10Z",
+      "expires_at": "2026-10-29T16:30:09Z",
+      "workflow_run": {
+        "id": 39814536964,
+        "repository_id": 1285418533,
+        "head_repository_id": 1285418533,
+        "head_branch": "main",
+        "head_sha": "17f69c2d671117a6edee4d1a2e00b4199812e9a6"
+      }
+    },
+    {
+      "id": 12440919182,
+      "node_id": "MDg6QXJ0aWZhY3QxMjQ0MDkxOTE4Mg==",
+      "name": "backend-integration-results",
+      "size_in_bytes": 12529,
+      "url": "https://api.github.com/repos/msajath/MedNexus/actions/artifacts/12440919182",
+      "archive_download_url": "https://api.github.com/repos/msajath/MedNexus/actions/artifacts/12440919182/zip",
+      "expired": false,
+      "digest": "sha256:baacd3913920dc9c5deb9734739ecbad2167e05f7cab5a96b0bdc2b24cdeb02d",
+      "created_at": "2026-10-22T16:34:03Z",
+      "updated_at": "2026-10-22T16:34:03Z",
+      "expires_at": "2026-11-05T16:34:02Z",
+      "workflow_run": {
+        "id": 39814536964,
+        "repository_id": 1285418533,
+        "head_repository_id": 1285418533,
+        "head_branch": "main",
+        "head_sha": "17f69c2d671117a6edee4d1a2e00b4199812e9a6"
+      }
+    },
+    {
+      "id": 12440759581,
+      "node_id": "MDg6QXJ0aWZhY3QxMjQ0MDc1OTU4MQ==",
+      "name": "browser-qa-report",
+      "size_in_bytes": 404884,
+      "url": "https://api.github.com/repos/msajath/MedNexus/actions/artifacts/12440759581",
+      "archive_download_url": "https://api.github.com/repos/msajath/MedNexus/actions/artifacts/12440759581/zip",
+      "expired": false,
+      "digest": "sha256:0dbaa4aca2c6823591811c593ee74b461d106634df6b8515fc1a08d873f47b67",
+      "created_at": "2026-10-22T16:32:12Z",
+      "updated_at": "2026-10-22T16:32:12Z",
+      "expires_at": "2026-10-29T16:32:11Z",
+      "workflow_run": {
+        "id": 39814536964,
+        "repository_id": 1285418533,
+        "head_repository_id": 1285418533,
+        "head_branch": "main",
+        "head_sha": "17f69c2d671117a6edee4d1a2e00b4199812e9a6"
+      }
+    }
+  ]
+}
