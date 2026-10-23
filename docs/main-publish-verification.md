@@ -1,5 +1,7 @@
 # Main branch publication
 
+For the subsequent successful main CI run and the separately canceled manual rerun, see [browser-ci-timeout-verification.md](browser-ci-timeout-verification.md).
+
 The owner explicitly requested publishing all current changes to `main` after the workflow QA report. This publication includes the complete tracked and unignored source snapshot, including the final report edits that were not in the original staged snapshot. Local evidence directories, environment secrets, dependency directories and generated test/build files remain excluded by Git ignore rules.
 
 The source was tested with 183 backend unit tests, 73 real MongoDB integration tests, 151 frontend tests and 60 desktop/mobile browser tests. Coverage, lint, production build, dependency audits, actionlint and Compose configuration checks passed. Detailed evidence and limitations are in [workflow-qa-verification.md](workflow-qa-verification.md).
