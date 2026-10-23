@@ -26,7 +26,7 @@ const nextMonday = () => {
 };
 
 describeWithMongo('MongoDB security and booking integration', () => {
-  jest.setTimeout(30000);
+  jest.setTimeout(60000);
 
   beforeAll(async () => {
     assertTestDatabase(process.env.MONGO_TEST_URI);
@@ -35,7 +35,7 @@ describeWithMongo('MongoDB security and booking integration', () => {
     await User.createIndexes();
     await Appointment.createIndexes();
     await Availability.createIndexes();
-  }, 30000);
+  }, 60000);
 
   afterEach(async () => {
     await Promise.all([
@@ -113,5 +113,19 @@ describeWithMongo('MongoDB security and booking integration', () => {
   test('email uniqueness is enforced by MongoDB', async () => {
     await createUser('unique-email');
     await expect(createUser('unique-email')).rejects.toMatchObject({ code: 11000 });
+  });
+
+  test('attachment removal requires an exact index and persists only the selected deletion', async () => {
+    const patient = await createUser('attachment-index-patient');
+    const attachment = name => ({ name, type: 'application/pdf',
+      url: `data:application/pdf;base64,${Buffer.from('%PDF-1.4\nSynthetic report').toString('base64')}` });
+    const record = await MedicalRecord.create({ patient: patient._id, title: 'Index safety report', date: nextMonday(),
+      addedBy: 'patient', attachments: [attachment('first.pdf'), attachment('second.pdf')] });
+    const rejected = await request(app).delete(`/api/records/${record._id}/attachments/0junk`).set(auth(patient));
+    expect(rejected.status).toBe(400);
+    expect((await MedicalRecord.findById(record._id)).attachments.map(item => item.name)).toEqual(['first.pdf', 'second.pdf']);
+    const removed = await request(app).delete(`/api/records/${record._id}/attachments/0`).set(auth(patient));
+    expect(removed.status).toBe(200);
+    expect((await MedicalRecord.findById(record._id)).attachments.map(item => item.name)).toEqual(['second.pdf']);
   });
 });

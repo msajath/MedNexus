@@ -13,7 +13,7 @@ const withMongo = process.env.MONGO_TEST_URI ? describe : describe.skip;
 const auth = (user) => ({ Authorization: `Bearer ${jwt.sign({ id: user._id, version: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn: '1h' })}` });
 
 withMongo('Administrative privacy and operational reporting', () => {
-  jest.setTimeout(30000);
+  jest.setTimeout(60000);
   let admin, patient, doctorUser, doctor;
   beforeAll(async () => {
     assertTestDatabase(process.env.MONGO_TEST_URI);

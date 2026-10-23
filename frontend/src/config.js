@@ -1,5 +1,20 @@
 // Vite proxies /api in development; production routes /api on the same HTTPS origin.
 export const API_BASE = import.meta.env.DEV ? (import.meta.env.VITE_API_URL || '') : '';
+export const SESSION_EXPIRED_EVENT = 'mednexus:session-expired'
+
+const notifyInvalidSession = async (input, response) => {
+  if (response.status !== 401 || typeof window === 'undefined' || typeof input !== 'string') return
+  // A wrong password also returns 401. Only authentication middleware can
+  // declare the existing session invalid; preserve other validation errors.
+  try {
+    const url = new URL(input, window.location.origin)
+    const apiOrigin = new URL(API_BASE || window.location.origin, window.location.origin).origin
+    if (![window.location.origin, apiOrigin].includes(url.origin) || !url.pathname.startsWith('/api/')) return
+    if (/^\/api\/auth\/(login|register|forgot-password|reset-password)\/?$/.test(url.pathname)) return
+    const data = await response.clone().json()
+    if (data.code === 'AUTH_SESSION_INVALID') window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+  } catch { /* Preserve the original response when a gateway returns non-JSON. */ }
+}
 
 // A sleeping API host can briefly return gateway errors while it starts.
 const readRetryDelays = [2000, 4000, 6000, 8000, 10000, 10000, 10000, 10000]
@@ -85,6 +100,7 @@ const request = async (input, init = {}, json = false) => {
   const timeout = controller && setTimeout(() => controller.abort(new ApiTimeoutError('The server is taking too long to respond')), readTimeout)
   const options = { ...init, headers, credentials: 'include', signal: controller?.signal || init.signal }
   const readResponse = async response => {
+    await notifyInvalidSession(input, response)
     if (!json) return response
     if (!response.ok) {
       throw Object.assign(new Error('The request could not be completed'), {

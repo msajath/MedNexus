@@ -20,6 +20,7 @@ const protect = async (req, res, next) => {
   if (!token) {
     return res.status(401).json({
       success: false,
+      code: 'AUTH_SESSION_INVALID',
       message: 'Not authorized, no token provided',
     });
   }
@@ -32,6 +33,7 @@ const protect = async (req, res, next) => {
         (decoded.version ?? 0) !== (req.user.tokenVersion || 0)) {
       return res.status(401).json({
         success: false,
+        code: 'AUTH_SESSION_INVALID',
         message: 'Account is unavailable',
       });
     }
@@ -40,6 +42,7 @@ const protect = async (req, res, next) => {
   } catch (error) {
     return res.status(401).json({
       success: false,
+      code: 'AUTH_SESSION_INVALID',
       message: 'Not authorized, token invalid',
     });
   }

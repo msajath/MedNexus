@@ -1,32 +1,21 @@
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { assets } from '../assets/assets'
-import Tilt from 'react-parallax-tilt'
 import { motion } from 'framer-motion'
 
 export default function DoctorCard({ doctor, index = 0 }) {
-  const navigate = useNavigate();
-  
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
+      whileHover={{ scale: 1.02 }}
       className="h-full"
     >
-      <Tilt
-        glareEnable={true}
-        glareMaxOpacity={0.15}
-        scale={1.02}
-        transitionSpeed={400}
-        tiltMaxAngleX={8}
-        tiltMaxAngleY={8}
-        className="h-full"
-      >
-        <div 
+        <Link
           className="flex flex-col h-full bg-white rounded-xl overflow-hidden shadow-3d hover:shadow-3d-hover transition-shadow duration-300 cursor-pointer border border-slate-100" 
-          id={`doctor-card-${doctor.id}`}
-          onClick={() => navigate(`/doctors/${doctor._id || doctor.id}`)}
+          id={`doctor-card-${doctor._id || doctor.id}`}
+          to={`/doctors/${doctor._id || doctor.id}`}
         >
           <div className="bg-[#eaf0fb] w-full aspect-square flex justify-center items-end overflow-hidden">
             <img 
@@ -40,8 +29,7 @@ export default function DoctorCard({ doctor, index = 0 }) {
             <p className="text-[0.85rem] text-slate-500 font-normal">{doctor.specialty}</p>
             {doctor.available === false && <p className="mt-2 text-xs font-medium text-amber-700">Currently unavailable for booking</p>}
           </div>
-        </div>
-      </Tilt>
+        </Link>
     </motion.div>
   )
 }

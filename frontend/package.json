@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
+    "test:e2e": "node scripts/runWorkflowQa.mjs",
     "test:ui": "playwright test --config playwright.ui.config.js"
   },
   "dependencies": {

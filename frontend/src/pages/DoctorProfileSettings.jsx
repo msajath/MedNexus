@@ -58,7 +58,7 @@ export default function DoctorProfileSettings() {
       address: user.address || '',
       // Doctor specific
       specialty: user.doctorProfile?.specialty || 'General Practice',
-      fee: user.doctorProfile?.fee || 100,
+      fee: user.doctorProfile?.fee ?? 100,
       experience: user.doctorProfile?.experience || '1+ Years',
       location: user.doctorProfile?.location || '',
       bio: user.doctorProfile?.bio || ''

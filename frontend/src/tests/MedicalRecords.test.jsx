@@ -66,3 +66,43 @@ test('allows selecting a specific doctor to share report with', async () => {
   const payload = JSON.parse(postCall[1].body)
   expect(payload.doctorId).toBe('doc-42')
 })
+
+test('shows a failed medical-record load and retries instead of claiming the records are empty', async () => {
+  let failed = true
+  apiFetch.mockImplementation(async url => url === '/api/records/my'
+    ? { ok: !failed, json: async () => failed ? { message: 'Records temporarily unavailable' } : { records: [{ _id: 'rec-1', title: 'Recovered record', type: 'Other', addedBy: 'patient' }] } }
+    : { ok: true, json: async () => ({ doctors: [] }) })
+  render(<MedicalRecords />)
+  expect(await screen.findByRole('alert')).toHaveTextContent('Records temporarily unavailable')
+  expect(screen.queryByText('No records found')).not.toBeInTheDocument()
+  failed = false
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+  expect(await screen.findByText('Recovered record')).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
+
+test.each([
+  ['script.exe', 'application/octet-stream'],
+  ['notes.txt', 'text/plain'],
+  ['unknown', ''],
+])('rejects unsupported report %s before attempting an upload', async (name, type) => {
+  render(<MedicalRecords />)
+  fireEvent.click(screen.getByRole('button', { name: /add record/i }))
+  fireEvent.change(screen.getByLabelText(/upload patient report/i), {
+    target: { files: [new File(['unsupported content'], name, { type })] },
+  })
+  expect(screen.getByRole('alert')).toHaveTextContent(/PDF, PNG, JPEG, or WebP/i)
+  expect(screen.queryByText(name)).not.toBeInTheDocument()
+  expect(apiFetch.mock.calls.some(([url]) => url === '/api/records')).toBe(false)
+})
+
+test('clinical records remain readable without offering an unauthorized delete action', async () => {
+  apiFetch.mockImplementation(async url => ({ ok: true, json: async () => url === '/api/records/my'
+    ? { records: [{ _id: 'clinical-1', title: 'Clinical diagnosis', type: 'Diagnosis', addedBy: 'doctor', appointment: 'appointment-1' }] }
+    : { doctors: [] } }))
+  render(<MedicalRecords />)
+  fireEvent.click(await screen.findByText('Clinical diagnosis'))
+  expect(screen.getByText('Added by your doctor')).toBeInTheDocument()
+  expect(screen.queryByTitle('Delete')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /delete record/i })).not.toBeInTheDocument()
+})

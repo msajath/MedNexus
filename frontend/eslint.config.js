@@ -19,9 +19,10 @@ export default defineConfig([
     },
   },
   {
-    files: ['vite.config.js', 'playwright.config.js', 'playwright.ui.config.js'],
+    files: ['vite.config.js', 'playwright.config.js', 'playwright.ui.config.js', 'scripts/**/*.mjs'],
     languageOptions: {
       globals: globals.node,
     },
   },
+  { files: ['scripts/**/*.mjs'], extends: [js.configs.recommended] },
 ])

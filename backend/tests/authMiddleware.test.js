@@ -25,7 +25,7 @@ describe('authentication middleware', () => {
   test('rejects requests without a bearer token or session cookie', async () => {
     const { res, next } = await runMiddleware(protect);
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('no token') }));
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'AUTH_SESSION_INVALID', message: expect.stringContaining('no token') }));
     expect(next).not.toHaveBeenCalled();
   });
 
@@ -35,7 +35,7 @@ describe('authentication middleware', () => {
   ])('rejects %s without revealing token details', async (_description, token) => {
     const { res, next } = await runMiddleware(protect, { headers: { authorization: `Bearer ${token}` } });
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ success: false, message: 'Not authorized, token invalid' });
+    expect(res.json).toHaveBeenCalledWith({ success: false, code: 'AUTH_SESSION_INVALID', message: 'Not authorized, token invalid' });
     expect(next).not.toHaveBeenCalled();
   });
 
@@ -44,7 +44,7 @@ describe('authentication middleware', () => {
     const token = jwt.sign({ id: 'user-1' }, secret);
     const inactive = await runMiddleware(protect, { headers: { authorization: `Bearer ${token}` } });
     expect(inactive.res.status).toHaveBeenCalledWith(401);
-    expect(inactive.res.json).toHaveBeenCalledWith({ success: false, message: 'Account is unavailable' });
+    expect(inactive.res.json).toHaveBeenCalledWith({ success: false, code: 'AUTH_SESSION_INVALID', message: 'Account is unavailable' });
 
     User.findById.mockResolvedValue({ _id: 'user-1', isActive: true, tokenVersion: 2 });
     const revokedToken = jwt.sign({ id: 'user-1', version: 1 }, secret);

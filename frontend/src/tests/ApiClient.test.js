@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { apiFetch, apiFetchJson } from '../config'
+import { apiFetch, apiFetchJson, SESSION_EXPIRED_EVENT } from '../config'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -10,6 +10,41 @@ afterEach(() => {
 const pendingFetch = (_, { signal }) => new Promise((_, reject) => {
   if (signal.aborted) reject(signal.reason)
   else signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+})
+
+test('invalid session responses notify auth state without consuming the caller response', async () => {
+  const dispatch = vi.spyOn(window, 'dispatchEvent')
+  const json = vi.fn()
+  const response = { status: 401, json, clone: () => ({ json: async () => ({ code: 'AUTH_SESSION_INVALID' }) }) }
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response))
+
+  expect(await apiFetch('/api/appointments/my')).toBe(response)
+
+  expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: SESSION_EXPIRED_EVENT }))
+  expect(json).not.toHaveBeenCalled()
+})
+
+test.each(['/api/auth/login', '/api/auth/profile', '/api/auth/password'])('ordinary credential errors from %s preserve the session', async (url) => {
+  const dispatch = vi.spyOn(window, 'dispatchEvent')
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 401, clone: () => ({ json: async () => ({ message: 'Incorrect password' }) }) }))
+
+  expect((await apiFetch(url, { method: 'POST' })).status).toBe(401)
+
+  expect(dispatch).not.toHaveBeenCalled()
+})
+
+test('third party failures cannot declare a local session expired', async () => {
+  const dispatch = vi.spyOn(window, 'dispatchEvent')
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 401, clone: () => ({ json: async () => ({ code: 'AUTH_SESSION_INVALID' }) }) }))
+  await apiFetch('https://example.com/api/auth/me')
+  expect(dispatch).not.toHaveBeenCalled()
+})
+
+test('a public sign-in rejection cannot invalidate an existing authenticated session', async () => {
+  const dispatch = vi.spyOn(window, 'dispatchEvent')
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 401, clone: () => ({ json: async () => ({ code: 'AUTH_SESSION_INVALID' }) }) }))
+  await apiFetch('/api/auth/login', { method: 'POST' })
+  expect(dispatch).not.toHaveBeenCalled()
 })
 test('cookie mutations send the request protection header without legacy bearer tokens', async () => {
   const fetch = vi.fn().mockResolvedValue({ ok: true })

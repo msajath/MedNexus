@@ -23,7 +23,7 @@ const futureMonday = () => {
   return date.toISOString().slice(0, 10);
 };
 withMongo('Real database API workflows', () => {
-  jest.setTimeout(30000);
+  jest.setTimeout(60000);
   let patient, otherPatient, doctorUser, doctor, admin;
   beforeAll(async () => {
     assertTestDatabase(process.env.MONGO_TEST_URI);

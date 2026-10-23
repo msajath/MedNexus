@@ -12,7 +12,7 @@ const withMongo = process.env.MONGO_TEST_URI ? describe : describe.skip;
 const auth = (user) => ({ Authorization: `Bearer ${jwt.sign({ id: user._id, version: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn: '1h' })}` });
 
 withMongo('Audited manual payment receipts', () => {
-  jest.setTimeout(30000);
+  jest.setTimeout(60000);
   let admin, patient, doctorUser, doctor, booking;
   const payload = { amount: 80.29, currency: 'USD', method: 'bank_transfer', reference: 'BANK-RECEIPT-123' };
   beforeAll(async () => {

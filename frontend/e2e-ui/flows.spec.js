@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../e2e/fixtures.js'
 
 const doctorId = '507f1f77bcf86cd799439012'
 const patientId = '507f1f77bcf86cd799439013'

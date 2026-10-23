@@ -101,9 +101,7 @@ export default function LoginPage() {
               </div>
             </div>
             <div className="flex justify-between items-center mb-2">
-              <label className="flex items-center gap-2 text-sm text-navy-muted cursor-pointer">
-                <input type="checkbox" className="accent-primary" /> Remember me
-              </label>
+              <p className="text-sm text-navy-muted">Use Logout on shared devices.</p>
               <Link to="/forgot-password" className="text-sm text-primary font-medium hover:underline">Forgot Password?</Link>
             </div>
             <button 

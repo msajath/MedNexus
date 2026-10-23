@@ -137,3 +137,13 @@ test('patients can soft-delete their own uploaded report assigned to a doctor', 
   expect(record.deletedAt).toBeInstanceOf(Date);
   expect(record.save).toHaveBeenCalledTimes(1);
 });
+
+test.each(['0junk', '0.5', '1e0', '-0'])('a malformed attachment index %s cannot remove a different report', async (index) => {
+  const record = { patient: '507f1f77bcf86cd799439011', addedBy: 'patient',
+    attachments: [{ name: 'First report' }, { name: 'Second report' }], save: jest.fn().mockResolvedValue() };
+  MedicalRecord.findById.mockResolvedValue(record);
+  const result = await request(app).delete(`/api/records/${appointmentId}/attachments/${index}`).set('x-role', 'patient');
+  expect(result.status).toBe(400);
+  expect(record.attachments.map(attachment => attachment.name)).toEqual(['First report', 'Second report']);
+  expect(record.save).not.toHaveBeenCalled();
+});

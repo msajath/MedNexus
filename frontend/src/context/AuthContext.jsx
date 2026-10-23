@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { API_BASE, apiFetch } from '../config'
+import { API_BASE, apiFetch, SESSION_EXPIRED_EVENT } from '../config'
 
 const AuthContext = createContext(null)
 
@@ -26,8 +26,11 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
+    const clearInvalidSession = () => { setUser(null); setError(null) }
+    window.addEventListener(SESSION_EXPIRED_EVENT, clearInvalidSession)
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchCurrentUser()
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, clearInvalidSession)
   }, [])
 
   const login = async (email, password) => {

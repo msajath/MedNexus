@@ -18,8 +18,9 @@ const mimeByExtension = {
 
 const resolveType = (file) => {
   if (REPORT_TYPES.includes(file.type)) return file.type
+  if (file.type && file.type !== 'application/octet-stream') return ''
   const ext = file.name.split('.').pop()?.toLowerCase()
-  return mimeByExtension[ext] || file.type || 'application/pdf'
+  return mimeByExtension[ext] || ''
 }
 
 const readReport = (file) => new Promise((resolve, reject) => {
@@ -81,6 +82,7 @@ const emptyForm = {
 export default function MedicalRecords() {
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [filter, setFilter] = useState('All')
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -98,12 +100,16 @@ export default function MedicalRecords() {
   const [formError, setFormError] = useState('')
 
   const fetchRecords = async () => {
+    setLoading(true)
+    setLoadError('')
     try {
       const res = await apiFetch(`${API_BASE}/api/records/my`)
       const data = await res.json()
-      setRecords(data.records || [])
+      if (!res.ok) throw new Error(data.message || 'Could not load your medical records.')
+      if (!Array.isArray(data.records)) throw new Error('Could not load your medical records.')
+      setRecords(data.records)
     } catch (err) {
-      console.error('Error fetching records:', err)
+      setLoadError(err.message || 'Could not load your medical records.')
     } finally {
       setLoading(false)
     }
@@ -308,7 +314,7 @@ export default function MedicalRecords() {
             <div key={stat.label} className="flex items-center gap-3 p-4 bg-white rounded-xl border border-outline-variant shadow-sm">
               <span className={`material-icons-outlined ${stat.color} text-[28px]`}>{stat.icon}</span>
               <div>
-                <p className="text-2xl font-bold text-navy">{stat.value}</p>
+                <p className="text-2xl font-bold text-navy">{loading || loadError ? '—' : stat.value}</p>
                 <p className="text-xs text-navy-muted">{stat.label}</p>
               </div>
             </div>
@@ -322,6 +328,10 @@ export default function MedicalRecords() {
           <div>
             {loading ? (
               <div className="text-center p-12 text-navy-muted">Loading records...</div>
+            ) : loadError ? (
+              <div role="alert" className="p-5 rounded-xl bg-red-50 text-red-700">
+                {loadError} <button type="button" className="ml-2 underline" onClick={fetchRecords}>Try again</button>
+              </div>
             ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-xl border border-dashed border-slate-300">
                 <span className="material-icons-outlined text-[48px] text-outline mb-3">folder_open</span>
@@ -371,13 +381,13 @@ export default function MedicalRecords() {
                           </div>
                         </div>
                         <div className="flex gap-1 shrink-0">
-                          <button
+                          {record.addedBy === 'patient' && !record.appointment && <button
                             onClick={(e) => { e.stopPropagation(); handleDelete(id) }}
                             className="p-1.5 text-outline hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                             title="Delete"
                           >
                             <span className="material-icons-outlined text-[18px]">delete</span>
-                          </button>
+                          </button>}
                         </div>
                       </div>
                       {record.description && (
@@ -449,7 +459,7 @@ export default function MedicalRecords() {
                               <span className="material-icons-outlined text-[18px]">download</span>
                               <span className="truncate">{attachment.name}</span>
                             </button>
-                            {selectedRecord.addedBy === 'patient' && (
+                            {selectedRecord.addedBy === 'patient' && !selectedRecord.appointment && (
                               <button
                                 type="button"
                                 onClick={() => handleRemoveAttachment(selectedRecord._id || selectedRecord.id, index)}
@@ -482,7 +492,7 @@ export default function MedicalRecords() {
                       </div>
                     </div>
                   )}
-                  {selectedRecord.addedBy === 'patient' && (
+                  {selectedRecord.addedBy === 'patient' && !selectedRecord.appointment && (
                     <div className="pt-3 border-t border-outline-variant flex justify-end">
                       <button
                         type="button"

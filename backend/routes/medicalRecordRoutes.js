@@ -79,8 +79,8 @@ router.delete('/:id/attachments/:index', authorize('patient'), validateObjectId(
     if (!record) return res.status(404).json({ success: false, message: 'Record not found' });
     if (record.patient.toString() !== req.user._id.toString()) return res.status(403).json({ success: false, message: 'Not authorized' });
     if (record.addedBy !== 'patient' || record.appointment) return res.status(403).json({ success: false, message: 'Clinical records cannot be modified' });
-    const index = parseInt(req.params.index, 10);
-    if (Number.isNaN(index) || index < 0 || index >= (record.attachments || []).length) {
+    const index = /^(0|[1-9]\d*)$/.test(req.params.index) ? Number(req.params.index) : NaN;
+    if (!Number.isSafeInteger(index) || index >= (record.attachments || []).length) {
       return res.status(400).json({ success: false, message: 'Invalid attachment index' });
     }
     record.attachments.splice(index, 1);

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
 import { API_BASE, apiFetch } from '../config'
+import { formatMoney } from '../utils/admin'
 
 const roleColors = {
   patient: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -17,15 +18,19 @@ export default function AdminUsers() {
   const [deleting, setDeleting] = useState(null)
   const [selectedDoctor, setSelectedDoctor] = useState(null)
   const [doctorLoading, setDoctorLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const fetchUsers = async () => {
+    setLoading(true)
+    setError('')
     try {
       const res = await apiFetch(`${API_BASE}/api/admin/users`, {
         })
       const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Unable to load users.')
       setUsers(data.users || [])
     } catch (err) {
-      console.error(err)
+      setError(err.message || 'Unable to load users.')
     } finally {
       setLoading(false)
     }
@@ -39,43 +44,54 @@ export default function AdminUsers() {
   const handleDelete = async (userId, userName) => {
     if (!window.confirm(`Deactivate ${userName}? Their clinical history will be retained.`)) return
     setDeleting(userId)
+    setError('')
     try {
       const res = await apiFetch(`${API_BASE}/api/admin/users/${userId}`, {
         method: 'DELETE',
         })
       if (res.ok) {
         setUsers(prev => prev.filter(u => u._id !== userId))
+      } else {
+        const data = await res.json()
+        throw new Error(data.message || 'Unable to deactivate this account.')
       }
     } catch (err) {
-      console.error(err)
+      setError(err.message || 'Unable to deactivate this account.')
     } finally {
       setDeleting(null)
     }
   }
 
   const handleVerifyDoctor = async (userId) => {
+    setError('')
     try {
       const res = await apiFetch(`${API_BASE}/api/admin/verify-doctor/${userId}`, {
         method: 'PUT',
         })
       if (res.ok) {
         setUsers(prev => prev.map(u => u._id === userId ? { ...u, isVerified: true } : u))
+      } else {
+        const data = await res.json()
+        throw new Error(data.message || 'Unable to verify this doctor.')
       }
     } catch (err) {
-      console.error(err)
+      setError(err.message || 'Unable to verify this doctor.')
     }
   }
 
   const openDoctorDetails = async (doctor) => {
+    setError('')
     setSelectedDoctor({ ...doctor, loading: true })
     setDoctorLoading(true)
     try {
       const res = await apiFetch(`${API_BASE}/api/admin/doctors/${doctor._id}`, {
         })
       const data = await res.json()
-      if (res.ok) setSelectedDoctor(data.doctor)
+      if (!res.ok) throw new Error(data.message || 'Unable to load doctor details.')
+      setSelectedDoctor(data.doctor)
     } catch (err) {
-      console.error(err)
+      setSelectedDoctor(null)
+      setError(err.message || 'Unable to load doctor details.')
     } finally {
       setDoctorLoading(false)
     }
@@ -149,9 +165,10 @@ export default function AdminUsers() {
           </div>
         </div>
 
+        {error && <div role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-red-700">{error} <button onClick={fetchUsers} className="font-semibold underline">Reload users</button></div>}
         {loading ? (
           <div className="text-center p-12 text-navy-muted">Loading users...</div>
-        ) : filtered.length === 0 ? (
+        ) : filtered.length === 0 ? error ? null : (
           <div className="text-center py-20 text-navy-muted bg-white rounded-xl border border-dashed border-slate-300">
             <span className="material-icons-outlined text-[48px] mb-2">group</span>
             <p>No users found</p>
@@ -295,7 +312,7 @@ export default function AdminUsers() {
                       <div className="overflow-x-auto border border-outline-variant rounded-lg">
                         <table className="w-full text-sm">
                           <thead className="bg-surface-container-low">
-                            <tr><th className="text-left p-3">Patient</th><th className="text-left p-3">Date</th><th className="text-left p-3">Status</th><th className="text-left p-3">Fee</th></tr>
+                            <tr><th className="text-left p-3">Patient</th><th className="text-left p-3">Date</th><th className="text-left p-3">Status</th><th className="text-left p-3">Fee at booking</th></tr>
                           </thead>
                           <tbody>
                             {selectedDoctor.appointments.map(appointment => (
@@ -303,7 +320,7 @@ export default function AdminUsers() {
                                 <td className="p-3">{appointment.patient?.name || 'Unknown'}</td>
                                 <td className="p-3">{appointment.date} {appointment.time}</td>
                                 <td className="p-3 capitalize">{appointment.status}</td>
-                                <td className="p-3">{['confirmed', 'completed'].includes(appointment.status) ? `$${selectedDoctor.fee}` : '—'}</td>
+                                <td className="p-3">{formatMoney(appointment.feeAtBooking)}</td>
                               </tr>
                             ))}
                           </tbody>

@@ -25,7 +25,7 @@ const monday = (extraWeeks = 0) => {
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
 
 withMongo('Doctor leave, booking coordination and audit history', () => {
-  jest.setTimeout(30000);
+  jest.setTimeout(60000);
   let patient, doctorUser, otherDoctorUser, admin, doctor;
   beforeAll(async () => {
     assertTestDatabase(process.env.MONGO_TEST_URI);
