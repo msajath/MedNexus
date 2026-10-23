@@ -45,12 +45,16 @@ withMongo('Real database API workflows', () => {
     const registered = await agent.post('/api/auth/register').send({ name: 'New Patient', email: ' New@EXAMPLE.test ', password, role: 'patient', isVerified: true });
     expect(registered.status).toBe(201);
     expect(registered.body.token).toBeUndefined();
+    const stored = await User.findOne({ email: 'new@example.test' }).select('+password');
+    expect(stored.password).not.toBe(password);
+    expect(await stored.matchPassword(password)).toBe(true);
     const cookie = registered.headers['set-cookie'][0].split(';')[0];
     expect(registered.headers['set-cookie'][0]).toContain('HttpOnly');
     expect((await agent.get('/api/auth/me')).body.user.email).toBe('new@example.test');
     const updated = await agent.put('/api/auth/profile').set('X-MedNexus-Request', '1').send({ phone: '123', address: 'Test Address' });
     expect(updated.status).toBe(200);
     expect(updated.body.user.address).toBe('Test Address');
+    expect((await User.findById(stored._id).select('+password')).password).toBe(stored.password);
     expect((await agent.post('/api/auth/logout').set('X-MedNexus-Request', '1')).status).toBe(200);
     expect((await request(app).get('/api/auth/me').set('Cookie', cookie)).status).toBe(401);
   });
@@ -65,6 +69,9 @@ withMongo('Real database API workflows', () => {
     await agent.post('/api/auth/login').send({ email: patient.email, password });
     const changed = await agent.put('/api/auth/password').set('X-MedNexus-Request', '1').send({ currentPassword: password, newPassword: 'changed-password-123456' });
     expect(changed.status).toBe(200);
+    const stored = await User.findById(patient._id).select('+password');
+    expect(await stored.matchPassword('changed-password-123456')).toBe(true);
+    expect(await stored.matchPassword(password)).toBe(false);
     expect((await agent.get('/api/auth/me')).status).toBe(200);
     expect((await request(app).get('/api/auth/me').set(old)).status).toBe(401);
   });

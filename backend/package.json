@@ -10,9 +10,9 @@
     "bootstrap-admin": "node scripts/bootstrapAdmin.js",
     "reset-password": "node scripts/resetDevPassword.js",
     "audit:db": "node scripts/auditDatabaseSecurity.js",
-    "test": "jest --runInBand",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
     "test:qa": "node scripts/testWithMongo.js",
-    "test:coverage": "jest --runInBand --coverage"
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --coverage"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
