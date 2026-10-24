@@ -18,6 +18,11 @@ export default function DoctorDashboard() {
     pendingCount: 0,
     totalEarnings: '—',
   })
+  const [payouts, setPayouts] = useState([])
+  const [payoutSummary, setPayoutSummary] = useState({
+    totalPaidOut: 0,
+    pendingBalance: 0,
+  })
   const now = new Date()
   const [currentMonth] = useState(now.toLocaleString('default', { month: 'long', year: 'numeric' }))
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
@@ -48,6 +53,11 @@ export default function DoctorDashboard() {
         pendingCount: pending,
         totalEarnings: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(paymentData.earnings.netReceived),
       })
+      setPayouts(paymentData.payouts || [])
+      setPayoutSummary({
+        totalPaidOut: paymentData.totalPaidOut || 0,
+        pendingBalance: paymentData.pendingBalance ?? (paymentData.earnings.netReceived || 0),
+      })
       setError('')
     } catch {
       setError('We couldn’t load your dashboard. Please try again.')
@@ -57,7 +67,6 @@ export default function DoctorDashboard() {
   }, [])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTodayAppointments()
   }, [fetchTodayAppointments])
 
@@ -76,13 +85,26 @@ export default function DoctorDashboard() {
         </div>
 
         {error && <div role="alert" className="mb-5 rounded-xl bg-error-bg p-4 text-error">{error} <button type="button" onClick={fetchTodayAppointments} className="ml-2 underline">Try again</button></div>}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-4">
           <StatCard icon="calendar_today" value={loading || error ? '—' : stats.todayCount.toString()} label="Today's Appointments" color="var(--color-primary)" />
           <StatCard icon="people" value={loading || error ? '—' : stats.patientCount.toString()} label="Total Patients" color="var(--color-success)" />
-          <StatCard icon="pending_actions" value={loading || error ? '—' : stats.pendingCount.toString()} label="Pending Requests" color="var(--color-warning)" />
           <StatCard icon="payments" value={loading || error ? '—' : stats.totalEarnings} label="Net Received" color="#8b5cf6" />
+          <StatCard icon="account_balance" value={loading || error ? '—' : `$${payoutSummary.totalPaidOut.toFixed(2)}`} label="Transferred to Bank" color="#059669" />
         </div>
-        <p className="mb-6 text-sm text-navy-muted">Net received is based on payments recorded by an administrator, less recorded refunds.</p>
+
+        {!loading && !error && (
+          <div className="mb-6 p-4 rounded-xl bg-purple-50/70 border border-purple-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-purple-900">
+              <span className="material-icons-outlined text-[18px] text-purple-700">lock</span>
+              <span><strong>Earnings Confidentiality:</strong> Your earnings are visible only to you and hospital administrators. Completed appointments auto-credit your income.</span>
+            </div>
+            <div className="shrink-0 flex items-center gap-2 font-semibold">
+              <span className="text-navy-muted">Unpaid Balance:</span>
+              <span className="text-sm font-bold text-purple-800">${payoutSummary.pendingBalance.toFixed(2)} pending</span>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 mb-8">
           <div>
@@ -132,6 +154,56 @@ export default function DoctorDashboard() {
               <p className="text-sm text-navy-muted">Review your monthly performance and clinical insights to optimize patient satisfaction.</p>
             </div>
           </div>
+        </div>
+
+        {/* Bank Transfers & Salary Disbursements */}
+        <div className="mb-8 bg-white rounded-xl shadow-sm border border-outline-variant overflow-hidden">
+          <div className="p-5 border-b border-outline-variant flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-navy flex items-center gap-2">
+              <span className="material-icons-outlined text-primary">account_balance</span>
+              Bank Transfers &amp; Salary Received
+            </h3>
+            <span className="text-xs font-semibold px-2.5 py-1 bg-surface rounded-full text-navy-muted">
+              {payouts.length} Transfers
+            </span>
+          </div>
+          {payouts.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-surface-container-low text-xs uppercase text-navy-muted">
+                  <tr>
+                    <th className="p-3 text-left">Date</th>
+                    <th className="p-3 text-left">Bank &amp; Account</th>
+                    <th className="p-3 text-left">Reference / Note</th>
+                    <th className="p-3 text-right">Amount Received</th>
+                    <th className="p-3 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payouts.map((p) => (
+                    <tr key={p._id} className="border-t border-outline-variant hover:bg-surface/50">
+                      <td className="p-3 text-xs">{new Date(p.processedAt || p.createdAt).toLocaleDateString()}</td>
+                      <td className="p-3 text-xs">
+                        <span className="font-semibold block">{p.bankDetails?.bankName || 'Direct Bank'}</span>
+                        <span className="text-navy-muted font-mono">{p.bankDetails?.accountNumber ? `••••${p.bankDetails.accountNumber.slice(-4)}` : 'Bank'}</span>
+                      </td>
+                      <td className="p-3 text-xs text-navy-muted">{p.notes || p.reference || 'Consultation Payout'}</td>
+                      <td className="p-3 text-right font-bold text-emerald-700">${Number(p.amount).toFixed(2)}</td>
+                      <td className="p-3 text-center">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          ✓ Paid to Bank
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-6 text-center text-sm text-navy-muted">
+              No bank transfers recorded yet. Earned consultation fees accumulate in your balance and will be transferred to your saved bank account by the administrator.
+            </div>
+          )}
         </div>
 
         <div className="mt-auto pt-12 -mx-6 md:-mx-8 -mb-6 md:-mb-8">

@@ -123,12 +123,27 @@ export default function PatientProfile() {
                 <p className="inline-block mt-2 px-3 py-1 bg-primary-fixed text-on-primary-fixed text-xs font-semibold uppercase tracking-wider rounded-full">Premium Member</p>
               </div>
               <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
-              <button 
-                className="sm:ml-auto px-4 py-2 border border-outline text-navy text-sm font-semibold rounded-lg hover:bg-surface-container-lowest transition-colors"
-                onClick={() => fileInputRef.current.click()}
-              >
-                Change Photo
-              </button>
+              <div className="sm:ml-auto flex gap-2">
+                <button 
+                  className="px-4 py-2 border border-outline text-navy text-sm font-semibold rounded-lg hover:bg-surface-container-lowest transition-colors flex items-center gap-1.5"
+                  onClick={() => fileInputRef.current.click()}
+                >
+                  <span className="material-icons-outlined text-[16px]">photo_camera</span>
+                  {profilePicture ? 'Change Photo' : 'Upload Photo'}
+                </button>
+                {profilePicture && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfilePicture(null)
+                      if (fileInputRef.current) fileInputRef.current.value = ''
+                    }}
+                    className="px-3 py-2 border border-red-200 text-red-600 text-sm font-semibold rounded-lg hover:bg-red-50 transition-colors"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="p-6 bg-white rounded-xl shadow-sm border border-outline-variant">

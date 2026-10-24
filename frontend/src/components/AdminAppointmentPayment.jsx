@@ -79,17 +79,15 @@ export default function AdminAppointmentPayment({ appointment, onRefresh }) {
         {payment.refundedAt && <div><dt className="inline font-semibold">Refund recorded: </dt><dd className="inline">{new Date(payment.refundedAt).toLocaleString()}</dd></div>}
         {payment.refundReason && <div><dt className="inline font-semibold">Refund reason: </dt><dd className="inline break-words">{payment.refundReason}</dd></div>}
       </dl>}
-      {canRecord && <details className="mt-3"><summary className="cursor-pointer font-semibold text-primary">Record received payment</summary>
-        <form aria-label={`Record payment for ${identity}`} onSubmit={savePayment} className="space-y-3 mt-3">
-          <p className="text-navy-muted">Use this only after money has already been received. This form records a receipt and does not charge or transfer money.</p>
-          <label className="block font-semibold">Amount received (USD)<input aria-label={`Amount received for ${identity}`} type="text" inputMode="decimal" required pattern="(?:0|[1-9][0-9]*)(?:\.[0-9]{1,2})?" value={amount} onChange={event => setAmount(event.target.value)} disabled={saving} className="block w-full mt-1 p-2 border border-slate-300 rounded-lg font-normal" placeholder="0.00" /></label>
-          <label className="block font-semibold">Payment method<select aria-label={`Payment method for ${identity}`} value={method} onChange={event => setMethod(event.target.value)} disabled={saving} className="block w-full mt-1 p-2 border border-slate-300 rounded-lg font-normal">{Object.entries(paymentMethods).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-          <label className="block font-semibold">Receipt reference (optional)<input aria-label={`Receipt reference for ${identity}`} type="text" maxLength={120} value={reference} onChange={event => setReference(event.target.value)} disabled={saving} className="block w-full mt-1 p-2 border border-slate-300 rounded-lg font-normal" /></label>
-          <p className="text-navy-muted">Do not enter card numbers, security codes, or bank account details.</p>
-          <label className="flex items-start gap-2 text-navy"><input type="checkbox" required checked={receivedConfirmed} onChange={event => setReceivedConfirmed(event.target.checked)} disabled={saving} /><span>I confirm this payment has already been received.</span></label>
-          <button disabled={saving || !receivedConfirmed || !amountValid} type="submit" className="px-3 py-2 bg-primary text-white rounded-lg font-semibold disabled:opacity-50">{saving ? 'Saving receipt...' : 'Save received payment'}</button>
-        </form>
-      </details>}
+      {status === 'unpaid' && (
+        <p className="mt-2 text-xs text-navy-muted italic">
+          {appointment.status === 'completed'
+            ? 'Credited upon appointment completion'
+            : appointment.status === 'cancelled'
+            ? 'Cancelled appointment ($0.00)'
+            : 'Fee will auto-credit when marked Completed'}
+        </p>
+      )}
       {status === 'received' && payment?.id && <details className="mt-3"><summary className="cursor-pointer font-semibold text-red-700">Record issued refund</summary>
         <form aria-label={`Record refund for ${identity}`} onSubmit={event => savePayment(event, true)} className="space-y-3 mt-3">
           <p className="text-navy-muted">Only record this after the full {formatMoney(payment.amount)} has already been refunded. This form does not send money.</p>

@@ -81,8 +81,8 @@ export default function AdminAppointments() {
       <main className="flex-1 min-w-0 flex flex-col p-6 md:p-8 ml-0 lg:ml-64 transition-all duration-300" id="admin-appointments">
         <div className="mb-6">
           <h1 className="text-3xl font-semibold text-navy">All Appointments</h1>
-          <p className="mt-1 text-base text-navy-muted">Manage booking details, status, reschedule history, and received payments.</p>
-          <p className="mt-2 text-sm text-navy-muted">A completed appointment does not mean payment was received. Record payments and refunds only after verifying the money was received or refunded.</p>
+          <p className="mt-1 text-base text-navy-muted">Manage booking details, status, reschedule history, and automated revenue.</p>
+          <p className="mt-2 text-sm text-navy-muted">Completed appointments automatically credit consultation fees to doctor earnings and hospital revenue. Admin can manage doctor payouts and bank salary transfers from Doctors &amp; Earnings.</p>
         </div>
         <div className="flex gap-2 flex-wrap mb-3" aria-label="Appointment status filters">
           {appointmentStatuses.map(status => <button key={status} onClick={() => setStatusFilter(status)} aria-pressed={statusFilter === status} className={`px-4 py-1.5 rounded-xl text-xs font-semibold capitalize border transition-all ${statusFilter === status ? 'bg-primary text-white border-primary' : 'bg-white text-navy-muted border-slate-200 hover:border-primary hover:text-primary'}`}>{status === 'total' ? 'All' : status} ({counts[status]})</button>)}

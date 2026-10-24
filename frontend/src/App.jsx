@@ -30,6 +30,7 @@ const AdminAppointments = lazy(() => import('./pages/AdminAppointments'))
 const AdminLeaves = lazy(() => import('./pages/AdminLeaves'))
 const AdminUsers = lazy(() => import('./pages/AdminUsers'))
 const AdminDoctors = lazy(() => import('./pages/AdminDoctors'))
+const AdminProfile = lazy(() => import('./pages/AdminProfile'))
 
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center bg-surface">
@@ -172,6 +173,7 @@ export default function App() {
         <Route path="/admin/leaves" element={<AdminRoute><AdminLeaves /></AdminRoute>} />
         <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
         <Route path="/admin/doctors" element={<AdminRoute><AdminDoctors /></AdminRoute>} />
+        <Route path="/admin/profile" element={<AdminRoute><AdminProfile /></AdminRoute>} />
         <Route path="/admin/messages" element={<AdminRoute><Messages /></AdminRoute>} />
         <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
 

@@ -8,7 +8,7 @@ const paymentSchema = new mongoose.Schema({
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   amountMinor: { type: Number, required: true, min: 1, max: 100000000, validate: Number.isSafeInteger },
   currency: { type: String, enum: ['USD'], required: true },
-  method: { type: String, enum: ['cash', 'bank_transfer', 'card', 'other'], required: true },
+  method: { type: String, enum: ['cash', 'bank_transfer', 'card', 'other', 'auto_credit', 'platform'], required: true },
   reference: { type: String, default: '', maxlength: 120 },
   status: { type: String, enum: ['received', 'refunded'], default: 'received', required: true },
   receivedAt: { type: Date, required: true },

@@ -69,6 +69,13 @@ const doctorSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    bankDetails: {
+      bankName: { type: String, default: '' },
+      accountNumber: { type: String, default: '' },
+      accountHolderName: { type: String, default: '' },
+      routingNumber: { type: String, default: '' },
+      branch: { type: String, default: '' },
+    },
   },
   { timestamps: true }
 );

@@ -21,7 +21,7 @@ export default function Navbar() {
   const getProfileLink = () => {
     if (!user) return '/login'
     if (user.role === 'doctor') return '/doctor/profile'
-    if (user.role === 'admin') return '/admin/dashboard'
+    if (user.role === 'admin') return '/admin/profile'
     return '/patient/profile'
   }
 
@@ -91,13 +91,16 @@ export default function Navbar() {
           {isAuthenticated ? (
             <div className="relative" ref={dropdownRef}>
               <div 
-                className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary-dark text-white flex items-center justify-center font-semibold text-sm cursor-pointer hover:scale-110 transition-transform select-none overflow-hidden"
+                className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary-dark text-white flex items-center justify-center font-semibold text-sm cursor-pointer hover:scale-110 transition-transform select-none overflow-hidden border border-white/20"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
+                title={user.name}
               >
                 {user.avatar ? (
                   <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
-                  <img src={assets.profile_pic} alt="Profile" className="w-full h-full object-cover" />
+                  <span className="font-bold text-xs uppercase tracking-wider text-white">
+                    {user.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2) : <span className="material-icons-outlined text-[18px]">person</span>}
+                  </span>
                 )}
               </div>
 

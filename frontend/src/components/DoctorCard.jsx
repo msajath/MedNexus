@@ -24,9 +24,13 @@ export default function DoctorCard({ doctor, index = 0 }) {
               className="w-full h-full object-cover object-bottom transition-transform duration-500 hover:scale-105" 
             />
           </div>
-          <div className="p-5 flex flex-col items-start bg-white flex-1">
+          <div className="p-5 flex flex-col items-start bg-white flex-1 w-full">
             <h3 className="text-[1.1rem] font-semibold text-slate-800 mb-1">{doctor.name}</h3>
             <p className="text-[0.85rem] text-slate-500 font-normal">{doctor.specialty}</p>
+            <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between w-full">
+              <span className="text-xs font-medium text-navy-muted">Consultation Fee</span>
+              <span className="text-sm font-bold text-primary">${doctor.fee ?? 100}</span>
+            </div>
             {doctor.available === false && <p className="mt-2 text-xs font-medium text-amber-700">Currently unavailable for booking</p>}
           </div>
         </Link>

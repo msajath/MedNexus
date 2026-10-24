@@ -30,7 +30,8 @@ test('shows the doctor payment endpoint net receipts and the full today count, w
 test('completed appointments remain zero earnings when no net payment has been received', async () => {
   apiFetchJson.mockImplementation(async url => url.endsWith('/payments/my') ? { earnings: earnings(0) } : { appointments })
   renderPage()
-  expect(await screen.findByText('$0.00')).toBeInTheDocument()
+  expect(await screen.findAllByText('$0.00')).not.toHaveLength(0)
+  expect(moneyCard().getByText('$0.00')).toBeInTheDocument()
   expect(screen.queryByText(/\$999|\$5,994/)).not.toBeInTheDocument()
 })
 

@@ -55,36 +55,42 @@ test('shows a load error with a reload action instead of silently accepting fail
   expect(screen.getByText('No appointments found')).toBeInTheDocument()
 })
 
-test('records only explicitly confirmed received money and refreshes the receipt without losing filters', async () => {
-  const completed = { ...appointments[1], paymentStatus: 'unpaid', payment: null }
-  const receipt = { id: 'receipt2', status: 'received', amount: 42.5, currency: 'USD', method: 'card', reference: 'POS-123', receivedAt: '2026-10-22T03:00:00Z', recordedAt: '2026-10-22T03:01:00Z' }
+test('displays auto-credited payment details and receipt information without manual entry form', async () => {
+  const completed = {
+    ...appointments[1],
+    paymentStatus: 'received',
+    payment: { id: 'receipt2', status: 'received', amount: 42.5, currency: 'USD', method: 'card', reference: 'POS-123', receivedAt: '2026-10-22T03:00:00Z', recordedAt: '2026-10-22T03:01:00Z' }
+  }
   apiFetch.mockResolvedValueOnce(response({ appointments: [completed] }))
-    .mockResolvedValueOnce(response({ payment: receipt }))
-    .mockResolvedValueOnce(response({ appointments: [{ ...completed, paymentStatus: 'received', payment: receipt }] }))
   render(<AdminAppointments />)
-  expect(await screen.findByText('No payment recorded')).toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: 'completed (1)' }))
-  fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Pat Two' } })
-  fireEvent.click(screen.getByText('Record received payment'))
-  const form = screen.getByRole('form', { name: 'Record payment for Pat Two' })
-  const save = within(form).getByRole('button', { name: 'Save received payment' })
-  expect(save).toBeDisabled()
-  fireEvent.change(within(form).getByRole('textbox', { name: 'Amount received for Pat Two' }), { target: { value: '42.555' } })
-  fireEvent.click(within(form).getByRole('checkbox'))
-  fireEvent.submit(form)
-  expect(apiFetch).toHaveBeenCalledTimes(1)
-  fireEvent.change(within(form).getByRole('textbox', { name: 'Amount received for Pat Two' }), { target: { value: '42.50' } })
-  fireEvent.change(within(form).getByRole('combobox'), { target: { value: 'card' } })
-  fireEvent.change(within(form).getByRole('textbox', { name: 'Receipt reference for Pat Two' }), { target: { value: ' POS-123 ' } })
-  expect(within(form).queryByLabelText(/card number|security code|bank account/i)).not.toBeInTheDocument()
-  fireEvent.click(save)
+
   expect(await screen.findByText('Payment received')).toBeInTheDocument()
   expect(screen.getByText('receipt2')).toBeInTheDocument()
   expect(screen.getByText('$42.50')).toBeInTheDocument()
   expect(screen.getByText('POS-123')).toBeInTheDocument()
-  expect(screen.getByRole('searchbox')).toHaveValue('Pat Two')
-  expect(screen.getByRole('button', { name: 'completed (1)' })).toHaveAttribute('aria-pressed', 'true')
-  expect(apiFetch).toHaveBeenNthCalledWith(2, '/api/admin/appointments/a2/payment', expect.objectContaining({ method: 'POST', body: JSON.stringify({ amount: 42.5, currency: 'USD', method: 'card', reference: 'POS-123' }) }))
+  expect(screen.getByText('Card')).toBeInTheDocument()
+  expect(screen.queryByText('Record received payment')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Save received payment' })).not.toBeInTheDocument()
+})
+
+test('shows automated credit indicators for unpaid appointments and verifies manual payment form is removed', async () => {
+  apiFetch.mockResolvedValue(response({ appointments }))
+  render(<AdminAppointments />)
+
+  const unpaidBadges = await screen.findAllByText('No payment recorded')
+  expect(unpaidBadges.length).toBeGreaterThan(0)
+  expect(screen.getByText('Fee will auto-credit when marked Completed')).toBeInTheDocument()
+  expect(screen.getByText('Credited upon appointment completion')).toBeInTheDocument()
+  expect(screen.queryByText('Record received payment')).not.toBeInTheDocument()
+})
+
+test('shows cancelled appointment notice and prevents manual payment input', async () => {
+  apiFetch.mockResolvedValue(response({ appointments: [{ ...appointments[0], status: 'cancelled' }] }))
+  render(<AdminAppointments />)
+
+  expect(await screen.findByText('No payment recorded')).toBeInTheDocument()
+  expect(screen.getByText('Cancelled appointment ($0.00)')).toBeInTheDocument()
+  expect(screen.queryByText('Record received payment')).not.toBeInTheDocument()
 })
 
 test('requires an issued full refund confirmation and reason, then refreshes read-only refund details', async () => {
@@ -106,51 +112,4 @@ test('requires an issued full refund confirmation and reason, then refreshes rea
   expect(screen.getByText('Appointment cancelled')).toBeInTheDocument()
   expect(screen.queryByText('Record issued refund')).not.toBeInTheDocument()
   expect(apiFetch).toHaveBeenNthCalledWith(2, '/api/admin/payments/receipt1/refund', expect.objectContaining({ method: 'POST', body: JSON.stringify({ reason: 'Appointment cancelled' }) }))
-})
-
-test('refreshes a conflicting receipt without claiming that the attempted payment was saved', async () => {
-  const receipt = { id: 'already-recorded', status: 'received', amount: 60, currency: 'USD', method: 'bank_transfer' }
-  apiFetch.mockResolvedValueOnce(response({ appointments: [appointments[0]] })).mockResolvedValueOnce({ ...response({ message: 'A payment already exists.' }, false), status: 409 }).mockResolvedValueOnce(response({ appointments: [{ ...appointments[0], paymentStatus: 'received', payment: receipt }] }))
-  render(<AdminAppointments />)
-  fireEvent.click(await screen.findByText('Record received payment'))
-  const form = screen.getByRole('form', { name: 'Record payment for Pat One' })
-  fireEvent.change(within(form).getByRole('textbox', { name: 'Amount received for Pat One' }), { target: { value: '75' } })
-  fireEvent.click(within(form).getByRole('checkbox'))
-  fireEvent.submit(form)
-  expect(await screen.findByRole('alert')).toHaveTextContent('A payment already exists.')
-  expect(screen.getByText('already-recorded')).toBeInTheDocument()
-  expect(screen.getByText('$60.00')).toBeInTheDocument()
-  expect(screen.queryByText('Received payment recorded.')).not.toBeInTheDocument()
-})
-
-test('does not offer payment collection for cancelled appointments', async () => {
-  apiFetch.mockResolvedValue(response({ appointments: [{ ...appointments[0], status: 'cancelled' }] }))
-  render(<AdminAppointments />)
-  expect(await screen.findByText('No payment recorded')).toBeInTheDocument()
-  expect(screen.queryByText('Record received payment')).not.toBeInTheDocument()
-})
-
-test('reuses the receipt idempotency key after a lost response, while edited payment data gets a new key', async () => {
-  apiFetch.mockResolvedValueOnce(response({ appointments: [appointments[0]] }))
-    .mockRejectedValueOnce(new TypeError('Network interrupted'))
-    .mockRejectedValueOnce(new TypeError('Network interrupted'))
-    .mockRejectedValueOnce(new TypeError('Network interrupted'))
-  render(<AdminAppointments />)
-  fireEvent.click(await screen.findByText('Record received payment'))
-  const form = screen.getByRole('form', { name: 'Record payment for Pat One' })
-  const amount = within(form).getByRole('textbox', { name: 'Amount received for Pat One' })
-  fireEvent.change(amount, { target: { value: '75' } })
-  fireEvent.click(within(form).getByRole('checkbox'))
-  fireEvent.submit(form)
-  await screen.findByRole('alert')
-  const firstKey = apiFetch.mock.calls[1][1].headers['Idempotency-Key']
-  expect(firstKey).toMatch(/^[a-f0-9-]{36}$/)
-  fireEvent.submit(form)
-  await waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(3))
-  await waitFor(() => expect(within(form).getByRole('button', { name: 'Save received payment' })).toBeEnabled())
-  expect(apiFetch.mock.calls[2][1].headers['Idempotency-Key']).toBe(firstKey)
-  fireEvent.change(amount, { target: { value: '80' } })
-  fireEvent.submit(form)
-  await waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(4))
-  expect(apiFetch.mock.calls[3][1].headers['Idempotency-Key']).not.toBe(firstKey)
 })

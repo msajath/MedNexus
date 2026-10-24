@@ -7,6 +7,8 @@ const Doctor = require('../../models/Doctor');
 const Appointment = require('../../models/Appointment');
 const Availability = require('../../models/Availability');
 const MedicalRecord = require('../../models/MedicalRecord');
+const Payment = require('../../models/Payment');
+const Payout = require('../../models/Payout');
 const assertTestDatabase = require('../helpers/testDatabase');
 
 const dns = require('dns');
@@ -35,11 +37,13 @@ describeWithMongo('MongoDB security and booking integration', () => {
     await User.createIndexes();
     await Appointment.createIndexes();
     await Availability.createIndexes();
+    await Payment.createIndexes();
+    await Payout.createIndexes();
   }, 60000);
 
   afterEach(async () => {
     await Promise.all([
-      User.deleteMany({}), Doctor.deleteMany({}), Appointment.deleteMany({}), MedicalRecord.deleteMany({}),
+      User.deleteMany({}), Doctor.deleteMany({}), Appointment.deleteMany({}), MedicalRecord.deleteMany({}), Payment.deleteMany({}), Payout.deleteMany({}),
     ]);
   });
 

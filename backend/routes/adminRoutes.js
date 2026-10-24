@@ -7,6 +7,7 @@ const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const Appointment = require('../models/Appointment');
 const Payment = require('../models/Payment');
+const Payout = require('../models/Payout');
 const Availability = require('../models/Availability');
 const ContactMessage = require('../models/ContactMessage');
 const { protect, authorize } = require('../middleware/auth');
@@ -65,15 +66,22 @@ router.get('/stats', async (req, res) => {
 // consultation fees never imply that money has been received.
 router.get('/earnings', async (req, res) => {
   try {
-    const [doctors, appointments, payments] = await Promise.all([
-      Doctor.find().populate('user', 'name isActive'),
+    const [doctors, appointments, payments, payouts] = await Promise.all([
+      Doctor.find().populate('user', 'name isActive email'),
       Appointment.find(adminAppointmentFilter).select('doctor status'),
       Payment.find(),
+      Payout.find().sort({ processedAt: -1 }),
     ]);
-    const rowFor = (doctorId) => ({ doctorId, userId: null, name: 'Removed doctor', specialty: '', isActive: false, completedAppointments: 0, payments: [] });
+    const rowFor = (doctorId) => ({
+      doctorId, userId: null, name: 'Removed doctor', specialty: '', fee: 100,
+      bankDetails: { bankName: '', accountNumber: '', accountHolderName: '', routingNumber: '', branch: '' },
+      isActive: false, completedAppointments: 0, payments: [], totalPaidOut: 0,
+    });
     const rows = new Map(doctors.map((doctor) => [String(doctor._id), {
       ...rowFor(String(doctor._id)), userId: doctor.user?._id || null,
       name: doctor.user?.name || 'Removed doctor', specialty: doctor.specialty,
+      fee: doctor.fee ?? 100,
+      bankDetails: doctor.bankDetails || { bankName: '', accountNumber: '', accountHolderName: '', routingNumber: '', branch: '' },
       isActive: Boolean(doctor.user && doctor.user.isActive !== false),
     }]));
     for (const appointment of appointments) {
@@ -86,9 +94,36 @@ router.get('/earnings', async (req, res) => {
       if (!rows.has(key)) rows.set(key, rowFor(key));
       rows.get(key).payments.push(payment);
     }
-    const result = [...rows.values()].map(({ payments: receipts, ...row }) => ({ ...row, ...summarizePayments(receipts) }));
+    for (const payout of payouts) {
+      const key = String(payout.doctor);
+      if (rows.has(key)) {
+        rows.get(key).totalPaidOut = (rows.get(key).totalPaidOut || 0) + payout.amount;
+      }
+    }
+    const result = [...rows.values()].map(({ payments: receipts, totalPaidOut, ...row }) => {
+      const summary = summarizePayments(receipts);
+      const grossEarned = summary.netReceived;
+      const pendingBalance = Math.max(0, grossEarned - totalPaidOut);
+      return {
+        ...row,
+        ...summary,
+        totalPaidOut: Math.round(totalPaidOut * 100) / 100,
+        pendingBalance: Math.round(pendingBalance * 100) / 100,
+      };
+    });
     result.sort((a, b) => b.netReceived - a.netReceived || a.name.localeCompare(b.name));
-    res.json({ success: true, earnings: summarizePayments(payments), doctors: result });
+    const totalDoctorPayouts = payouts.reduce((acc, p) => acc + p.amount, 0);
+    const earnings = summarizePayments(payments);
+    const hospitalRetained = Math.round((earnings.netReceived - totalDoctorPayouts) * 100) / 100;
+
+    res.json({
+      success: true,
+      earnings,
+      totalDoctorPayouts: Math.round(totalDoctorPayouts * 100) / 100,
+      hospitalRetained,
+      doctors: result,
+      payoutsCount: payouts.length,
+    });
   } catch (error) {
     return errorHandler(error, req, res, () => {});
   }
@@ -232,6 +267,7 @@ router.get('/doctors-detail', async (req, res) => {
       reviews: doc.reviews,
       available: doc.available,
       credentialsChanged: doc.credentialsChanged,
+      bankDetails: doc.bankDetails || {},
     }));
 
     res.json({ success: true, count: result.length, doctors: result });
@@ -283,6 +319,7 @@ router.get('/doctors/:userId', validateObjectId('userId'), async (req, res) => {
         joinedDate: doctor.user.createdAt,
         specialty: doctor.specialty,
         fee: doctor.fee,
+        bankDetails: doctor.bankDetails || {},
         experience: doctor.experience,
         location: doctor.location,
         bio: doctor.bio,
@@ -471,11 +508,197 @@ router.put('/appointments/:id/status', validateObjectId('id'), async (req, res) 
       { $set: { status }, $unset: { rescheduleIntent: '' } }, { new: true, runValidators: true }
     ).select(adminAppointmentSelection);
     if (!appointment) return res.status(409).json({ success: false, message: 'Appointment changed. Refresh and retry.' });
+
+    if (status === 'completed') {
+      try {
+        const existingPayment = await Payment.findOne({ appointment: appointment._id, status: 'received' });
+        if (!existingPayment) {
+          const doc = await Doctor.findById(appointment.doctor);
+          const fee = (typeof appointment.feeAtBooking === 'number' && appointment.feeAtBooking >= 0)
+            ? appointment.feeAtBooking
+            : (doc?.fee ?? 100);
+          const amountMinor = Math.round(fee * 100);
+          if (amountMinor > 0) {
+            await Payment.create({
+              appointment: appointment._id,
+              doctor: appointment.doctor,
+              patient: appointment.patient,
+              amountMinor,
+              currency: 'USD',
+              method: 'auto_credit',
+              reference: `AUTO-${String(appointment._id).slice(-8).toUpperCase()}`,
+              status: 'received',
+              receivedAt: new Date(),
+              recordedAt: new Date(),
+              recordedBy: req.user._id,
+            });
+          }
+        }
+      } catch (paymentErr) {
+        console.error('Error auto-crediting completed appointment payment:', paymentErr);
+      }
+    }
+
     res.json({ success: true, appointment: (await withAppointmentPayments([serializeAdminAppointment(appointment)]))[0] });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(409).json({ success: false, message: 'This time slot is already booked' });
     }
+    return errorHandler(error, req, res, () => {});
+  }
+});
+
+// ──────────────────────────────────────────────
+// @route   PUT /api/admin/doctors/:id/fee
+// @desc    Admin sets/fixes the consultation charge for a doctor
+// @access  Private (admin only)
+// ──────────────────────────────────────────────
+router.put('/doctors/:id/fee', validateObjectId('id'), async (req, res) => {
+  try {
+    const fee = Number(req.body.fee);
+    if (!Number.isFinite(fee) || fee < 0 || fee > 1000000) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid consultation fee between 0 and 1,000,000' });
+    }
+
+    let doctor = await Doctor.findById(req.params.id);
+    if (!doctor) {
+      // Check if parameter is a user ID
+      doctor = await Doctor.findOne({ user: req.params.id });
+    }
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    doctor.fee = fee;
+    await doctor.save();
+
+    res.json({
+      success: true,
+      message: `Consultation fee for doctor successfully updated to $${fee}`,
+      doctor: {
+        id: doctor._id,
+        userId: doctor.user,
+        fee: doctor.fee,
+        specialty: doctor.specialty,
+      },
+    });
+  } catch (error) {
+    return errorHandler(error, req, res, () => {});
+  }
+});
+
+// ──────────────────────────────────────────────
+// @route   POST /api/admin/payouts
+// @desc    Admin sends money / pays salary to a doctor's bank account
+// @access  Private (admin only)
+// ──────────────────────────────────────────────
+router.post('/payouts', async (req, res) => {
+  try {
+    const { doctorId, amount, bankDetails, reference, notes } = req.body;
+    if (!doctorId) {
+      return res.status(400).json({ success: false, message: 'Doctor ID is required' });
+    }
+    const payoutAmount = Number(amount);
+    if (!Number.isFinite(payoutAmount) || payoutAmount <= 0) {
+      return res.status(400).json({ success: false, message: 'Payout amount must be a positive number' });
+    }
+
+    let doctor = await Doctor.findById(doctorId).populate('user', 'name email');
+    if (!doctor) {
+      doctor = await Doctor.findOne({ user: doctorId }).populate('user', 'name email');
+    }
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    // Determine target bank details
+    const targetBank = {
+      bankName: bankDetails?.bankName || doctor.bankDetails?.bankName || '',
+      accountNumber: bankDetails?.accountNumber || doctor.bankDetails?.accountNumber || '',
+      accountHolderName: bankDetails?.accountHolderName || doctor.bankDetails?.accountHolderName || doctor.user?.name || '',
+      routingNumber: bankDetails?.routingNumber || doctor.bankDetails?.routingNumber || '',
+      branch: bankDetails?.branch || doctor.bankDetails?.branch || '',
+    };
+
+    if (!targetBank.bankName.trim() || !targetBank.accountNumber.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Doctor bank name and account number are required to process bank payout',
+      });
+    }
+
+    // Update doctor's saved bank details if provided
+    doctor.bankDetails = targetBank;
+    await doctor.save();
+
+    // Calculate current gross received and past payouts
+    const [payments, existingPayouts] = await Promise.all([
+      Payment.find({ doctor: doctor._id, status: 'received' }),
+      Payout.find({ doctor: doctor._id, status: 'completed' }),
+    ]);
+
+    const grossEarned = payments.reduce((acc, p) => acc + (p.amountMinor / 100), 0);
+    const pastPaid = existingPayouts.reduce((acc, p) => acc + p.amount, 0);
+    const availableBalance = Math.max(0, grossEarned - pastPaid);
+
+    const ref = (reference || `PAY-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`).trim();
+
+    const payout = await Payout.create({
+      doctor: doctor._id,
+      doctorUser: doctor.user?._id || doctor.user,
+      amount: Math.round(payoutAmount * 100) / 100,
+      currency: 'USD',
+      bankDetails: targetBank,
+      status: 'completed',
+      reference: ref,
+      notes: notes ? String(notes).trim().slice(0, 500) : 'Doctor salary / earnings payout',
+      processedBy: req.user._id,
+      processedAt: new Date(),
+    });
+
+    const newPaidTotal = pastPaid + payout.amount;
+    const newBalance = Math.max(0, grossEarned - newPaidTotal);
+
+    res.status(201).json({
+      success: true,
+      message: `Successfully sent $${payout.amount.toFixed(2)} to ${doctor.user?.name || 'doctor'}'s bank account`,
+      payout,
+      doctorEarnings: {
+        grossEarned: Math.round(grossEarned * 100) / 100,
+        totalPaidOut: Math.round(newPaidTotal * 100) / 100,
+        pendingBalance: Math.round(newBalance * 100) / 100,
+      },
+    });
+  } catch (error) {
+    return errorHandler(error, req, res, () => {});
+  }
+});
+
+// ──────────────────────────────────────────────
+// @route   GET /api/admin/payouts
+// @desc    Get all bank payouts history
+// @access  Private (admin only)
+// ──────────────────────────────────────────────
+router.get('/payouts', async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.doctorId) {
+      filter.doctor = req.query.doctorId;
+    }
+    const payouts = await Payout.find(filter)
+      .populate('doctorUser', 'name email avatar')
+      .populate('processedBy', 'name email')
+      .sort({ processedAt: -1 });
+
+    const totalAmount = payouts.reduce((sum, p) => sum + p.amount, 0);
+
+    res.json({
+      success: true,
+      count: payouts.length,
+      totalAmount: Math.round(totalAmount * 100) / 100,
+      payouts,
+    });
+  } catch (error) {
     return errorHandler(error, req, res, () => {});
   }
 });

@@ -110,7 +110,8 @@ router.put('/profile', protect, authorize('doctor'), doctorRules, check, async (
       return res.status(404).json({ success: false, message: 'Doctor profile not found' });
     }
 
-    const allowedFields = ['specialty', 'fee', 'experience', 'location', 'languages', 'bio', 'available', 'education', 'experienceHistory'];
+    // Fee cannot be modified by doctor (only by administrator)
+    const allowedFields = ['specialty', 'experience', 'location', 'languages', 'bio', 'available', 'education', 'experienceHistory', 'bankDetails'];
 
     allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) {

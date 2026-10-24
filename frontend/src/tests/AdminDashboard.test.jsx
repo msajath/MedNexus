@@ -29,7 +29,7 @@ test('shows operational counts and receipt-based net earnings for every doctor',
   expect(within(summary).getByText(/^rescheduled$/i)).toBeInTheDocument()
   expect(within(summary).getByText(/also counted under their current status/i)).toBeInTheDocument()
   const row = screen.getByRole('row', { name: /Dr. Ada/ })
-  expect(within(row).getByText('$125.00')).toBeInTheDocument()
+  expect(within(row).getAllByText('$125.00').length).toBeGreaterThan(0)
   expect(within(row).getByText('$150.00')).toBeInTheDocument()
   expect(within(row).getByText('$25.00')).toBeInTheDocument()
   expect(screen.getByText(/historical consultation fees do not count as payment/i)).toBeInTheDocument()

@@ -6,6 +6,7 @@ const User = require('../../models/User');
 const Doctor = require('../../models/Doctor');
 const Appointment = require('../../models/Appointment');
 const Payment = require('../../models/Payment');
+const Payout = require('../../models/Payout');
 const assertTestDatabase = require('../helpers/testDatabase');
 
 const withMongo = process.env.MONGO_TEST_URI ? describe : describe.skip;
@@ -17,10 +18,10 @@ withMongo('Doctors can read only their own recorded-payment totals', () => {
   beforeAll(async () => {
     assertTestDatabase(process.env.MONGO_TEST_URI);
     await mongoose.connect(process.env.MONGO_TEST_URI, { autoIndex: false });
-    await Promise.all([User.createIndexes(), Appointment.createIndexes(), Payment.createIndexes()]);
+    await Promise.all([User.createIndexes(), Appointment.createIndexes(), Payment.createIndexes(), Payout.createIndexes()]);
   });
   beforeEach(async () => {
-    await Promise.all([Payment.deleteMany({}), Appointment.deleteMany({}), Doctor.deleteMany({}), User.deleteMany({})]);
+    await Promise.all([Payment.deleteMany({}), Payout.deleteMany({}), Appointment.deleteMany({}), Doctor.deleteMany({}), User.deleteMany({})]);
     const create = (role, suffix = '') => User.create({ name: `QA ${role}${suffix}`, email: `doctor-pay-${role}${suffix}@example.test`, password: 'QA-password-12345', role, isVerified: true });
     [admin, patient, doctorUser, otherDoctorUser] = await Promise.all([create('admin'), create('patient'), create('doctor'), create('doctor', '2')]);
     [doctor, otherDoctor] = await Promise.all([
@@ -40,9 +41,9 @@ withMongo('Doctors can read only their own recorded-payment totals', () => {
     await Promise.all([receipt(doctor, 20010), receipt(doctor, 5010, 'refunded'), receipt(otherDoctor, 999999)]);
     const own = await request(app).get(`/api/payments/my?doctorId=${otherDoctor._id}`).set(auth(doctorUser));
     expect(own.status).toBe(200);
-    expect(own.body).toEqual({ success: true, earnings: {
+    expect(own.body).toMatchObject({ success: true, earnings: {
       receivedAmount: 250.2, refundedAmount: 50.1, netReceived: 200.1, receivedPayments: 1, currency: 'USD', basis: 'recorded_payments',
-    } });
+    }, grossEarned: 200.1, totalPaidOut: 0, pendingBalance: 200.1 });
     expect(own.text).not.toMatch(/SECRET_|appointmentId|patientId|doctorId|recordedBy|reference|refundReason/);
     const other = await request(app).get('/api/payments/my').set(auth(otherDoctorUser));
     expect(other.status).toBe(200);
@@ -71,5 +72,49 @@ withMongo('Doctors can read only their own recorded-payment totals', () => {
     expect(result.body).toEqual({ success: false, message: 'Doctor profile not found' });
     expect(result.text).not.toMatch(/SECRET_|amountMinor|stack|Mongo/);
     expect(await Payment.countDocuments({ doctor: doctor._id })).toBe(1);
+  });
+
+  test('only admin can fix doctor consultation fee and doctors cannot alter their own fee', async () => {
+    const doctorAttempt = await request(app).put('/api/doctors/profile').set(auth(doctorUser)).send({ fee: 999 });
+    expect(doctorAttempt.status).toBe(200);
+    const unchanged = await Doctor.findById(doctor._id);
+    expect(unchanged.fee).toBe(500);
+
+    const adminUpdate = await request(app).put(`/api/admin/doctors/${doctor._id}/fee`).set(auth(admin)).send({ fee: 175 });
+    expect(adminUpdate.status).toBe(200);
+    expect(adminUpdate.body.doctor.fee).toBe(175);
+    const updated = await Doctor.findById(doctor._id);
+    expect(updated.fee).toBe(175);
+
+    const forbidden = await request(app).put(`/api/admin/doctors/${doctor._id}/fee`).set(auth(doctorUser)).send({ fee: 200 });
+    expect(forbidden.status).toBe(403);
+  });
+
+  test('admin can disburse salary to doctor bank and doctor sees updated paid out balance', async () => {
+    await receipt(doctor, 20000); // $200.00
+    const payoutRes = await request(app).post('/api/admin/payouts').set(auth(admin)).send({
+      doctorId: doctor._id,
+      amount: 150,
+      bankDetails: { bankName: 'Apex Bank', accountNumber: '987654321', accountHolderName: 'Dr. QA' },
+      reference: 'SAL-2026-11',
+      notes: 'Monthly salary disbursement',
+    });
+    expect(payoutRes.status).toBe(201);
+    expect(payoutRes.body.payout.amount).toBe(150);
+
+    const myEarnings = await request(app).get('/api/payments/my').set(auth(doctorUser));
+    expect(myEarnings.status).toBe(200);
+    expect(myEarnings.body.grossEarned).toBe(200);
+    expect(myEarnings.body.totalPaidOut).toBe(150);
+    expect(myEarnings.body.pendingBalance).toBe(50);
+    expect(myEarnings.body.payouts).toHaveLength(1);
+    expect(myEarnings.body.payouts[0].reference).toBe('SAL-2026-11');
+
+    const adminHistory = await request(app).get('/api/admin/payouts').set(auth(admin));
+    expect(adminHistory.status).toBe(200);
+    expect(adminHistory.body.payouts).toHaveLength(1);
+
+    const patientForbidden = await request(app).post('/api/admin/payouts').set(auth(patient)).send({ doctorId: doctor._id, amount: 50 });
+    expect(patientForbidden.status).toBe(403);
   });
 });

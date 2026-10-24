@@ -61,7 +61,11 @@ export default function DoctorProfileSettings() {
       fee: user.doctorProfile?.fee ?? 100,
       experience: user.doctorProfile?.experience || '1+ Years',
       location: user.doctorProfile?.location || '',
-      bio: user.doctorProfile?.bio || ''
+      bio: user.doctorProfile?.bio || '',
+      bankName: user.doctorProfile?.bankDetails?.bankName || '',
+      accountNumber: user.doctorProfile?.bankDetails?.accountNumber || '',
+      accountHolderName: user.doctorProfile?.bankDetails?.accountHolderName || user.name || '',
+      routingNumber: user.doctorProfile?.bankDetails?.routingNumber || ''
     })
     if (user.avatar) {
       setProfilePicture(user.avatar)
@@ -104,10 +108,15 @@ export default function DoctorProfileSettings() {
           ...(formData.email !== user.email && { currentPassword: emailPassword }),
           avatar: profilePicture,
           specialty: formData.specialty,
-          fee: Number(formData.fee),
           experience: formData.experience,
           location: formData.location,
-          bio: formData.bio
+          bio: formData.bio,
+          bankDetails: {
+            bankName: formData.bankName,
+            accountNumber: formData.accountNumber,
+            accountHolderName: formData.accountHolderName,
+            routingNumber: formData.routingNumber,
+          }
         })
       })
       
@@ -202,8 +211,14 @@ export default function DoctorProfileSettings() {
                   </select>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-navy">Consultation Fee ($)</label>
-                  <input type="number" className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" value={formData.fee} onChange={(e) => handleChange('fee', e.target.value)} />
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-navy">Consultation Fee ($)</label>
+                    <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <span className="material-icons-outlined text-[12px]">lock</span> Fixed by Admin
+                    </span>
+                  </div>
+                  <input type="number" disabled className="w-full p-3 border-[1.5px] border-slate-200 rounded-xl text-base text-navy-muted bg-slate-50 cursor-not-allowed outline-none font-semibold" value={formData.fee} />
+                  <p className="text-xs text-outline">Fixed by Hospital Administrator from the Admin Panel. Visible on the home page and profile.</p>
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium text-navy">Experience</label>
@@ -216,6 +231,33 @@ export default function DoctorProfileSettings() {
                 <div className="flex flex-col gap-2 sm:col-span-2">
                   <label className="text-sm font-medium text-navy">Professional Bio</label>
                   <textarea className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" rows="4" placeholder="Tell patients about your expertise..." value={formData.bio} onChange={(e) => handleChange('bio', e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            {/* Bank Details for Payouts / Salary */}
+            <div className="p-6 bg-white rounded-xl shadow-sm border border-outline-variant">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="material-icons-outlined text-primary text-[22px]">account_balance</span>
+                <h3 className="text-xl font-semibold text-navy">Bank Details (For Salary & Payouts)</h3>
+              </div>
+              <p className="text-sm text-navy-muted mb-5">Provide your bank account details. The hospital administrator will transfer your earned consultation income and salary directly to this account.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-navy">Bank Name</label>
+                  <input className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" placeholder="e.g. Chase Bank, Bank of America" value={formData.bankName} onChange={(e) => handleChange('bankName', e.target.value)} />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-navy">Account Holder Name</label>
+                  <input className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" placeholder="Full name on bank account" value={formData.accountHolderName} onChange={(e) => handleChange('accountHolderName', e.target.value)} />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-navy">Account Number</label>
+                  <input className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors font-mono" placeholder="e.g. 1234567890" value={formData.accountNumber} onChange={(e) => handleChange('accountNumber', e.target.value)} />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-navy">Routing / IFSC / Sort Code</label>
+                  <input className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors font-mono" placeholder="e.g. 021000021" value={formData.routingNumber} onChange={(e) => handleChange('routingNumber', e.target.value)} />
                 </div>
               </div>
             </div>

@@ -26,6 +26,7 @@ const adminLinks = [
   { to: '/admin/doctors', icon: 'medical_services', label: 'Doctors & Earnings' },
   { to: '/admin/leaves', icon: 'event_busy', label: 'Leave Approvals' },
   { to: '/admin/messages', icon: 'mail', label: 'Messages' },
+  { to: '/admin/profile', icon: 'account_circle', label: 'My Profile' },
 ]
 
 export default function Sidebar() {
@@ -60,7 +61,9 @@ export default function Sidebar() {
             {user.avatar ? (
               <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
             ) : (
-              <img src={assets.profile_pic} alt="Profile" className="w-full h-full object-cover" />
+              <span className="text-white font-bold text-xs uppercase tracking-wider">
+                {user.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2) : <span className="material-icons-outlined text-[18px]">person</span>}
+              </span>
             )}
           </div>
           <div className="flex flex-col">

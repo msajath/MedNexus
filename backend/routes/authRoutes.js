@@ -270,10 +270,19 @@ router.put('/profile', protect, [...profileRules, body('email').optional().trim(
       doctorProfile = await Doctor.findOne({ user: user._id });
       if (doctorProfile) {
         if (specialty !== undefined) doctorProfile.specialty = specialty;
-        if (fee !== undefined) doctorProfile.fee = fee;
+        // Consultation fee can only be set by Administrator
         if (experience !== undefined) doctorProfile.experience = experience;
         if (location !== undefined) doctorProfile.location = location;
         if (bio !== undefined) doctorProfile.bio = bio;
+        if (req.body.bankDetails !== undefined) {
+          doctorProfile.bankDetails = {
+            bankName: req.body.bankDetails?.bankName || '',
+            accountNumber: req.body.bankDetails?.accountNumber || '',
+            accountHolderName: req.body.bankDetails?.accountHolderName || '',
+            routingNumber: req.body.bankDetails?.routingNumber || '',
+            branch: req.body.bankDetails?.branch || '',
+          };
+        }
         // If email changed by doctor, mark credentials as changed
         if (emailChanged) doctorProfile.credentialsChanged = true;
         await doctorProfile.save();
