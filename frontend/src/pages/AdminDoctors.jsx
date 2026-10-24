@@ -12,6 +12,7 @@ export default function AdminDoctors() {
   const [doctorEarnings, setDoctorEarnings] = useState([])
   const [earnings, setEarnings] = useState(null)
   const [payouts, setPayouts] = useState([])
+  const confirmedTransferCount = payouts.filter(payout => payout.status === 'completed').length
   const [totalDoctorPayouts, setTotalDoctorPayouts] = useState(0)
   const [hospitalRetained, setHospitalRetained] = useState(0)
   const [error, setError] = useState('')
@@ -280,7 +281,7 @@ export default function AdminDoctors() {
                 <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
                   <span className="text-xs uppercase font-semibold text-navy-muted">Total Paid to Doctors (Salary)</span>
                   <p className="text-2xl font-bold text-primary mt-1">{formatMoney(totalDoctorPayouts)}</p>
-                  <p className="text-xs text-navy-muted mt-1">{payouts.length} bank transfers completed</p>
+                  <p className="text-xs text-navy-muted mt-1">Confirmed bank transfers: {confirmedTransferCount}</p>
                 </div>
                 <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
                   <span className="text-xs uppercase font-semibold text-navy-muted">Hospital Retained Profit</span>
@@ -629,7 +630,7 @@ export default function AdminDoctors() {
                 <p className="text-sm text-navy-muted mt-1">Payout requests and provider-confirmed transfers. Pending requests have not sent money.</p>
               </div>
               <span className="text-xs font-semibold px-3 py-1 bg-surface-container rounded-full text-navy">
-                {payouts.length} Transfers
+                {payouts.length} payout records
               </span>
             </div>
 
@@ -734,7 +735,7 @@ export default function AdminDoctors() {
                         onClick={() => setPayoutForm({ ...payoutForm, amount: String(payoutModalDoctor.pendingBalance) })}
                         className="text-xs font-bold text-primary hover:underline"
                       >
-                        Pay Full Balance (${Number(payoutModalDoctor.pendingBalance).toFixed(2)})
+                        Use available balance (${Number(payoutModalDoctor.pendingBalance).toFixed(2)})
                       </button>
                     )}
                   </div>

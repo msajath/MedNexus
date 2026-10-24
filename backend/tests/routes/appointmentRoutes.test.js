@@ -233,6 +233,40 @@ describe('Appointment Routes', () => {
       }
       expect(Appointment.create).not.toHaveBeenCalled();
     });
+    it.each([
+      ['changed booking', null, 409],
+      ['occupied slot', { code: 11000 }, 409],
+      ['database failure', new Error('Write unavailable'), 500],
+    ])('releases its reservation before returning a %s error', async (_reason, failure, status) => {
+      const events = [];
+      const observedApp = express();
+      observedApp.use(express.json());
+      observedApp.use((_req, res, next) => {
+        const send = res.json.bind(res);
+        res.json = body => { events.push('response'); return send(body); };
+        next();
+      });
+      observedApp.use('/api/appointments', appointmentRoutes);
+      Appointment.findOneAndUpdate.mockResolvedValueOnce(appointment);
+      if (failure) Appointment.findOneAndUpdate.mockRejectedValueOnce(failure);
+      else Appointment.findOneAndUpdate.mockResolvedValueOnce(null);
+      Appointment.updateOne.mockImplementation(async () => {
+        await Promise.resolve();
+        events.push('cleanup');
+        return { modifiedCount: 1 };
+      });
+
+      const result = await request(observedApp).put(`/api/appointments/${id}/reschedule`)
+        .send({ date: futureMonday(), time: '11:00 AM' });
+
+      expect(result.status).toBe(status);
+      expect(events).toEqual(['cleanup', 'response']);
+      expect(Appointment.updateOne).toHaveBeenCalledWith(
+        { _id: id, 'rescheduleIntent.token': expect.any(String) },
+        { $unset: { rescheduleIntent: '' } },
+      );
+      expect(Appointment.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('PUT /api/appointments/:id/cancel', () => {

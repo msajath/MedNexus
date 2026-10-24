@@ -250,6 +250,27 @@ withMongo('Doctor leave, booking coordination and audit history', () => {
     expect((await review((await apply()).body.leave._id)).status).toBe(200);
   });
 
+  test('an occupied reschedule releases its reservation before the patient retries another slot', async () => {
+    const original = await book(monday(1));
+    const occupied = await book(monday(), '11:00 AM');
+    expect(original.status).toBe(201);
+    expect(occupied.status).toBe(201);
+    const endpoint = `/api/appointments/${original.body.appointment._id}/reschedule`;
+
+    const conflict = await request(app).put(endpoint).set(auth(patient)).send({ date: monday(), time: '11:00 AM' });
+    expect(conflict.status).toBe(409);
+    const unchanged = await Appointment.findById(original.body.appointment._id).select('+rescheduleIntent');
+    expect(unchanged.date).toBe(monday(1));
+    expect(unchanged.rescheduleHistory).toHaveLength(0);
+    expect(unchanged.rescheduleIntent).toBeUndefined();
+
+    const retry = await request(app).put(endpoint).set(auth(patient)).send({ date: monday(), time: '12:00 PM' });
+    expect(retry.status).toBe(200);
+    expect(retry.body.appointment).toMatchObject({ _id: original.body.appointment._id, date: monday(), time: '12:00 PM', status: 'pending' });
+    expect(retry.body.appointment.rescheduleHistory).toHaveLength(1);
+    expect(await Appointment.countDocuments({ doctor: doctor._id })).toBe(2);
+  });
+
   test('expired reschedule finalization cannot move the original booking', async () => {
     const booking = await book(monday(1)); expect(booking.status).toBe(201);
     const originalFind = DoctorLeave.findOne;

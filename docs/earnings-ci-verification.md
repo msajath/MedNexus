@@ -16,10 +16,14 @@ Older `completed` payout documents without provider confirmation are shown as **
 
 Real bank transfers remain unimplemented pending the owner's country, currency and payout-provider details. `transfersEnabled` is false. The current application retains its existing USD currency. A provider integration must verify transfer confirmation and reconcile existing requests; connecting credentials must never automatically send old requests.
 
+The owner has since confirmed Sri Lanka, LKR and Bank of Ceylon, without bank API or bulk salary-payment access. [The BOC connection handoff](boc-payout-onboarding.md) records the bank setup still needed and the currency migration boundary. Existing USD entries have not been relabelled or converted.
+
+The final booking review covers reservation cleanup before an error response, including occupied slots, concurrent changes and storage failures. A real MongoDB regression verifies that a patient can immediately retry another slot without creating another appointment. The salary dashboard now counts only confirmed completed transfers in its paid-transfer counter; pending and other payout records remain visible in history without being counted as sent money.
+
 ## Dependency and verification evidence
 
 Lockfile repairs update body-parser to 2.4.0, Nodemailer to 10.2.1, Undici to 7.30.1 and Zod to 4.6.7. Both actual clean installs passed. Both full dependency audits and both production-only audits reported zero vulnerabilities.
 
-Backend unit/coverage verification passed **219 tests**. Its 80 database tests are intentionally run in a separate job; the separate real MongoDB run passed **all 80 with none skipped**. Frontend unit/coverage verification passed **163 tests**. Existing coverage thresholds are unchanged. Lint, production build, actionlint and Compose configuration validation passed.
+The latest local backend unit/coverage verification passed **229 tests**. Its 81 database tests are intentionally run in a separate job; the separate real MongoDB run passed **all 81 with none skipped**. Frontend unit/coverage verification passed **168 tests**. Existing coverage thresholds are unchanged. Lint and production build passed again; the workflow and Compose configuration have not changed since their earlier successful validation.
 
 Browser QA retains all four real-API spec files, both desktop/mobile projects, the separate UI checks and the existing rejection of skipped or flaky results. Assertions referring to removed controls have been replaced with real completion, credit, reversal and administrator fee workflows. The final browser and hosted CI results must be checked on the published revision; earlier successful commits are not proof of this patch. Test databases and mail capture are isolated on localhost; no real bank transfers or production database writes were performed during verification.

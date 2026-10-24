@@ -41,6 +41,22 @@ test('shows a failed earnings load instead of silently showing an empty successf
   expect(screen.getByRole('button', { name: 'Reload data' })).toBeInTheDocument()
 })
 
+test('only confirmed completed transfers count as paid while all payout requests remain in history', async () => {
+  const payouts = ['completed', 'pending', 'processing', 'failed', 'unverified', 'cancelled'].map((status, index) => ({
+    _id: `payout-${index}`, status, amount: 10, createdAt: '2026-10-20T10:00:00Z',
+  }))
+  apiFetch.mockImplementation(async url => {
+    if (url.endsWith('/payouts')) return response({ payouts })
+    if (url.endsWith('/earnings')) return response({ earnings: { netReceived: 100 }, totalDoctorPayouts: 10, hospitalRetained: 90, doctors: [] })
+    return response({ doctors: [] })
+  })
+  render(<AdminDoctors />)
+  expect(await screen.findByText('Confirmed bank transfers: 1')).toBeInTheDocument()
+  expect(screen.getByText('6 payout records')).toBeInTheDocument()
+  expect(screen.queryByText('6 bank transfers completed')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Cancel payout request' })).toBeInTheDocument()
+})
+
 const setupPortal = mutation => {
   const doctor = { _id: 'd1', userId: 'u1', name: 'Dr. Active', email: 'active@example.test', specialty: 'Cardiology', fee: 150, isVerified: true }
   apiFetch.mockImplementation(async (url, options) => {
