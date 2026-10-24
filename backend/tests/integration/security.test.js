@@ -132,4 +132,133 @@ describeWithMongo('MongoDB security and booking integration', () => {
     expect(removed.status).toBe(200);
     expect((await MedicalRecord.findById(record._id)).attachments.map(item => item.name)).toEqual(['second.pdf']);
   });
+
+  test('appointment completion auto-credits payment into doctor earnings and hospital revenue, invisible to patient', async () => {
+    const admin = await createUser('earn-admin', 'admin');
+    const patient = await createUser('earn-patient', 'patient');
+    const doctorUser = await createUser('earn-doctor', 'doctor');
+    const doctor = await Doctor.create({ user: doctorUser._id, specialty: 'Cardiology', fee: 120 });
+    const appointment = await Appointment.create({
+      patient: patient._id, doctor: doctor._id, date: nextMonday(), time: '02:00 PM', status: 'confirmed', feeAtBooking: 120,
+    });
+
+    // Doctor marks appointment completed
+    const completeRes = await request(app).put(`/api/appointments/${appointment._id}/status`).set(auth(doctorUser)).send({ status: 'completed' });
+    expect(completeRes.status).toBe(200);
+
+    // Verify Payment document was automatically created with method auto_credit
+    const payment = await Payment.findOne({ appointment: appointment._id });
+    expect(payment).not.toBeNull();
+    expect(payment.amountMinor).toBe(12000);
+    expect(payment.method).toBe('auto_credit');
+    expect(payment.status).toBe('received');
+
+    // Doctor can see their earnings
+    const docEarnings = await request(app).get('/api/payments/my').set(auth(doctorUser));
+    expect(docEarnings.status).toBe(200);
+    expect(docEarnings.body.earnings.netReceived).toBe(120);
+
+    // Admin can see the hospital earnings
+    const adminEarnings = await request(app).get('/api/admin/earnings').set(auth(admin));
+    expect(adminEarnings.status).toBe(200);
+    expect(adminEarnings.body.earnings.netReceived).toBe(120);
+
+    // Patient is strictly forbidden from accessing doctor earnings or hospital revenue
+    expect((await request(app).get('/api/payments/my').set(auth(patient))).status).toBe(403);
+    expect((await request(app).get('/api/admin/earnings').set(auth(patient))).status).toBe(403);
+  });
+
+  test('only admin can fix doctor consultation fee and doctors cannot alter their own fee', async () => {
+    const admin = await createUser('fee-admin', 'admin');
+    const patient = await createUser('fee-patient', 'patient');
+    const doctorUser = await createUser('fee-doctor', 'doctor');
+    const doctor = await Doctor.create({ user: doctorUser._id, specialty: 'Neurology', fee: 150 });
+
+    // Doctor attempts to alter fee
+    const doctorEdit = await request(app).put('/api/doctors/profile').set(auth(doctorUser)).send({ fee: 999 });
+    expect(doctorEdit.status).toBe(200);
+    expect((await Doctor.findById(doctor._id)).fee).toBe(150);
+
+    // Patient attempts to alter doctor fee
+    const patientEdit = await request(app).put(`/api/admin/doctors/${doctor._id}/fee`).set(auth(patient)).send({ fee: 50 });
+    expect(patientEdit.status).toBe(403);
+
+    // Admin fixes doctor fee
+    const adminEdit = await request(app).put(`/api/admin/doctors/${doctor._id}/fee`).set(auth(admin)).send({ fee: 220 });
+    expect(adminEdit.status).toBe(200);
+    expect(adminEdit.body.doctor.fee).toBe(220);
+    expect((await Doctor.findById(doctor._id)).fee).toBe(220);
+  });
+
+  test('admin disburses salary to doctor bank via payout portal, updating pending balance', async () => {
+    const admin = await createUser('payout-admin', 'admin');
+    const patient = await createUser('payout-patient', 'patient');
+    const doctorUser = await createUser('payout-doctor', 'doctor');
+    const doctor = await Doctor.create({
+      user: doctorUser._id,
+      specialty: 'Orthopedics',
+      fee: 200,
+      bankDetails: { bankName: 'National Bank', accountNumber: '1122334455' },
+    });
+
+    // Create completed appointment with auto payment
+    const appt = await Appointment.create({
+      patient: patient._id, doctor: doctor._id, date: nextMonday(), time: '04:00 PM', status: 'completed', feeAtBooking: 200,
+    });
+    await Payment.create({
+      appointment: appt._id, doctor: doctor._id, patient: patient._id, amountMinor: 20000, currency: 'USD',
+      method: 'auto_credit', status: 'received', receivedAt: new Date(), recordedAt: new Date(), recordedBy: admin._id,
+    });
+
+    // Admin disburses salary
+    const payoutRes = await request(app).post('/api/admin/payouts').set(auth(admin)).send({
+      doctorId: doctor._id,
+      amount: 150,
+      bankDetails: { bankName: 'National Bank', accountNumber: '1122334455' },
+      reference: 'SAL-001',
+    });
+    expect(payoutRes.status).toBe(201);
+
+    // Doctor checks payouts and balance
+    const doctorPay = await request(app).get('/api/payments/my').set(auth(doctorUser));
+    expect(doctorPay.status).toBe(200);
+    expect(doctorPay.body.grossEarned).toBe(200);
+    expect(doctorPay.body.totalPaidOut).toBe(150);
+    expect(doctorPay.body.pendingBalance).toBe(50);
+    expect(doctorPay.body.payouts).toHaveLength(1);
+
+    // Non-admin cannot disburse payout
+    expect((await request(app).post('/api/admin/payouts').set(auth(patient)).send({ doctorId: doctor._id, amount: 50 })).status).toBe(403);
+    expect((await request(app).post('/api/admin/payouts').set(auth(doctorUser)).send({ doctorId: doctor._id, amount: 50 })).status).toBe(403);
+  });
+
+  test('patient and admin profiles initialize with empty avatar and permit identical photo management', async () => {
+    const patient = await createUser('avatar-patient', 'patient');
+    const admin = await createUser('avatar-admin', 'admin');
+
+    // Both profiles start with no avatar (empty)
+    expect(patient.avatar).toBeFalsy();
+    expect(admin.avatar).toBeFalsy();
+
+    // Patient uploads profile photo
+    const samplePhoto = `data:image/png;base64,${Buffer.from('fake-png-content').toString('base64')}`;
+    const patUpload = await request(app).put('/api/auth/profile').set(auth(patient)).send({ avatar: samplePhoto });
+    expect(patUpload.status).toBe(200);
+    expect(patUpload.body.user.avatar).toBe(samplePhoto);
+
+    // Admin uploads profile photo
+    const admUpload = await request(app).put('/api/auth/profile').set(auth(admin)).send({ avatar: samplePhoto });
+    expect(admUpload.status).toBe(200);
+    expect(admUpload.body.user.avatar).toBe(samplePhoto);
+
+    // Patient removes photo
+    const patRemove = await request(app).put('/api/auth/profile').set(auth(patient)).send({ avatar: '' });
+    expect(patRemove.status).toBe(200);
+    expect(patRemove.body.user.avatar).toBe('');
+
+    // Admin removes photo
+    const admRemove = await request(app).put('/api/auth/profile').set(auth(admin)).send({ avatar: '' });
+    expect(admRemove.status).toBe(200);
+    expect(admRemove.body.user.avatar).toBe('');
+  });
 });
