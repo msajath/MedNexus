@@ -206,6 +206,7 @@ router.put('/:id/reschedule', protect, authorize('patient'), validateObjectId('i
       if (!reserved) return res.status(409).json({ success: false, message: 'Appointment changed or is being rescheduled. Refresh and retry.' });
       if (await blockingLeave(doctor._id, date)) {
         await Appointment.updateOne({ _id: appointment._id, 'rescheduleIntent.token': intentToken }, { $unset: { rescheduleIntent: '' } });
+        intentToken = null;
         return res.status(409).json({ success: false, message: 'Doctor is on leave or leave is being reviewed on this date. Choose another date.' });
       }
       const updated = await Appointment.findOneAndUpdate({
@@ -215,9 +216,18 @@ router.put('/:id/reschedule', protect, authorize('patient'), validateObjectId('i
       }, { $set: { date, time, status: 'pending' }, $unset: { rescheduleIntent: '' },
         $push: { rescheduleHistory: { fromDate: appointment.date, fromTime: appointment.time, toDate: date, toTime: time, changedAt: new Date(), changedBy: req.user._id } },
       }, { new: true, runValidators: true });
-      if (!updated) return res.status(409).json({ success: false, message: 'Appointment changed. Refresh and retry.' });
+      if (!updated) {
+        await Appointment.updateOne({ _id: appointment._id, 'rescheduleIntent.token': intentToken }, { $unset: { rescheduleIntent: '' } });
+        intentToken = null;
+        return res.status(409).json({ success: false, message: 'Appointment changed. Refresh and retry.' });
+      }
+      intentToken = null;
       res.json({ success: true, appointment: updated });
     } catch (error) {
+      if (intentToken) {
+        await Appointment.updateOne({ _id: req.params.id, 'rescheduleIntent.token': intentToken }, { $unset: { rescheduleIntent: '' } }).catch(() => {});
+        intentToken = null;
+      }
       if (error.code === 11000) return res.status(409).json({ success: false, message: 'This time slot is already booked' });
       return errorHandler(error, req, res, () => {});
     } finally {
