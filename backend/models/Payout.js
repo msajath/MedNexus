@@ -22,7 +22,7 @@ const payoutSchema = new mongoose.Schema(
     currency: {
       type: String,
       default: 'USD',
-      enum: ['USD'],
+      enum: ['USD', 'LKR'],
     },
     bankDetails: {
       bankName: { type: String, required: true },

@@ -14,8 +14,8 @@ export function summarizeAppointments(appointments) {
   return summary
 }
 
-export function formatMoney(value) {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value)
-    : 'Fee unavailable'
+export function formatMoney(value, currency = 'USD') {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 'Fee unavailable'
+  const locale = currency === 'LKR' ? 'en-LK' : 'en-US'
+  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(value)
 }

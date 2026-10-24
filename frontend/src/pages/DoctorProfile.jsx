@@ -217,8 +217,14 @@ export default function DoctorProfile() {
                   <h1 className="text-3xl font-semibold text-navy flex items-center gap-2 mb-2">
                     {doctor.name} <span className="material-icons-outlined text-blue-600 text-2xl">verified</span>
                   </h1>
-                  <div className="text-base text-slate-500 flex items-center gap-4 mb-8">
-                    {doctor.specialty} <span className="bg-white border border-slate-200 rounded-full px-3 py-1 text-sm text-slate-600">{doctor.experience || 'Experience not provided'}</span>
+                  <div className="text-base text-slate-500 flex flex-wrap items-center gap-3 mb-8">
+                    <span>{doctor.specialty}</span>
+                    <span className="bg-white border border-slate-200 rounded-full px-3 py-1 text-sm text-slate-600">{doctor.experience || 'Experience not provided'}</span>
+                    {doctor.licenseNumber && (
+                      <span className="bg-blue-50 border border-blue-200 text-primary font-medium rounded-full px-3 py-1 text-sm">
+                        SLMC Reg: {doctor.licenseNumber}
+                      </span>
+                    )}
                   </div>
                   
                   <div className="mb-8">
@@ -226,12 +232,18 @@ export default function DoctorProfile() {
                       About <span className="material-icons-outlined text-base text-slate-400">info</span>
                     </h3>
                     <p className="text-[0.95rem] leading-[1.6] text-slate-500">
-                      Dr. {doctor.name.split(' ').pop()} has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies. Dr. {doctor.name.split(' ').pop()} has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.
+                      {doctor.bio || `Dr. ${doctor.name.split(' ').pop()} is committed to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and evidence-based clinical management.`}
                     </p>
                   </div>
 
-                  <p className="text-[1.1rem] text-slate-600">Appointment fee: <span className="font-bold text-navy">${doctor.fee}</span></p>
+                  <p className="text-[1.1rem] text-slate-600">Appointment fee: <span className="font-bold text-navy">{doctor.currency === 'LKR' ? `Rs. ${doctor.fee}` : `$${doctor.fee}`}</span></p>
                 </div>
+              </div>
+
+              {/* Emergency Banner */}
+              <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-xs md:text-sm text-red-800 flex items-center gap-2">
+                <span className="material-icons-outlined text-red-600 text-[18px]">emergency</span>
+                <span><strong>Emergency Notice:</strong> MedNexus booking is for scheduled consultations. In an emergency, call <strong>1990 (Suwa Seriya Ambulance)</strong> or visit the nearest hospital emergency unit immediately.</span>
               </div>
 
               {/* Booking Section */}

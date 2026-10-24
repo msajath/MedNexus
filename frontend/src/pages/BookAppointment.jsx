@@ -189,26 +189,33 @@ export default function BookAppointment() {
               <p className="text-base text-navy-muted">Redirecting to your appointments...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col lg:flex-row items-start lg:items-center gap-5 p-6 bg-white rounded-xl shadow-sm border border-slate-200">
-                  <div className="w-20 h-20 rounded-full bg-linear-to-br from-primary-light to-primary text-white flex items-center justify-center font-bold text-2xl shrink-0">
-                    {doctor.name.split(' ').slice(1).map(n => n[0]).join('')}
-                  </div>
-                  <div className="flex-1">
-                    <h1 className="text-3xl font-semibold text-navy">{doctor.name}</h1>
-                    <p className="text-base text-primary font-medium">{doctor.specialty}</p>
-                    <div className="flex flex-wrap gap-4 mt-2 text-sm text-navy-muted">
-                      <span className="flex items-center gap-1"><span className="material-icons-outlined text-[16px]">star</span> {doctor.rating}</span>
-                      <span className="flex items-center gap-1"><span className="material-icons-outlined text-[16px]">work</span> {doctor.experience}</span>
-                      <span className="flex items-center gap-1"><span className="material-icons-outlined text-[16px]">location_on</span> {doctor.location}</span>
+            <>
+              {/* Emergency Alert */}
+              <aside aria-label="Emergency Notice" className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-xs md:text-sm text-red-900 flex items-center gap-2">
+                <span className="material-icons-outlined text-red-600 text-[18px]">emergency</span>
+                <span><strong>Medical Emergency Warning:</strong> MedNexus booking is for scheduled consultations only. In a life-threatening emergency, call <strong>1990 (Suwa Seriya Ambulance)</strong> or go to the nearest hospital emergency unit.</span>
+              </aside>
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
+                <div className="flex flex-col gap-6">
+                  <div className="flex flex-col lg:flex-row items-start lg:items-center gap-5 p-6 bg-white rounded-xl shadow-sm border border-slate-200">
+                    <div className="w-20 h-20 rounded-full bg-linear-to-br from-primary-light to-primary text-white flex items-center justify-center font-bold text-2xl shrink-0">
+                      {doctor.name.split(' ').slice(1).map(n => n[0]).join('')}
+                    </div>
+                    <div className="flex-1">
+                      <h1 className="text-3xl font-semibold text-navy">{doctor.name}</h1>
+                      <p className="text-base text-primary font-medium">{doctor.specialty}</p>
+                      <div className="flex flex-wrap gap-4 mt-2 text-sm text-navy-muted">
+                        <span className="flex items-center gap-1"><span className="material-icons-outlined text-[16px]">star</span> {doctor.rating}</span>
+                        <span className="flex items-center gap-1"><span className="material-icons-outlined text-[16px]">work</span> {doctor.experience}</span>
+                        <span className="flex items-center gap-1"><span className="material-icons-outlined text-[16px]">location_on</span> {doctor.location}</span>
+                        {doctor.licenseNumber && <span className="flex items-center gap-1 text-primary font-medium">SLMC Reg: {doctor.licenseNumber}</span>}
+                      </div>
+                    </div>
+                    <div className="mt-4 lg:mt-0 text-left lg:text-right">
+                      <span className="block text-sm text-navy-muted">Consultation Fee</span>
+                      <span className="block text-2xl font-bold text-navy">{doctor.currency === 'LKR' ? `Rs. ${doctor.fee}` : `$${doctor.fee}`}</span>
                     </div>
                   </div>
-                  <div className="mt-4 lg:mt-0 text-left lg:text-right">
-                    <span className="block text-sm text-navy-muted">Consultation Fee</span>
-                    <span className="block text-2xl font-bold text-navy">${doctor.fee}</span>
-                  </div>
-                </div>
 
                 <div className="p-6 bg-white rounded-xl shadow-sm border border-slate-200">
                   <h2 className="text-xl font-semibold text-navy mb-4">Select Date</h2>
@@ -295,7 +302,7 @@ export default function BookAppointment() {
                   </div>
                   <div className="flex justify-between py-3 text-lg font-semibold mt-2">
                     <span className="text-outline">Fee</span>
-                    <span className="text-primary font-bold">${doctor.fee}</span>
+                    <span className="text-primary font-bold">{doctor.currency === 'LKR' ? `Rs. ${doctor.fee}` : `$${doctor.fee}`}</span>
                   </div>
                   {bookingError && <p role="alert" className="mt-3 text-sm text-red-600">{bookingError}</p>}
                   <button 
@@ -313,7 +320,8 @@ export default function BookAppointment() {
                 </div>
               </div>
             </div>
-          )}
+          </>
+        )}
         </div>
       </main>
       <Footer />

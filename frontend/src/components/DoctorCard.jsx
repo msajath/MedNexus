@@ -29,7 +29,7 @@ export default function DoctorCard({ doctor, index = 0 }) {
             <p className="text-[0.85rem] text-slate-500 font-normal">{doctor.specialty}</p>
             <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between w-full">
               <span className="text-xs font-medium text-navy-muted">Consultation Fee</span>
-              <span className="text-sm font-bold text-primary">${doctor.fee ?? 100}</span>
+              <span className="text-sm font-bold text-primary">{doctor.currency === 'LKR' ? `Rs. ${doctor.fee ?? 100}` : `$${doctor.fee ?? 100}`}</span>
             </div>
             {doctor.available === false && <p className="mt-2 text-xs font-medium text-amber-700">Currently unavailable for booking</p>}
           </div>

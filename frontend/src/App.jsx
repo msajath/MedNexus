@@ -12,6 +12,8 @@ const DoctorProfile = lazy(() => import('./pages/DoctorProfile'))
 const AboutPage = lazy(() => import('./pages/AboutPage'))
 const ContactPage = lazy(() => import('./pages/ContactPage'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
+const TermsOfService = lazy(() => import('./pages/TermsOfService'))
 
 // Protected Pages
 const BookAppointment = lazy(() => import('./pages/BookAppointment'))
@@ -106,6 +108,8 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/doctors" element={<DoctorListing />} />
         <Route path="/doctors/:id" element={<DoctorProfile />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
 
         {/* Protected Routes - Patient */}
         <Route path="/book/:id" element={

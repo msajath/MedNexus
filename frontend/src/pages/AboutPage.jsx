@@ -82,7 +82,7 @@ export default function AboutPage() {
             <div>
               <h2 className="text-2xl font-semibold text-navy mb-4">Our Mission</h2>
               <p className="text-base text-outline leading-[1.7] mb-6">
-                At MEDNEXUS, our mission is to make quality healthcare accessible to everyone. We believe that finding the right doctor and booking an appointment shouldn't be a hassle. We've built a platform that connects patients with top-rated medical professionals seamlessly and securely.
+                At MEDNEXUS, our mission is to make quality healthcare accessible to everyone across Sri Lanka. We believe that finding the right doctor and scheduling a consultation shouldn't be a hassle. We've built a platform that connects patients with registered medical professionals seamlessly and securely.
               </p>
               
               <h2 className="text-2xl font-semibold text-navy mb-4 mt-8">Why We Started</h2>

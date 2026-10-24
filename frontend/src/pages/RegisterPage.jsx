@@ -115,15 +115,15 @@ export default function RegisterPage() {
             
             {role === 'doctor' && (
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-navy" htmlFor="license">Medical License Number</label>
-                <input type="text" id="license" className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" placeholder="e.g. MD123456" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} required />
+                <label className="text-sm font-medium text-navy" htmlFor="license">SLMC Registration Number</label>
+                <input type="text" id="license" className="w-full p-3 border-[1.5px] border-slate-300 rounded-xl text-base text-on-surface bg-white focus:border-primary outline-none transition-colors" placeholder="e.g. 12345 (Sri Lanka Medical Council)" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} required />
               </div>
             )}
 
             <div className="mb-2">
               <label className="flex items-center gap-2 text-sm text-navy-muted cursor-pointer">
                 <input type="checkbox" required className="accent-primary" /> 
-                <span>I agree to the <a href="#" className="text-primary font-medium hover:underline">Terms & Conditions</a></span>
+                <span>I agree to the <Link to="/terms" target="_blank" className="text-primary font-medium hover:underline">Terms of Service</Link> and <Link to="/privacy" target="_blank" className="text-primary font-medium hover:underline">Privacy Policy</Link></span>
               </label>
             </div>
             <button type="submit" className="w-full py-3.5 bg-primary text-white text-base font-semibold rounded-xl hover:bg-primary-dark transition-colors mb-2 disabled:bg-slate-400 disabled:cursor-not-allowed" id="register-submit" disabled={loading}>{loading ? 'Creating Account...' : 'Create Account'}</button>

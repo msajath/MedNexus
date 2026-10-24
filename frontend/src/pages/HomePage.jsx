@@ -38,6 +38,11 @@ export default function HomePage() {
       className="min-h-screen flex flex-col"
     >
       <Navbar />
+      {/* Sri Lankan Medical Emergency Notice */}
+      <aside aria-label="Medical Emergency Notice" className="bg-red-50 border-b border-red-200 py-2.5 px-4 text-xs md:text-sm text-red-900 text-center flex items-center justify-center gap-2">
+        <span className="material-icons-outlined text-red-600 text-[18px]">emergency</span>
+        <span><strong>Medical Emergency?</strong> Call <strong>1990 (Suwa Seriya National Ambulance Service)</strong> or visit the nearest hospital emergency unit. MedNexus is for scheduled non-emergency consultations.</span>
+      </aside>
       {/* Hero Section */}
       <section className="py-16 md:py-24" id="hero">
         <div className="max-w-7xl mx-auto px-4 md:px-6 flex flex-col md:flex-row items-center gap-12 md:gap-16">
@@ -51,14 +56,14 @@ export default function HomePage() {
               <img src={assets.group_profiles} alt="Profiles" className="h-8" />
               <span className="inline-flex items-center gap-1 px-3 py-1 bg-info-bg text-primary rounded-full text-xs font-semibold">
                 <span className="material-icons-outlined text-[14px]">verified</span>
-                Trusted Healthcare Platform
+                Sri Lankan Healthcare Platform
               </span>
             </motion.div>
             <motion.h1 variants={itemVariants} className="text-[28px] md:text-5xl font-bold leading-tight md:leading-[1.2] tracking-tight text-navy mb-6">
-              Book Your Doctor<br />Appointment <span className="bg-linear-to-br from-primary to-primary-light bg-clip-text text-transparent">Instantly</span>
+              Doctor Channeling &amp;<br />Appointments in Sri Lanka <span className="bg-linear-to-br from-primary to-primary-light bg-clip-text text-transparent">Made Simple</span>
             </motion.h1>
             <motion.p variants={itemVariants} className="text-base md:text-lg text-navy-muted leading-relaxed max-w-135 mb-8">
-              Connect with verified specialists across the country. Get expert care from the comfort of your home or find a clinic near you.
+              Connect with registered medical practitioners and specialists across Sri Lanka. Conveniently schedule clinic appointments and manage your health records in one secure platform.
             </motion.p>
             <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 mb-10">
               <Link to="/doctors" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white text-base font-semibold rounded-xl hover:bg-primary-dark hover:-translate-y-px hover:shadow-md transition-all">
@@ -156,7 +161,7 @@ export default function HomePage() {
                 <span className="material-icons-outlined text-success text-[28px]">verified_user</span>
               </div>
               <h3 className="text-lg font-semibold text-navy mb-3">Verified Doctors</h3>
-              <p className="text-base text-navy-muted leading-relaxed">Every professional on MEDNEXUS undergoes a rigorous 5-step background verification process.</p>
+              <p className="text-base text-navy-muted leading-relaxed">Medical practitioners submit their SLMC registration credentials for administrative review before listing.</p>
             </motion.div>
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
@@ -217,8 +222,8 @@ export default function HomePage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-2xl md:text-3xl font-semibold text-navy mb-4">Top Doctors to Book</h2>
-            <p className="text-base text-navy-muted">Simply browse through our extensive list of trusted doctors.</p>
+            <h2 className="text-2xl md:text-3xl font-semibold text-navy mb-4">Available Doctors to Book</h2>
+            <p className="text-base text-navy-muted">Browse registered medical practitioners and schedule your consultation slot.</p>
           </motion.div>
           {loading && (
             <p role="status" className="text-center text-navy-muted">Loading doctors…</p>

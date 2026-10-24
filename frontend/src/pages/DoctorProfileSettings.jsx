@@ -210,7 +210,7 @@ export default function DoctorProfileSettings() {
                 </div>
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-navy">Consultation Fee ($)</label>
+                    <label className="text-sm font-medium text-navy">Consultation Fee (LKR / USD)</label>
                     <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full flex items-center gap-1">
                       <span className="material-icons-outlined text-[12px]">lock</span> Fixed by Admin
                     </span>

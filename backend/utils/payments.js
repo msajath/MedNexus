@@ -26,14 +26,16 @@ const summarizePayments = (payments) => {
   let grossMinor = 0;
   let refundedMinor = 0;
   let receivedPayments = 0;
+  let detectedCurrency = null;
   for (const payment of payments) {
     if (!['received', 'refunded'].includes(payment.status)) continue;
     grossMinor += payment.amountMinor;
+    if (payment.currency) detectedCurrency = payment.currency;
     if (payment.status === 'refunded') refundedMinor += payment.amountMinor;
     else receivedPayments += 1;
   }
   return { receivedAmount: grossMinor / 100, refundedAmount: refundedMinor / 100,
-    netReceived: (grossMinor - refundedMinor) / 100, receivedPayments, currency: 'USD', basis: 'recorded_payments' };
+    netReceived: (grossMinor - refundedMinor) / 100, receivedPayments, currency: detectedCurrency || 'USD', basis: 'recorded_payments' };
 };
 
 const withAppointmentPayments = async (appointments) => {

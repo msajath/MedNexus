@@ -257,7 +257,7 @@ export default function MedicalRecords() {
       <main className="flex-1 flex flex-col p-6 md:p-8 ml-0 lg:ml-64 transition-all duration-300" id="medical-records">
         
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-semibold text-navy">Medical Records</h1>
             <p className="mt-1 text-base text-navy-muted">View and manage your personal health records.</p>
@@ -270,6 +270,17 @@ export default function MedicalRecords() {
             Add Record
           </button>
         </div>
+
+        {/* Sri Lankan NMRA & Clinical Archive Notice */}
+        <aside aria-label="Prescription and Clinical Archive Notice" className="mb-6 p-4 rounded-xl bg-blue-50/60 border border-blue-200 text-xs text-navy-muted flex items-start gap-2.5">
+          <span className="material-icons-outlined text-primary text-[18px] shrink-0 mt-0.5">info</span>
+          <div>
+            <p className="font-semibold text-navy">Clinical Record &amp; Prescription Guidance</p>
+            <p className="mt-0.5 leading-relaxed">
+              Records stored here provide a personal health archive and clinical reference. Under National Medicines Regulatory Authority (NMRA) regulations, electronic summaries are for patient reference and do not replace an authorized signed prescription for pharmacy dispensing.
+            </p>
+          </div>
+        </aside>
 
         {/* Toast message */}
         {message.text && (
