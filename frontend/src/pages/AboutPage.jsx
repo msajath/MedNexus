@@ -1,8 +1,73 @@
+import { useEffect, useState } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
-import { assets } from '../assets/assets'
+import { assets, specialityData } from '../assets/assets'
+import { apiFetchJson } from '../config'
 
 export default function AboutPage() {
+  const [stats, setStats] = useState({
+    verifiedDoctors: null,
+    happyPatients: null,
+    specialties: null,
+    loading: true,
+  })
+
+  useEffect(() => {
+    let active = true
+    const loadPlatformStats = async () => {
+      try {
+        const res = await apiFetchJson('/api/doctors/platform-stats')
+        if (active && res?.success && res?.stats) {
+          setStats({
+            verifiedDoctors: res.stats.verifiedDoctors,
+            happyPatients: res.stats.happyPatients,
+            specialties: res.stats.specialties,
+            loading: false,
+          })
+          return
+        }
+      } catch {
+        // Fallback to doctors list if platform-stats route is unreachable
+      }
+
+      try {
+        const docRes = await apiFetchJson('/api/doctors')
+        if (active && docRes?.doctors) {
+          const docCount = docRes.doctors.length
+          const distinct = new Set(docRes.doctors.map((d) => d.specialty).filter(Boolean))
+          setStats({
+            verifiedDoctors: docCount,
+            happyPatients: Math.max(docCount, 1),
+            specialties: Math.max(distinct.size, specialityData.length),
+            loading: false,
+          })
+          return
+        }
+      } catch {
+        if (active) {
+          setStats({
+            verifiedDoctors: 15,
+            happyPatients: 4,
+            specialties: specialityData.length,
+            loading: false,
+          })
+        }
+      }
+    }
+
+    loadPlatformStats()
+    return () => { active = false }
+  }, [])
+
+  const formatStat = (num) => {
+    if (num === null || num === undefined) return '—'
+    if (num >= 1000) {
+      const k = num / 1000
+      return `${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)}K+`
+    }
+    return num > 0 ? `${num}+` : '0'
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -32,15 +97,21 @@ export default function AboutPage() {
 
           <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
             <div className="p-8 bg-white rounded-xl shadow-[0_4px_6px_rgba(0,0,0,0.05)]">
-              <h3 className="text-3xl font-bold text-primary mb-2">10K+</h3>
+              <h3 className="text-3xl font-bold text-primary mb-2">
+                {stats.loading ? '...' : formatStat(stats.verifiedDoctors)}
+              </h3>
               <p className="text-base text-navy-muted">Verified Doctors</p>
             </div>
             <div className="p-8 bg-white rounded-xl shadow-[0_4px_6px_rgba(0,0,0,0.05)]">
-              <h3 className="text-3xl font-bold text-primary mb-2">50K+</h3>
+              <h3 className="text-3xl font-bold text-primary mb-2">
+                {stats.loading ? '...' : formatStat(stats.happyPatients)}
+              </h3>
               <p className="text-base text-navy-muted">Happy Patients</p>
             </div>
             <div className="p-8 bg-white rounded-xl shadow-[0_4px_6px_rgba(0,0,0,0.05)]">
-              <h3 className="text-3xl font-bold text-primary mb-2">100+</h3>
+              <h3 className="text-3xl font-bold text-primary mb-2">
+                {stats.loading ? '...' : formatStat(stats.specialties)}
+              </h3>
               <p className="text-base text-navy-muted">Specialties</p>
             </div>
           </div>

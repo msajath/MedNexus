@@ -51,14 +51,14 @@ export default function HomePage() {
               <img src={assets.group_profiles} alt="Profiles" className="h-8" />
               <span className="inline-flex items-center gap-1 px-3 py-1 bg-info-bg text-primary rounded-full text-xs font-semibold">
                 <span className="material-icons-outlined text-[14px]">verified</span>
-                Trusted by 1,000+ patients
+                Trusted Healthcare Platform
               </span>
             </motion.div>
             <motion.h1 variants={itemVariants} className="text-[28px] md:text-5xl font-bold leading-tight md:leading-[1.2] tracking-tight text-navy mb-6">
               Book Your Doctor<br />Appointment <span className="bg-linear-to-br from-primary to-primary-light bg-clip-text text-transparent">Instantly</span>
             </motion.h1>
             <motion.p variants={itemVariants} className="text-base md:text-lg text-navy-muted leading-relaxed max-w-135 mb-8">
-              Connect with over 10,000+ verified specialists across the country. Get expert care from the comfort of your home or find a clinic near you.
+              Connect with verified specialists across the country. Get expert care from the comfort of your home or find a clinic near you.
             </motion.p>
             <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 mb-10">
               <Link to="/doctors" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white text-base font-semibold rounded-xl hover:bg-primary-dark hover:-translate-y-px hover:shadow-md transition-all">

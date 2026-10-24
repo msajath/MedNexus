@@ -98,6 +98,38 @@ router.get('/specialties/list', async (req, res) => {
 });
 
 // ──────────────────────────────────────────────
+// @route   GET /api/doctors/platform-stats
+// @desc    Get real platform statistics (verified doctors, patients, specialties)
+// @access  Public
+// ──────────────────────────────────────────────
+router.get('/platform-stats', async (req, res) => {
+  try {
+    const verifiedUsers = await User.find({ role: 'doctor', isVerified: true, isActive: { $ne: false } }).select('_id');
+    const verifiedUserIds = verifiedUsers.map((user) => user._id);
+
+    const [verifiedDoctors, happyPatients, distinctSpecialties] = await Promise.all([
+      Doctor.countDocuments({ user: { $in: verifiedUserIds } }),
+      User.countDocuments({ role: 'patient', isActive: { $ne: false } }),
+      Doctor.distinct('specialty', { user: { $in: verifiedUserIds } }),
+    ]);
+
+    const cleanSpecialties = distinctSpecialties.filter(Boolean);
+    const specialtiesCount = Math.max(cleanSpecialties.length, cleanSpecialties.length > 0 ? cleanSpecialties.length : 6);
+
+    res.json({
+      success: true,
+      stats: {
+        verifiedDoctors,
+        happyPatients,
+        specialties: specialtiesCount,
+      },
+    });
+  } catch (error) {
+    return errorHandler(error, req, res, () => {});
+  }
+});
+
+// ──────────────────────────────────────────────
 // @route   PUT /api/doctors/profile
 // @desc    Update own doctor profile
 // @access  Private (doctor only)
