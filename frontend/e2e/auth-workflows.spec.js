@@ -66,7 +66,7 @@ test('doctor self-registration creates a pending doctor profile without public v
   await page.getByLabel('Last Name').fill('Doctor')
   await page.getByLabel('Email Address').fill(email)
   await page.locator('#password').fill(password)
-  await page.getByLabel('Medical License Number').fill('QA-SELF-REGISTERED')
+  await page.getByLabel('SLMC Registration Number').fill('QA-SELF-REGISTERED')
   await page.getByRole('checkbox').check()
   await page.getByRole('button', { name: 'Create Account', exact: true }).click()
   await expect(page).toHaveURL(/\/doctor\/dashboard$/)
