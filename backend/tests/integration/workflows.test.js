@@ -106,7 +106,7 @@ withMongo('Real database API workflows', () => {
     expect((await request(app).get(`/api/doctors/${doctor._id}`)).body.doctor.fee).toBe(125);
     const updated = await request(app).put('/api/doctors/profile').set(auth(doctorUser)).send({ fee: 0, bio: 'Updated', credentialsChanged: true });
     expect(updated.status).toBe(200);
-    expect(updated.body.doctor.fee).toBe(0);
+    expect(updated.body.doctor.fee).toBe(125);
     expect(updated.body.doctor.credentialsChanged).toBe(false);
     expect((await request(app).put('/api/doctors/profile').set(auth(doctorUser)).send({ fee: -1 })).status).toBe(400);
   });

@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import AdminDoctors from '../pages/AdminDoctors'
 import { apiFetch } from '../config'
@@ -39,4 +39,52 @@ test('shows a failed earnings load instead of silently showing an empty successf
   render(<AdminDoctors />)
   expect(await screen.findByRole('alert')).toHaveTextContent('Unable to read earnings')
   expect(screen.getByRole('button', { name: 'Reload data' })).toBeInTheDocument()
+})
+
+const setupPortal = mutation => {
+  const doctor = { _id: 'd1', userId: 'u1', name: 'Dr. Active', email: 'active@example.test', specialty: 'Cardiology', fee: 150, isVerified: true }
+  apiFetch.mockImplementation(async (url, options) => {
+    if (options?.method) return mutation(url, options)
+    if (url.endsWith('/doctors-detail')) return response({ doctors: [doctor] })
+    if (url.endsWith('/earnings')) return response({ earnings: { netReceived: 200 }, doctors: [{ doctorId: 'd1', name: doctor.name, netReceived: 200, pendingBalance: 200 }] })
+    return response({ payouts: [] })
+  })
+}
+test('admin edits a consultation fee, retries a rejected save and preserves a zero charge', async () => {
+  let attempts = 0
+  setupPortal(async () => ++attempts === 1 ? response({ message: 'Fee changed; please retry' }, false) : response({ success: true }))
+  render(<AdminDoctors />)
+  fireEvent.click((await screen.findAllByText('active@example.test'))[0])
+  fireEvent.click(screen.getByRole('button', { name: /Fix Charge/ }))
+  fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '0' } })
+  fireEvent.click(screen.getByRole('button', { name: /Save Charge/ }))
+  expect(await screen.findByText('Fee changed; please retry')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: /Save Charge/ }))
+  expect(await screen.findByText('Fee successfully updated to $0.')).toBeInTheDocument()
+  expect(apiFetch).toHaveBeenCalledWith('/api/admin/doctors/d1/fee', expect.objectContaining({ method: 'PUT', body: JSON.stringify({ fee: 0 }) }))
+})
+test('salary portal saves an explicit pending request without claiming money was sent', async () => {
+  setupPortal(async () => response({ success: true, message: 'Payout request saved. No money has been transferred.', payout: { status: 'pending' } }))
+  const { container } = render(<AdminDoctors />)
+  fireEvent.click(await screen.findByRole('button', { name: /Prepare Payout/ }))
+  const form = container.querySelector('form')
+  const input = label => within(form).getByText(label, { selector: 'label' }).parentElement.querySelector('input')
+  fireEvent.change(input('Bank Name *'), { target: { value: 'Sample Bank' } })
+  fireEvent.change(input('Account Number *'), { target: { value: '0000012345' } })
+  fireEvent.change(input('Account Holder Name *'), { target: { value: 'Sample Doctor' } })
+  fireEvent.change(input('Routing / IFSC Code'), { target: { value: 'SAMPLE' } })
+  fireEvent.change(input('Payment Reference / Salary Note'), { target: { value: 'Salary request' } })
+  fireEvent.click(within(form).getByRole('button', { name: /Save Payout Request/ }))
+  expect(await screen.findByText('Payout request saved. No money has been transferred.')).toBeInTheDocument()
+  const call = apiFetch.mock.calls.find(([, options]) => options?.method === 'POST')
+  expect(call[0]).toBe('/api/admin/payouts')
+  expect(JSON.parse(call[1].body)).toMatchObject({ amount: 200, doctorId: 'd1' })
+  expect(screen.queryByText(/Successfully sent/)).not.toBeInTheDocument()
+})
+test('failed payout history cannot be displayed as a successful empty list', async () => {
+  setupPortal(async () => response({ success: true }))
+  const original = apiFetch.getMockImplementation()
+  apiFetch.mockImplementation((url, options) => url.endsWith('/payouts') ? Promise.resolve(response({ message: 'History unavailable' }, false)) : original(url, options))
+  render(<AdminDoctors />)
+  await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
 })

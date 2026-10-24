@@ -58,7 +58,11 @@ export default function AdminAppointments() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Unable to update the appointment.')
-      setAppointments(prev => prev.map(appointment => appointment._id === id ? { ...appointment, status: data.appointment?.status || status } : appointment))
+      setAppointments(prev => prev.map(appointment => appointment._id === id ? {
+        ...appointment, status: data.appointment?.status || status,
+        ...(Object.hasOwn(data.appointment || {}, 'paymentStatus') && { paymentStatus: data.appointment.paymentStatus }),
+        ...(Object.hasOwn(data.appointment || {}, 'payment') && { payment: data.appointment.payment }),
+      } : appointment))
       setNotice(`Appointment marked ${data.appointment?.status || status}.`)
     } catch (err) {
       setError(err.message || 'Unable to update the appointment.')

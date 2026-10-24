@@ -55,6 +55,18 @@ test('shows a load error with a reload action instead of silently accepting fail
   expect(screen.getByText('No appointments found')).toBeInTheDocument()
 })
 
+test('completion immediately displays the new earnings credit while retaining doctor and patient identity', async () => {
+  const booking = { ...appointments[0], status: 'confirmed' }
+  apiFetch.mockResolvedValueOnce(response({ appointments: [booking] })).mockResolvedValueOnce(response({ appointment: {
+    status: 'completed', paymentStatus: 'received', payment: { id: 'automatic-credit', amount: 75, method: 'auto_credit', status: 'received' },
+  } }))
+  render(<AdminAppointments />)
+  fireEvent.change(await screen.findByRole('combobox', { name: 'Status for Pat One' }), { target: { value: 'completed' } })
+  expect(await screen.findByText('Earnings credited')).toBeInTheDocument()
+  expect(screen.getByText('automatic-credit')).toBeInTheDocument()
+  expect(screen.getByText('Pat One')).toBeInTheDocument()
+})
+
 test('displays auto-credited payment details and receipt information without manual entry form', async () => {
   const completed = {
     ...appointments[1],
@@ -80,7 +92,7 @@ test('shows automated credit indicators for unpaid appointments and verifies man
   const unpaidBadges = await screen.findAllByText('No payment recorded')
   expect(unpaidBadges.length).toBeGreaterThan(0)
   expect(screen.getByText('Fee will auto-credit when marked Completed')).toBeInTheDocument()
-  expect(screen.getByText('Credited upon appointment completion')).toBeInTheDocument()
+  expect(screen.getByText(/No credit recorded/)).toBeInTheDocument()
   expect(screen.queryByText('Record received payment')).not.toBeInTheDocument()
 })
 

@@ -17,7 +17,7 @@ const validIdempotencyKey = (value) => !value || (value.length <= 128 && /^[A-Za
 router.post('/appointments/:id/payment', validateObjectId('id'), [
   body('amount').custom(validAmount).withMessage('Use a positive amount with at most two decimal places, up to 1,000,000'),
   body('currency').isString().bail().equals('USD'),
-  body('method').isString().bail().isIn(['cash', 'bank_transfer', 'card', 'auto_credit', 'platform', 'other']),
+  body('method').isString().bail().isIn(['cash', 'bank_transfer', 'card', 'other']),
   text('reference', 120),
   body('receivedAt').optional().isString().bail().isISO8601({ strict: true, strictSeparator: true }).bail()
     .custom((value) => /T.*(?:Z|[+-]\d{2}:\d{2})$/i.test(value) && Date.parse(value) <= Date.now()),

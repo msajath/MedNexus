@@ -114,32 +114,28 @@ test('doctor discovery filters real data and opens a profile with weekday bookin
   await expect(page.getByRole('button', { name: booking.slots[0], exact: true })).toBeEnabled()
 })
 
-test('doctor profile saves a zero consultation fee without replacing it on reload or a later edit', async ({ page }) => {
+test('admin-set charges remain read-only for the doctor and appear on public pages', async ({ page, newContext }) => {
   await loginDoctor(page)
   const me = (await (await page.request.get('/api/auth/me')).json()).user
-  const original = { fee: me.doctorProfile.fee, location: me.doctorProfile.location }
+  const adminContext = await newContext()
+  const admin = await adminContext.newPage()
   try {
+    await admin.request.post('/api/auth/login', { headers: mutationHeaders, data: { email: 'admin@qa.example', password } })
+    const changed = await admin.request.put(`/api/admin/doctors/${me.doctorProfile._id}/fee`, { headers: mutationHeaders, data: { fee: 0 } })
+    expect(changed.ok(), await changed.text()).toBe(true)
     await page.goto('/doctor/profile')
-    await page.getByRole('spinbutton').fill('0')
-    const firstSave = page.waitForResponse(response => response.url().endsWith('/api/auth/profile') && response.request().method() === 'PUT')
-    await page.getByRole('button', { name: 'Save Changes', exact: true }).click()
-    const response = await firstSave
-    expect(response.ok(), await response.text()).toBe(true)
-    expect((await response.json()).user.doctorProfile.fee).toBe(0)
-    await page.reload()
+    await expect(page.getByRole('spinbutton')).toBeDisabled()
     await expect(page.getByRole('spinbutton')).toHaveValue('0')
-    await field(page, 'Clinic Location').fill('Synthetic QA clinic')
-    const laterSave = page.waitForResponse(result => result.url().endsWith('/api/auth/profile') && result.request().method() === 'PUT')
-    await page.getByRole('button', { name: 'Save Changes', exact: true }).click()
-    expect((await laterSave).ok()).toBe(true)
-    await page.reload()
-    await expect(page.getByRole('spinbutton')).toHaveValue('0')
-    await expect(field(page, 'Clinic Location')).toHaveValue('Synthetic QA clinic')
+    const forged = await page.request.put('/api/auth/profile', { headers: mutationHeaders, data: { fee: 999 } })
+    expect((await forged.json()).user.doctorProfile.fee).toBe(0)
+    await page.goto('/')
+    const card = page.locator(`#doctor-card-${me.doctorProfile._id}`)
+    await expect(card.getByText('$0', { exact: true })).toBeVisible()
     const doctors = (await (await page.request.get('/api/doctors')).json()).doctors
     expect(doctors.find(doctor => (doctor._id || doctor.id) === me.doctorProfile._id).fee).toBe(0)
   } finally {
-    const restored = await page.request.put('/api/auth/profile', { headers: mutationHeaders, data: original })
-    expect(restored.ok()).toBe(true)
+    expect((await admin.request.put(`/api/admin/doctors/${me.doctorProfile._id}/fee`, { headers: mutationHeaders, data: { fee: me.doctorProfile.fee } })).ok()).toBe(true)
+    await adminContext.close()
   }
 })
 
@@ -244,6 +240,7 @@ test('private uploaded reports retain exact file contents after refresh and rema
     const clinicalTitle = `Clinical record ${randomUUID()}`
     const clinical = await doctorPage.request.post('/api/records/doctor-add', { headers: mutationHeaders, data: { patientId: patient.id, appointmentId: appointment._id, title: clinicalTitle, type: 'Diagnosis', diagnosis: 'Synthetic QA diagnosis' } })
     expect(clinical.status(), await clinical.text()).toBe(201)
+    await page.bringToFront()
     await page.reload()
     const clinicalRow = page.getByRole('heading', { name: clinicalTitle, exact: true }).first().locator('..').locator('..').locator('..')
     await expect(clinicalRow.getByTitle('Delete', { exact: true })).toHaveCount(0)

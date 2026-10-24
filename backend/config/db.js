@@ -5,6 +5,7 @@ const Doctor = require('../models/Doctor');
 const Availability = require('../models/Availability');
 const DoctorLeave = require('../models/DoctorLeave');
 const Payment = require('../models/Payment');
+const Payout = require('../models/Payout');
 const { validateMongoUriSecurity } = require('../utils/databaseSecurity');
 
 const ensureStorageReady = async () => {
@@ -14,6 +15,7 @@ const ensureStorageReady = async () => {
   await Availability.createIndexes();
   await DoctorLeave.createIndexes();
   await Payment.createIndexes();
+  await Payout.createIndexes();
   // Remove legacy plaintext doctor credentials before accepting requests.
   await Doctor.collection.updateMany(
     { tempPassword: { $exists: true } },

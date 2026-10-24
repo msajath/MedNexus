@@ -1,8 +1,10 @@
 // Vite proxies /api in development; production routes /api on the same HTTPS origin.
 export const API_BASE = import.meta.env.DEV ? (import.meta.env.VITE_API_URL || '') : '';
 export const SESSION_EXPIRED_EVENT = 'mednexus:session-expired'
+let sessionRevision = 0
+export const getSessionRevision = () => sessionRevision
 
-const notifyInvalidSession = async (input, response) => {
+const notifyInvalidSession = async (input, response, requestRevision) => {
   if (response.status !== 401 || typeof window === 'undefined' || typeof input !== 'string') return
   // A wrong password also returns 401. Only authentication middleware can
   // declare the existing session invalid; preserve other validation errors.
@@ -12,7 +14,7 @@ const notifyInvalidSession = async (input, response) => {
     if (![window.location.origin, apiOrigin].includes(url.origin) || !url.pathname.startsWith('/api/')) return
     if (/^\/api\/auth\/(login|register|forgot-password|reset-password)\/?$/.test(url.pathname)) return
     const data = await response.clone().json()
-    if (data.code === 'AUTH_SESSION_INVALID') window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+    if (data.code === 'AUTH_SESSION_INVALID' && requestRevision === sessionRevision) window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
   } catch { /* Preserve the original response when a gateway returns non-JSON. */ }
 }
 
@@ -85,6 +87,7 @@ const fetchReadAttempt = async (input, options, signal, readResponse) => {
 
 // Send credentials only through the API client; never patch global fetch.
 const request = async (input, init = {}, json = false) => {
+  const requestRevision = sessionRevision
   if (init.signal?.aborted) throw init.signal.reason
   const headers = new Headers(init.headers)
   headers.delete('Authorization')
@@ -100,7 +103,14 @@ const request = async (input, init = {}, json = false) => {
   const timeout = controller && setTimeout(() => controller.abort(new ApiTimeoutError('The server is taking too long to respond')), readTimeout)
   const options = { ...init, headers, credentials: 'include', signal: controller?.signal || init.signal }
   const readResponse = async response => {
-    await notifyInvalidSession(input, response)
+    // An older request may finish after sign-in has established a new cookie.
+    // Its 401 must not invalidate that newer session.
+    if (response.ok && method !== 'GET' && typeof input === 'string') {
+      const url = new URL(input, window.location.origin)
+      if (url.origin === new URL(API_BASE || window.location.origin, window.location.origin).origin &&
+          /^\/api\/auth\/(login|register|logout|password|profile)\/?$/.test(url.pathname)) sessionRevision += 1
+    }
+    await notifyInvalidSession(input, response, requestRevision)
     if (!json) return response
     if (!response.ok) {
       throw Object.assign(new Error('The request could not be completed'), {

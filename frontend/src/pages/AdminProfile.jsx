@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
@@ -7,35 +7,19 @@ import { API_BASE, apiFetch } from '../config'
 
 export default function AdminProfile() {
   const { user, setUser } = useAuth()
+  return user ? <AdminProfileForm key={user.id || user._id || user.email} user={user} setUser={setUser} /> : null
+}
+
+function AdminProfileForm({ user, setUser }) {
   const [isSaving, setIsSaving] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
-  const [profilePicture, setProfilePicture] = useState(null)
+  const [profilePicture, setProfilePicture] = useState(user.avatar || null)
   const fileInputRef = useRef(null)
 
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
+  const [formData, setFormData] = useState(() => {
+    const names = (user.name || '').split(' ')
+    return { firstName: names[0] || '', lastName: names.slice(1).join(' ') || '', email: user.email || '', phone: user.phone || '' }
   })
-
-  useEffect(() => {
-    if (!user) return
-
-    const nameParts = (user.name || '').split(' ')
-    setFormData({
-      firstName: nameParts[0] || '',
-      lastName: nameParts.slice(1).join(' ') || '',
-      email: user.email || '',
-      phone: user.phone || '',
-    })
-
-    if (user.avatar) {
-      setProfilePicture(user.avatar)
-    } else {
-      setProfilePicture(null)
-    }
-  }, [user])
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0]

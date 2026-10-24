@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
 const Availability = require('../models/Availability');
-const Payment = require('../models/Payment');
+const { creditCompletedAppointment } = require('../utils/appointmentEarnings');
 const User = require('../models/User');
 const { protect, authorize } = require('../middleware/auth');
 const validateObjectId = require('../middleware/validateObjectId');
@@ -282,6 +282,10 @@ router.put('/:id/status', protect, validateObjectId('id'), async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to update this appointment' });
     }
 
+    if (appointment.status === 'completed' && status === 'completed' && (isDoctor || isAdmin)) {
+      await creditCompletedAppointment(appointment, req.user._id);
+      return res.json({ success: true, appointment: isAdmin ? (await withAppointmentPayments([serializeAdminAppointment(appointment)]))[0] : appointment });
+    }
     if (!allowedTransitions[appointment.status]?.includes(status)) {
       return res.status(409).json({
         success: false,
@@ -292,35 +296,7 @@ router.put('/:id/status', protect, validateObjectId('id'), async (req, res) => {
     const updated = await Appointment.findOneAndUpdate({ _id: appointment._id, status: appointment.status, ...realAppointmentFilter }, { $set: { status }, $unset: { rescheduleIntent: '' } }, { new: true, runValidators: true });
     if (!updated) return res.status(409).json({ success: false, message: 'Appointment changed. Refresh and retry.' });
 
-    if (status === 'completed') {
-      try {
-        const existingPayment = await Payment.findOne({ appointment: updated._id, status: 'received' });
-        if (!existingPayment) {
-          const doc = await Doctor.findById(updated.doctor);
-          const fee = (typeof updated.feeAtBooking === 'number' && updated.feeAtBooking >= 0)
-            ? updated.feeAtBooking
-            : (doc?.fee ?? 100);
-          const amountMinor = Math.round(fee * 100);
-          if (amountMinor > 0) {
-            await Payment.create({
-              appointment: updated._id,
-              doctor: updated.doctor,
-              patient: updated.patient,
-              amountMinor,
-              currency: 'USD',
-              method: 'auto_credit',
-              reference: `AUTO-${String(updated._id).slice(-8).toUpperCase()}`,
-              status: 'received',
-              receivedAt: new Date(),
-              recordedAt: new Date(),
-              recordedBy: req.user._id,
-            });
-          }
-        }
-      } catch (paymentErr) {
-        console.error('Error auto-crediting completed appointment payment:', paymentErr);
-      }
-    }
+    if (status === 'completed') await creditCompletedAppointment(updated, req.user._id);
 
     res.json({ success: true, appointment: isAdmin ? (await withAppointmentPayments([serializeAdminAppointment(updated)]))[0] : updated });
   } catch (error) {

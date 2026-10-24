@@ -5,6 +5,7 @@ const Payout = require('../models/Payout');
 const { protect, authorize } = require('../middleware/auth');
 const errorHandler = require('../middleware/errorHandler');
 const { summarizePayments } = require('../utils/payments');
+const { summarizePayouts, serializePayout, maskBank } = require('../utils/payouts');
 
 const router = express.Router();
 
@@ -20,8 +21,8 @@ router.get('/my', protect, authorize('doctor'), async (req, res) => {
     ]);
 
     const earnings = summarizePayments(payments);
-    const totalPaidOut = payouts.reduce((sum, p) => sum + p.amount, 0);
-    const pendingBalance = Math.max(0, earnings.netReceived - totalPaidOut);
+    const { totalPaidOut, reservedPayouts } = summarizePayouts(payouts);
+    const pendingBalance = Math.max(0, earnings.netReceived - totalPaidOut - reservedPayouts);
 
     res.json({
       success: true,
@@ -29,8 +30,9 @@ router.get('/my', protect, authorize('doctor'), async (req, res) => {
       grossEarned: earnings.netReceived,
       totalPaidOut: Math.round(totalPaidOut * 100) / 100,
       pendingBalance: Math.round(pendingBalance * 100) / 100,
-      bankDetails: doctor.bankDetails || {},
-      payouts,
+      reservedPayouts,
+      bankDetails: maskBank(doctor.bankDetails),
+      payouts: payouts.map(serializePayout),
     });
   } catch (error) {
     return errorHandler(error, req, res, () => {});

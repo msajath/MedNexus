@@ -41,7 +41,8 @@ test('registration validates input, rejects duplicate email, and persists a pati
   expect(identity.user.password).toBeUndefined()
   await page.reload()
   await expect(page.locator('#my-appointments')).toBeVisible()
-  expect(await page.evaluate(() => localStorage.getItem('token'))).toBeNull()
+  // This check reruns in the new document if Vite finishes a development reload.
+  await page.waitForFunction(() => localStorage.getItem('token') === null, undefined, { timeout: 5000 })
 
   await openMenu(page)
   await page.getByRole('button', { name: /Logout/i }).click()

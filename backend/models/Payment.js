@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 
-// A manual receipt records money an administrator verified as already received.
-// This model never stores card numbers, bank credentials or gateway secrets.
+// Historical receipts and automatic service-earnings credits share this ledger.
+// An auto_credit is earned consultation revenue; it never charges a patient or
+// confirms a bank deposit. No card numbers or gateway secrets are stored here.
 const paymentSchema = new mongoose.Schema({
   appointment: { type: mongoose.Schema.Types.ObjectId, ref: 'Appointment', required: true },
   doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor', required: true },
@@ -27,6 +28,8 @@ paymentSchema.index({ appointment: 1 }, {
   unique: true, name: 'one_received_payment_per_appointment', partialFilterExpression: { status: 'received' },
 });
 paymentSchema.index({ doctor: 1, recordedAt: -1 });
+paymentSchema.index({ appointment: 1, method: 1 }, { unique: true, name: 'one_automatic_credit_per_appointment',
+  partialFilterExpression: { method: 'auto_credit' } });
 paymentSchema.index({ recordedBy: 1, idempotencyKey: 1 }, {
   unique: true, name: 'one_payment_per_idempotency_key',
   partialFilterExpression: { idempotencyKey: { $type: 'string' } },

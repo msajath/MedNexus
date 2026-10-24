@@ -31,6 +31,20 @@ app.use('/api/admin', adminRoutes);
 describe('Admin Routes', () => {
   beforeEach(() => jest.clearAllMocks());
 
+  it.each([null, '', true, -1, 1.001, 1000001])('rejects invalid admin-set fees without saving: %p', async fee => {
+    const result = await request(app).put('/api/admin/doctors/507f1f77bcf86cd799439011/fee').send({ fee });
+    expect(result.status).toBe(400);
+    expect(Doctor.findById).not.toHaveBeenCalled();
+  });
+
+  it('allows an administrator to set an exact zero consultation charge', async () => {
+    const doctor = { _id: '507f1f77bcf86cd799439011', user: 'doctor-user', fee: 100, save: jest.fn() };
+    Doctor.findById.mockResolvedValue(doctor);
+    const result = await request(app).put(`/api/admin/doctors/${doctor._id}/fee`).send({ fee: 0 });
+    expect(result.status).toBe(200); expect(result.body.doctor.fee).toBe(0);
+    expect(doctor.save).toHaveBeenCalledTimes(1);
+  });
+
   it('deactivates a doctor without deleting appointments or medical records', async () => {
     const userId = '507f1f77bcf86cd799439011';
     const doctorId = '507f191e810c19729de860ea';

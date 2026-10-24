@@ -1,46 +1,30 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { API_BASE, apiFetch } from '../config'
 import { formatMoney } from '../utils/admin'
 
 const paymentMethods = { cash: 'Cash', bank_transfer: 'Bank transfer', card: 'Card', other: 'Other' }
 
 export default function AdminAppointmentPayment({ appointment, onRefresh }) {
-  const [amount, setAmount] = useState('')
-  const [method, setMethod] = useState('cash')
-  const [reference, setReference] = useState('')
-  const [receivedConfirmed, setReceivedConfirmed] = useState(false)
   const [refundConfirmed, setRefundConfirmed] = useState(false)
   const [refundReason, setRefundReason] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  // Retain the same key after an ambiguous network failure. Editing the receipt
-  // creates a new intent; simply retrying must return the original receipt.
-  const receiptIntent = useRef(null)
   const payment = appointment.payment
   const status = appointment.paymentStatus || payment?.status || 'unpaid'
-  const canRecord = appointment.status !== 'cancelled' && !appointment.bookingHold && status !== 'received'
-  const amountValid = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(amount) && Number(amount) > 0 && Number.isFinite(Number(amount))
   const identity = appointment.patient?.name || appointment._id
 
-  const savePayment = async (event, refund = false) => {
+  const savePayment = async event => {
     event.preventDefault()
-    if (saving || (refund ? !refundConfirmed || !refundReason.trim() : !receivedConfirmed || !amountValid)) return
+    if (saving || !refundConfirmed || !refundReason.trim()) return
     setSaving(true)
     setError('')
     setNotice('')
     let saved = false
     try {
-      const url = refund ? `${API_BASE}/api/admin/payments/${payment.id}/refund` : `${API_BASE}/api/admin/appointments/${appointment._id}/payment`
-      const payload = refund ? { reason: refundReason.trim() } : { amount: Number(amount), currency: 'USD', method, reference: reference.trim() }
+      const url = `${API_BASE}/api/admin/payments/${payment.id}/refund`
+      const payload = { reason: refundReason.trim() }
       const headers = { 'Content-Type': 'application/json' }
-      if (!refund) {
-        const fingerprint = JSON.stringify({ appointmentId: appointment._id, ...payload })
-        if (receiptIntent.current?.fingerprint !== fingerprint) {
-          receiptIntent.current = { fingerprint, key: crypto.randomUUID() }
-        }
-        headers['Idempotency-Key'] = receiptIntent.current.key
-      }
       const response = await apiFetch(url, { method: 'POST', headers, body: JSON.stringify(payload) })
       const data = await response.json()
       if (!response.ok) {
@@ -52,13 +36,9 @@ export default function AdminAppointmentPayment({ appointment, onRefresh }) {
       }
       saved = true
       await onRefresh()
-      receiptIntent.current = null
-      setAmount('')
-      setReference('')
-      setReceivedConfirmed(false)
       setRefundConfirmed(false)
       setRefundReason('')
-      setNotice(refund ? 'Already issued refund recorded.' : data.payment?.status === 'refunded' ? 'The original receipt was already refunded. Its history has been refreshed.' : 'Received payment recorded.')
+      setNotice(payment.method === 'auto_credit' ? 'Earnings credit reversed.' : 'Already issued refund recorded.')
     } catch (err) {
       setError(saved ? 'The record was saved, but the refreshed receipt could not be loaded. Reload appointments before making another change.' : err.message || 'Unable to save the payment record.')
     } finally {
@@ -68,7 +48,7 @@ export default function AdminAppointmentPayment({ appointment, onRefresh }) {
 
   return (
     <div className="min-w-64 max-w-sm text-xs" aria-label={`Payment for ${identity}`}>
-      <p className="font-semibold text-navy">{status === 'unpaid' ? 'No payment recorded' : status === 'refunded' ? 'Refunded' : 'Payment received'}</p>
+      <p className="font-semibold text-navy">{status === 'unpaid' ? 'No payment recorded' : status === 'refunded' ? 'Refunded' : payment?.method === 'auto_credit' ? 'Earnings credited' : 'Payment received'}</p>
       {payment && <dl className="mt-2 space-y-1 text-navy-muted">
         <div><dt className="inline font-semibold">Amount: </dt><dd className="inline">{formatMoney(payment.amount)}</dd></div>
         <div><dt className="inline font-semibold">Method: </dt><dd className="inline">{paymentMethods[payment.method] || payment.method}</dd></div>
@@ -82,18 +62,18 @@ export default function AdminAppointmentPayment({ appointment, onRefresh }) {
       {status === 'unpaid' && (
         <p className="mt-2 text-xs text-navy-muted italic">
           {appointment.status === 'completed'
-            ? 'Credited upon appointment completion'
+            ? 'No credit recorded. Free or missing historical booked fees need no automatic charge.'
             : appointment.status === 'cancelled'
             ? 'Cancelled appointment ($0.00)'
             : 'Fee will auto-credit when marked Completed'}
         </p>
       )}
-      {status === 'received' && payment?.id && <details className="mt-3"><summary className="cursor-pointer font-semibold text-red-700">Record issued refund</summary>
+      {status === 'received' && payment?.id && <details className="mt-3"><summary className="cursor-pointer font-semibold text-red-700">{payment.method === 'auto_credit' ? 'Reverse earnings credit' : 'Record issued refund'}</summary>
         <form aria-label={`Record refund for ${identity}`} onSubmit={event => savePayment(event, true)} className="space-y-3 mt-3">
-          <p className="text-navy-muted">Only record this after the full {formatMoney(payment.amount)} has already been refunded. This form does not send money.</p>
+          <p className="text-navy-muted">{payment.method === 'auto_credit' ? `Reverse the ${formatMoney(payment.amount)} service earnings credit. This does not move money.` : `Only record this after the full ${formatMoney(payment.amount)} has already been refunded. This form does not send money.`}</p>
           <label className="block font-semibold">Refund reason<textarea aria-label={`Refund reason for ${identity}`} required maxLength={1000} rows={2} value={refundReason} onChange={event => setRefundReason(event.target.value)} disabled={saving} className="block w-full mt-1 p-2 border border-slate-300 rounded-lg font-normal" /></label>
-          <label className="flex items-start gap-2 text-navy"><input type="checkbox" required checked={refundConfirmed} onChange={event => setRefundConfirmed(event.target.checked)} disabled={saving} /><span>I confirm this payment has already been refunded in full.</span></label>
-          <button disabled={saving || !refundConfirmed || !refundReason.trim()} type="submit" className="px-3 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg font-semibold disabled:opacity-50">{saving ? 'Saving refund...' : 'Save issued refund'}</button>
+          <label className="flex items-start gap-2 text-navy"><input type="checkbox" required checked={refundConfirmed} onChange={event => setRefundConfirmed(event.target.checked)} disabled={saving} /><span>{payment.method === 'auto_credit' ? 'I confirm this earnings credit should be reversed.' : 'I confirm this payment has already been refunded in full.'}</span></label>
+          <button disabled={saving || !refundConfirmed || !refundReason.trim()} type="submit" className="px-3 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg font-semibold disabled:opacity-50">{saving ? 'Saving refund...' : payment.method === 'auto_credit' ? 'Reverse credit' : 'Save issued refund'}</button>
         </form>
       </details>}
       {error && <p role="alert" className="mt-3 text-red-700">{error}</p>}

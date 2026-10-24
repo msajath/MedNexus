@@ -36,33 +36,31 @@ export default function AdminDoctors() {
   const [payoutSubmitting, setPayoutSubmitting] = useState(false)
   const [payoutMessage, setPayoutMessage] = useState({ type: '', text: '' })
 
-  const fetchDoctorsAndEarnings = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const [res, earningsRes, payoutsRes] = await Promise.all([
+  const fetchDoctorsAndEarnings = () => {
+    return Promise.all([
         apiFetch(`${API_BASE}/api/admin/doctors-detail`),
         apiFetch(`${API_BASE}/api/admin/earnings`),
         apiFetch(`${API_BASE}/api/admin/payouts`),
-      ])
+      ]).then(async ([res, earningsRes, payoutsRes]) => {
       const [data, earningsData, payoutsData] = await Promise.all([
         res.json(),
         earningsRes.json(),
         payoutsRes.json(),
       ])
 
-      if (!res.ok || !earningsRes.ok) throw new Error(data.message || earningsData.message || 'Unable to load doctors and earnings.')
+      if (!res.ok || !earningsRes.ok || !payoutsRes.ok) throw new Error(data.message || earningsData.message || 'Unable to load doctors and earnings.')
       setDoctors(data.doctors || [])
       setDoctorEarnings(earningsData.doctors || [])
       setEarnings(earningsData.earnings || null)
       setTotalDoctorPayouts(earningsData.totalDoctorPayouts || 0)
       setHospitalRetained(earningsData.hospitalRetained || 0)
       setPayouts(payoutsData.payouts || [])
-    } catch (err) {
+      setError('')
+    }).catch(err => {
       setError(err.message || 'Unable to load doctors and earnings.')
-    } finally {
+    }).finally(() => {
       setLoading(false)
-    }
+    })
   }
 
   useEffect(() => {
@@ -196,7 +194,7 @@ export default function AdminDoctors() {
       })
       const data = await res.json()
       if (res.ok && data.success) {
-        setPayoutMessage({ type: 'success', text: `Successfully sent $${amountNum.toFixed(2)} to ${payoutForm.bankName}!` })
+        setPayoutMessage({ type: 'success', text: data.message })
         // Refresh doctors & earnings
         await fetchDoctorsAndEarnings()
         setTimeout(() => {
@@ -213,6 +211,17 @@ export default function AdminDoctors() {
   }
 
   const copyToClipboard = (text) => navigator.clipboard.writeText(text)
+
+  const cancelPayout = async id => {
+    setUpdating(id)
+    try {
+      const response = await apiFetch(`${API_BASE}/api/admin/payouts/${id}/cancel`, { method: 'POST' })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.message || 'Unable to cancel payout request.')
+      await fetchDoctorsAndEarnings()
+    } catch (error) { setError(error.message) }
+    finally { setUpdating(null) }
+  }
 
   const filtered = doctors.filter(d => {
     const term = search.toLowerCase()
@@ -231,7 +240,7 @@ export default function AdminDoctors() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-semibold text-navy">Doctors, Charges &amp; Earnings</h1>
-            <p className="mt-1 text-base text-navy-muted">Set doctor consultation fees, review automated revenue, and disburse bank payouts/salary.</p>
+            <p className="mt-1 text-base text-navy-muted">Set doctor consultation fees, review automated revenue, and prepare doctor salary payouts.</p>
           </div>
           <div className="flex gap-2 text-sm font-semibold">
             <span className="px-3 py-1.5 bg-green-50 text-green-700 rounded-xl border border-green-200">
@@ -259,7 +268,7 @@ export default function AdminDoctors() {
                 Revenue, Doctor Income &amp; Bank Salary Management
               </h2>
               <p className="text-sm text-navy-muted mt-1">
-                Completed appointments automatically generate hospital revenue and credit doctor earnings. Use the Bank Payout Portal below to disburse salary and transfers to doctors' bank accounts.
+                Completed appointments automatically generate hospital revenue and credit doctor earnings. Use the payout portal to prepare salary requests. Real transfers require a connected bank payment provider.
               </p>
               
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5">
@@ -326,7 +335,7 @@ export default function AdminDoctors() {
                               className="px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary-dark transition-colors inline-flex items-center gap-1.5 shadow-xs"
                             >
                               <span className="material-icons-outlined text-[14px]">send</span>
-                              Send Payout
+                              Prepare Payout
                             </button>
                           </td>
                         </tr>
@@ -483,6 +492,7 @@ export default function AdminDoctors() {
                               <input
                                 type="number"
                                 min="0"
+                                step="0.01"
                                 max="1000000"
                                 required
                                 value={feeInput}
@@ -616,7 +626,7 @@ export default function AdminDoctors() {
                   <span className="material-icons-outlined text-primary">history</span>
                   Doctor Salary &amp; Bank Transfer History
                 </h2>
-                <p className="text-sm text-navy-muted mt-1">Audit log of all payouts and salary disbursements transferred to doctors' bank accounts.</p>
+                <p className="text-sm text-navy-muted mt-1">Payout requests and provider-confirmed transfers. Pending requests have not sent money.</p>
               </div>
               <span className="text-xs font-semibold px-3 py-1 bg-surface-container rounded-full text-navy">
                 {payouts.length} Transfers
@@ -631,7 +641,7 @@ export default function AdminDoctors() {
                     <th className="p-3 text-left font-semibold">Doctor</th>
                     <th className="p-3 text-left font-semibold">Bank &amp; Account</th>
                     <th className="p-3 text-left font-semibold">Reference</th>
-                    <th className="p-3 text-left font-semibold">Amount Transferred</th>
+                    <th className="p-3 text-left font-semibold">Payout Amount</th>
                     <th className="p-3 text-left font-semibold">Processed By</th>
                     <th className="p-3 text-center font-semibold">Status</th>
                   </tr>
@@ -662,8 +672,9 @@ export default function AdminDoctors() {
                       </td>
                       <td className="p-3 text-center">
                         <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          ✓ Completed
+                          {p.status}
                         </span>
+                        {p.status === 'pending' && <button type="button" disabled={updating !== null} onClick={() => cancelPayout(p._id)} className="block mt-2 text-primary underline">Cancel payout request</button>}
                       </td>
                     </tr>
                   ))}
@@ -672,7 +683,7 @@ export default function AdminDoctors() {
             </div>
             {payouts.length === 0 && (
               <div className="p-8 text-center text-navy-muted">
-                No bank payouts recorded yet. Use the "Send Payout" button above to disburse salary to a doctor.
+                No bank payouts recorded yet. Use the "Prepare Payout" button above to prepare a salary request for a doctor.
               </div>
             )}
           </section>
@@ -688,7 +699,7 @@ export default function AdminDoctors() {
                     <span className="material-icons-outlined">payments</span>
                     Doctor Salary &amp; Bank Transfer Portal
                   </h3>
-                  <p className="text-xs text-white/80 mt-0.5">Transfer consultation earnings directly to doctor's bank account</p>
+                  <p className="text-xs text-white/80 mt-0.5">Prepare an admin-approved salary request. Bank transfers are not connected yet.</p>
                 </div>
                 <button
                   type="button"
@@ -829,7 +840,7 @@ export default function AdminDoctors() {
                     className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-1.5"
                   >
                     <span className="material-icons-outlined text-[18px]">send</span>
-                    {payoutSubmitting ? 'Transferring...' : 'Send Bank Payout'}
+                    {payoutSubmitting ? 'Saving...' : 'Save Payout Request'}
                   </button>
                 </div>
               </form>

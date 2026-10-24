@@ -17,6 +17,9 @@ const check = (req, res, next) => {
   next();
 };
 const doctorRules = [text('specialty', 120), body('fee').optional().isFloat({ min: 0, max: 1000000 }),
+  body('bankDetails').optional().isObject({ strict: true }),
+  ...['bankName', 'accountNumber', 'accountHolderName', 'routingNumber', 'branch'].map(field =>
+    text(`bankDetails.${field}`, 120).bail().not().matches(/[\u0000-\u001f\u007f]/)),
   text('experience', 120), text('location', 300), text('bio', 10000), text('licenseNumber', 120),
   body('available').optional().isBoolean({ strict: true }), body('languages').optional().isArray({ max: 20 }),
   text('languages.*', 100), body('education').optional().isArray({ max: 30 }),

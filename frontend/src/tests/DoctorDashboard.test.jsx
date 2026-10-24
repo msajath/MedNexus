@@ -12,7 +12,7 @@ vi.mock('../components/Footer', () => ({ default: () => null }))
 const earnings = netReceived => ({ receivedAmount: netReceived + 25, refundedAmount: 25, netReceived, receivedPayments: 1, currency: 'USD', basis: 'recorded_payments' })
 const appointments = Array.from({ length: 6 }, (_, index) => ({ _id: `a${index}`, patient: { _id: `p${index}`, name: `Patient ${index}` }, date: getLocalDateString(), time: `${9 + index}:00`, status: 'completed', feeAtBooking: 999, doctor: { fee: 999 } }))
 const renderPage = () => render(<MemoryRouter><DoctorDashboard /></MemoryRouter>)
-const moneyCard = () => within(screen.getByText('Net Received').parentElement)
+const moneyCard = () => within(screen.getByText('Consultation Earnings').parentElement)
 beforeEach(() => { apiFetchJson.mockReset() })
 afterEach(cleanup)
 

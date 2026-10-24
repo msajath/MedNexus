@@ -15,6 +15,7 @@ const Message = require('../models/Message');
 const ContactMessage = require('../models/ContactMessage');
 const DoctorLeave = require('../models/DoctorLeave');
 const Payment = require('../models/Payment');
+const Payout = require('../models/Payout');
 const assertTestDatabase = require('../tests/helpers/testDatabase');
 
 async function main() {
@@ -23,7 +24,7 @@ async function main() {
   assertTestDatabase(uri);
   await mongoose.connect(uri, { autoIndex: false, autoCreate: false });
   await mongoose.connection.dropDatabase();
-  await Promise.all([User.createIndexes(), Appointment.createIndexes(), Availability.createIndexes(), DoctorLeave.createIndexes(), Payment.createIndexes()]);
+  await Promise.all([User.createIndexes(), Appointment.createIndexes(), Availability.createIndexes(), DoctorLeave.createIndexes(), Payment.createIndexes(), Payout.createIndexes()]);
   const password = 'QA-password-123456';
   for (const role of ['patient', 'doctor', 'admin']) {
     const user = await User.create({ name: `QA ${role}`, email: `${role}@qa.example`, password, role, isVerified: true });

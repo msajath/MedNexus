@@ -198,7 +198,7 @@ describeWithMongo('MongoDB security and booking integration', () => {
       user: doctorUser._id,
       specialty: 'Orthopedics',
       fee: 200,
-      bankDetails: { bankName: 'National Bank', accountNumber: '1122334455' },
+      bankDetails: { bankName: 'National Bank', accountNumber: '1122334455', accountHolderName: 'Sample Doctor' },
     });
 
     // Create completed appointment with auto payment
@@ -214,7 +214,7 @@ describeWithMongo('MongoDB security and booking integration', () => {
     const payoutRes = await request(app).post('/api/admin/payouts').set(auth(admin)).send({
       doctorId: doctor._id,
       amount: 150,
-      bankDetails: { bankName: 'National Bank', accountNumber: '1122334455' },
+      bankDetails: { bankName: 'National Bank', accountNumber: '1122334455', accountHolderName: 'Sample Doctor' },
       reference: 'SAL-001',
     });
     expect(payoutRes.status).toBe(201);
@@ -223,7 +223,9 @@ describeWithMongo('MongoDB security and booking integration', () => {
     const doctorPay = await request(app).get('/api/payments/my').set(auth(doctorUser));
     expect(doctorPay.status).toBe(200);
     expect(doctorPay.body.grossEarned).toBe(200);
-    expect(doctorPay.body.totalPaidOut).toBe(150);
+    expect(doctorPay.body.totalPaidOut).toBe(0);
+    expect(doctorPay.body.payouts[0].status).toBe('pending');
+    expect(doctorPay.body.reservedPayouts).toBe(150);
     expect(doctorPay.body.pendingBalance).toBe(50);
     expect(doctorPay.body.payouts).toHaveLength(1);
 
@@ -252,13 +254,13 @@ describeWithMongo('MongoDB security and booking integration', () => {
     expect(admUpload.body.user.avatar).toBe(samplePhoto);
 
     // Patient removes photo
-    const patRemove = await request(app).put('/api/auth/profile').set(auth(patient)).send({ avatar: '' });
+    const patRemove = await request(app).put('/api/auth/profile').set(auth(patient)).send({ avatar: null });
     expect(patRemove.status).toBe(200);
-    expect(patRemove.body.user.avatar).toBe('');
+    expect(patRemove.body.user.avatar).toBeNull();
 
     // Admin removes photo
-    const admRemove = await request(app).put('/api/auth/profile').set(auth(admin)).send({ avatar: '' });
+    const admRemove = await request(app).put('/api/auth/profile').set(auth(admin)).send({ avatar: null });
     expect(admRemove.status).toBe(200);
-    expect(admRemove.body.user.avatar).toBe('');
+    expect(admRemove.body.user.avatar).toBeNull();
   });
 });

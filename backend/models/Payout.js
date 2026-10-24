@@ -17,6 +17,7 @@ const payoutSchema = new mongoose.Schema(
       required: [true, 'Payout amount is required'],
       min: [0.01, 'Payout amount must be greater than 0'],
       max: [1000000, 'Payout amount exceeds maximum allowable limit'],
+      validate: value => /^\d+(?:\.\d{1,2})?$/.test(String(value)),
     },
     currency: {
       type: String,
@@ -32,14 +33,17 @@ const payoutSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['completed', 'processing', 'failed'],
-      default: 'completed',
+      enum: ['pending', 'completed', 'processing', 'failed', 'cancelled'],
+      default: 'pending',
     },
     reference: {
       type: String,
       default: '',
       maxlength: 120,
     },
+    // Populated only by a future verified provider callback, never by request input.
+    providerTransferId: { type: String, maxlength: 200 },
+    providerConfirmedAt: Date,
     notes: {
       type: String,
       default: '',
@@ -60,5 +64,7 @@ const payoutSchema = new mongoose.Schema(
 
 payoutSchema.index({ doctor: 1, processedAt: -1 });
 payoutSchema.index({ doctorUser: 1 });
+payoutSchema.index({ doctor: 1 }, { unique: true, name: 'one_active_payout_per_doctor',
+  partialFilterExpression: { status: { $in: ['pending', 'processing'] } } });
 
 module.exports = mongoose.model('Payout', payoutSchema);

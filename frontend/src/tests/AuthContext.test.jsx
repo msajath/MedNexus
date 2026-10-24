@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import { beforeEach, expect, test, vi } from 'vitest'
 import { AuthProvider, useAuth } from '../context/AuthContext'
 import { apiFetch } from '../config'
@@ -21,6 +21,18 @@ function Harness() {
 
 beforeEach(() => {
   fetchMock.mockReset()
+})
+
+test('a delayed signed-out response cannot clear a newer successful login', async () => {
+  let resolveOldSession
+  fetchMock.mockReturnValueOnce(new Promise(resolve => { resolveOldSession = resolve }))
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ user: { role: 'admin' } }) })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ user: { role: 'admin' } }) })
+  render(<AuthProvider><Harness /></AuthProvider>)
+  fireEvent.click(screen.getByRole('button', { name: 'login' }))
+  await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('admin'))
+  await act(async () => resolveOldSession(new Response(JSON.stringify({ code: 'AUTH_SESSION_INVALID' }), { status: 401 })))
+  expect(screen.getByTestId('state')).toHaveTextContent('admin')
 })
 
 test('loads the current user and logs out through the cookie API', async () => {

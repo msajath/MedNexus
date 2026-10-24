@@ -31,13 +31,11 @@ export default function DoctorDashboard() {
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getDay()
   const calendarOffset = (firstDayOfMonth + 6) % 7
 
-  const fetchTodayAppointments = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [data, paymentData] = await Promise.all([
+  const fetchTodayAppointments = useCallback(() => {
+    return Promise.all([
         apiFetchJson(`${API_BASE}/api/appointments/my`),
         apiFetchJson(`${API_BASE}/api/payments/my`),
-      ])
+      ]).then(([data, paymentData]) => {
       if (!Array.isArray(data?.appointments) || paymentData?.earnings?.basis !== 'recorded_payments'
         || !Number.isFinite(paymentData.earnings.netReceived)) throw new Error('Incomplete dashboard response')
       const appts = data.appointments
@@ -59,11 +57,11 @@ export default function DoctorDashboard() {
         pendingBalance: paymentData.pendingBalance ?? (paymentData.earnings.netReceived || 0),
       })
       setError('')
-    } catch {
+    }).catch(() => {
       setError('We couldn’t load your dashboard. Please try again.')
-    } finally {
+    }).finally(() => {
       setLoading(false)
-    }
+    })
   }, [])
 
   useEffect(() => {
@@ -89,7 +87,7 @@ export default function DoctorDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-4">
           <StatCard icon="calendar_today" value={loading || error ? '—' : stats.todayCount.toString()} label="Today's Appointments" color="var(--color-primary)" />
           <StatCard icon="people" value={loading || error ? '—' : stats.patientCount.toString()} label="Total Patients" color="var(--color-success)" />
-          <StatCard icon="payments" value={loading || error ? '—' : stats.totalEarnings} label="Net Received" color="#8b5cf6" />
+          <StatCard icon="payments" value={loading || error ? '—' : stats.totalEarnings} label="Consultation Earnings" color="#8b5cf6" />
           <StatCard icon="account_balance" value={loading || error ? '—' : `$${payoutSummary.totalPaidOut.toFixed(2)}`} label="Transferred to Bank" color="#059669" />
         </div>
 
@@ -100,7 +98,7 @@ export default function DoctorDashboard() {
               <span><strong>Earnings Confidentiality:</strong> Your earnings are visible only to you and hospital administrators. Completed appointments auto-credit your income.</span>
             </div>
             <div className="shrink-0 flex items-center gap-2 font-semibold">
-              <span className="text-navy-muted">Unpaid Balance:</span>
+              <span className="text-navy-muted">Available for payout:</span>
               <span className="text-sm font-bold text-purple-800">${payoutSummary.pendingBalance.toFixed(2)} pending</span>
             </div>
           </div>
@@ -175,7 +173,7 @@ export default function DoctorDashboard() {
                     <th className="p-3 text-left">Date</th>
                     <th className="p-3 text-left">Bank &amp; Account</th>
                     <th className="p-3 text-left">Reference / Note</th>
-                    <th className="p-3 text-right">Amount Received</th>
+                    <th className="p-3 text-right">Payout Amount</th>
                     <th className="p-3 text-center">Status</th>
                   </tr>
                 </thead>
@@ -191,7 +189,7 @@ export default function DoctorDashboard() {
                       <td className="p-3 text-right font-bold text-emerald-700">${Number(p.amount).toFixed(2)}</td>
                       <td className="p-3 text-center">
                         <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          ✓ Paid to Bank
+                          {p.status}
                         </span>
                       </td>
                     </tr>
@@ -201,7 +199,7 @@ export default function DoctorDashboard() {
             </div>
           ) : (
             <div className="p-6 text-center text-sm text-navy-muted">
-              No bank transfers recorded yet. Earned consultation fees accumulate in your balance and will be transferred to your saved bank account by the administrator.
+              No bank transfers recorded yet. Earned fees accumulate in your balance. Pending salary requests are not bank transfers.
             </div>
           )}
         </div>

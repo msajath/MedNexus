@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { API_BASE, apiFetch, SESSION_EXPIRED_EVENT } from '../config'
+import { API_BASE, apiFetch, SESSION_EXPIRED_EVENT, getSessionRevision } from '../config'
 
 const AuthContext = createContext(null)
 
@@ -9,10 +9,13 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState(null)
 
   const fetchCurrentUser = async () => {
+    const revision = getSessionRevision()
     try {
       const response = await apiFetch(`${API_BASE}/api/auth/me`)
+      if (revision !== getSessionRevision()) return
       if (response.ok) {
         const data = await response.json()
+        if (revision !== getSessionRevision()) return
         setUser(data.user || data)
         setError(null)
       } else {
@@ -21,7 +24,7 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.error('Error fetching current user:', err)
     } finally {
-      setLoading(false)
+      if (revision === getSessionRevision()) setLoading(false)
     }
   }
 

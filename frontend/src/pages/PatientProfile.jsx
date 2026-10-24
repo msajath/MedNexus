@@ -42,9 +42,7 @@ export default function PatientProfile() {
       address: user.address || ''
     })
     // Load existing avatar from user data
-    if (user.avatar) {
-      setProfilePicture(user.avatar)
-    }
+    setProfilePicture(user.avatar || null)
   }, [user])
 
   const handleImageUpload = (e) => {

@@ -47,7 +47,7 @@ const readDownload = async download => {
 }
 const requestFor = (page, path, method) => page.waitForResponse(response => response.url().endsWith(path) && response.request().method() === method)
 
-test('admin records a receipt and full refund, with persistent doctor earnings and a real redacted operations report', async ({ page, newContext }) => {
+test('completion automatically credits the booked fee once, supports a reversal, and exports a redacted operations report', async ({ page, newContext }) => {
   const errors = []
   page.on('pageerror', error => errors.push(error.message))
   const patient = await createPatient(newContext, 'QA Receipt Patient')
@@ -62,58 +62,37 @@ test('admin records a receipt and full refund, with persistent doctor earnings a
     await page.goto('/admin/appointments')
     await page.getByRole('searchbox', { name: 'Search appointments' }).fill(appointment._id)
     const row = page.getByRole('row').filter({ hasText: appointment._id })
-    await row.getByText('Record received payment', { exact: true }).click()
-    const paymentForm = row.getByRole('form', { name: 'Record payment for QA Receipt Patient' })
-    await paymentForm.getByLabel('Amount received for QA Receipt Patient').fill('87.45')
-    await paymentForm.getByLabel('Payment method for QA Receipt Patient').selectOption('bank_transfer')
-    await paymentForm.getByLabel('Receipt reference for QA Receipt Patient').fill(`QA-RECEIPT-${appointment._id}`)
-    await paymentForm.getByRole('checkbox').check()
-    const paymentPath = `/api/admin/appointments/${appointment._id}/payment`
-    const retryKeys = []
-    page.on('request', request => {
-      if (request.url().endsWith(paymentPath) && request.method() === 'POST') retryKeys.push(request.headers()['idempotency-key'])
-    })
-    let originalPayment
-    // Persist the receipt through the real API, then simulate the connection
-    // dropping before its response reaches the browser. Retrying must replay it.
-    await page.route(`**${paymentPath}`, async route => {
-      const result = await route.fetch()
-      expect(result.status()).toBe(201)
-      originalPayment = (await result.json()).payment
-      await route.abort('failed')
-    }, { times: 1 })
-    await paymentForm.getByRole('button', { name: 'Save received payment' }).click()
-    await expect(row.getByRole('alert')).toBeVisible()
-    expect(originalPayment?.status).toBe('received')
-    await expect(paymentForm.getByRole('button', { name: 'Save received payment' })).toBeEnabled()
-    const paymentResult = requestFor(page, paymentPath, 'POST')
-    await paymentForm.getByRole('button', { name: 'Save received payment' }).click()
-    const paymentResponse = await paymentResult
-    expect(paymentResponse.status()).toBe(200)
-    const { payment } = await paymentResponse.json()
-    expect(payment).toMatchObject({ appointmentId: appointment._id, amount: 87.45, method: 'bank_transfer', status: 'received' })
-    expect(payment.id).toBe(originalPayment.id)
-    expect(retryKeys).toHaveLength(2)
-    expect(retryKeys[0]).toBeTruthy()
-    expect(retryKeys[1]).toBe(retryKeys[0])
-    await expect(row.getByText('Payment received', { exact: true })).toBeVisible()
+    await expect(row.getByText('Record received payment', { exact: true })).toHaveCount(0)
+    const status = row.getByRole('combobox')
+    let saved = requestFor(page, `/api/admin/appointments/${appointment._id}/status`, 'PUT')
+    await status.selectOption('confirmed')
+    expect((await saved).ok()).toBe(true)
+    await expect(status).toHaveValue('confirmed')
+    saved = requestFor(page, `/api/admin/appointments/${appointment._id}/status`, 'PUT')
+    await status.selectOption('completed')
+    expect((await saved).ok()).toBe(true)
+    await expect(row.getByText('Earnings credited', { exact: true })).toBeVisible()
+    const paymentPath = `/api/admin/appointments/${appointment._id}/status`
+    expect((await page.request.put(paymentPath, { headers: requestHeaders, data: { status: 'completed' } })).ok()).toBe(true)
+    const receipts = await checkedJson(await page.request.get(`/api/admin/payments?appointmentId=${appointment._id}`))
+    expect(receipts.payments).toHaveLength(1)
+    const payment = receipts.payments[0]
+    expect(payment).toMatchObject({ appointmentId: appointment._id, amount: appointment.feeAtBooking, method: 'auto_credit', status: 'received' })
     await page.reload()
     await page.getByRole('searchbox', { name: 'Search appointments' }).fill(appointment._id)
     await expect(row.getByText(payment.id, { exact: true })).toBeVisible()
-    const receipts = await checkedJson(await page.request.get(`/api/admin/payments?appointmentId=${appointment._id}`))
-    expect(receipts.payments).toHaveLength(1)
-    expect(receipts.payments[0].id).toBe(payment.id)
     await doctorPage.goto('/doctor/dashboard')
-    await expect(doctorPage.getByText(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(before.netReceived + 87.45), { exact: true })).toBeVisible()
+    const earningsCard = doctorPage.getByText('Consultation Earnings', { exact: true }).locator('..')
+    await expect(earningsCard.getByText(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(before.netReceived + appointment.feeAtBooking), { exact: true })).toBeVisible()
     const after = (await checkedJson(await doctorPage.request.get('/api/payments/my'))).earnings
-    expect(after.netReceived).toBeCloseTo(before.netReceived + 87.45, 2)
+    expect(after.netReceived).toBeCloseTo(before.netReceived + appointment.feeAtBooking, 2)
     expect((await patient.page.request.post(`/api/admin/payments/${payment.id}/refund`, { headers: requestHeaders, data: { reason: 'Unauthorized attempt' } })).status()).toBe(403)
-    await row.getByText('Record issued refund', { exact: true }).click()
+    await row.getByText('Reverse earnings credit', { exact: true }).click()
     const refundForm = row.getByRole('form', { name: 'Record refund for QA Receipt Patient' })
     await refundForm.getByLabel('Refund reason for QA Receipt Patient').fill('Synthetic full refund already issued outside this site')
     await refundForm.getByRole('checkbox').check()
     const refundResult = requestFor(page, `/api/admin/payments/${payment.id}/refund`, 'POST')
-    await refundForm.getByRole('button', { name: 'Save issued refund' }).click()
+    await refundForm.getByRole('button', { name: 'Reverse credit' }).click()
     expect((await refundResult).status()).toBe(200)
     await expect(row.getByText('Refunded', { exact: true })).toBeVisible()
     await page.reload()
@@ -123,11 +102,11 @@ test('admin records a receipt and full refund, with persistent doctor earnings a
     expect(duplicateRefund.status()).toBe(409)
     const persisted = await checkedJson(await page.request.get(`/api/admin/payments?appointmentId=${appointment._id}`))
     expect(persisted.payments).toHaveLength(1)
-    expect(persisted.payments[0]).toMatchObject({ id: payment.id, status: 'refunded', amount: 87.45 })
+    expect(persisted.payments[0]).toMatchObject({ id: payment.id, status: 'refunded', amount: appointment.feeAtBooking })
     await doctorPage.reload()
     const net = (await checkedJson(await doctorPage.request.get('/api/payments/my'))).earnings.netReceived
     expect(net).toBe(before.netReceived)
-    await expect(doctorPage.getByText(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(net), { exact: true })).toBeVisible()
+    await expect(earningsCard.getByText(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(net), { exact: true })).toBeVisible()
     await page.goto('/admin/dashboard')
     const expectedStats = await checkedJson(await page.request.get('/api/admin/stats'))
     const expectedEarnings = await checkedJson(await page.request.get('/api/admin/earnings'))

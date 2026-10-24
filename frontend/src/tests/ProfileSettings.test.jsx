@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import PatientProfile from '../pages/PatientProfile'
 import DoctorProfileSettings from '../pages/DoctorProfileSettings'
+import AdminProfile from '../pages/AdminProfile'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../config'
 
@@ -26,6 +27,28 @@ afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
   vi.useRealTimers()
+})
+
+test.each([PatientProfile, AdminProfile])('%s clears the previous account photo when account identity changes', Profile => {
+  useAuth.mockReturnValue({ user: { ...initialUser, id: 'first', avatar: 'data:image/png;base64,aW1hZ2U=' }, setUser })
+  const view = openProfile(Profile)
+  expect(screen.getByRole('img', { name: 'Profile' })).toBeInTheDocument()
+  useAuth.mockReturnValue({ user: { ...initialUser, id: 'second', avatar: null }, setUser })
+  view.rerender(<MemoryRouter><Profile /></MemoryRouter>)
+  expect(screen.queryByRole('img', { name: 'Profile' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Upload Photo/ })).toBeInTheDocument()
+})
+
+test.each([PatientProfile, AdminProfile])('%s removes an uploaded photo and saves an empty avatar', async Profile => {
+  const user = { ...initialUser, avatar: 'data:image/png;base64,aW1hZ2U=' }
+  useAuth.mockReturnValue({ user, setUser })
+  apiFetch.mockResolvedValue(reply({ success: true, user: { ...user, avatar: null } }))
+  openProfile(Profile)
+  fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
+  expect(screen.queryByRole('img', { name: 'Profile' })).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+  await screen.findByText(/profile updated successfully!/i)
+  expect(JSON.parse(apiFetch.mock.calls[0][1].body).avatar).toBeNull()
 })
 
 // The profile labels are visual siblings of their inputs in the current UI.
@@ -67,7 +90,7 @@ test('patient can save their personal details while their login email remains re
   expect(screen.getByRole('button', { name: 'Save Changes' })).toBeEnabled()
 })
 
-test.each([PatientProfile, DoctorProfileSettings])('%s rejects unsupported and oversized avatar files before saving', async Profile => {
+test.each([PatientProfile, DoctorProfileSettings, AdminProfile])('%s rejects unsupported and oversized avatar files before saving', async Profile => {
   apiFetch.mockResolvedValue(reply({ success: true, user: initialUser }))
   const { container } = openProfile(Profile)
   const fileInput = container.querySelector('input[type="file"]')
@@ -78,22 +101,22 @@ test.each([PatientProfile, DoctorProfileSettings])('%s rejects unsupported and o
   fireEvent.change(fileInput, { target: { files: [largeImage] } })
   expect(screen.queryByRole('img', { name: 'Profile' })).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
-  await screen.findByText('Profile updated successfully!')
+  await screen.findByText(/profile updated successfully!/i)
   expect(JSON.parse(apiFetch.mock.calls[0][1].body).avatar).toBeNull()
 })
 
-test.each([PatientProfile, DoctorProfileSettings])('%s previews and saves a supported avatar image', async Profile => {
+test.each([PatientProfile, DoctorProfileSettings, AdminProfile])('%s previews and saves a supported avatar image', async Profile => {
   apiFetch.mockResolvedValue(reply({ success: true, user: initialUser }))
   const { container } = openProfile(Profile)
   const fileInput = container.querySelector('input[type="file"]')
   const click = vi.spyOn(fileInput, 'click')
-  fireEvent.click(screen.getByRole('button', { name: 'Change Photo' }))
+  fireEvent.click(screen.getByRole('button', { name: /(?:Upload|Change) Photo/ }))
   expect(click).toHaveBeenCalledOnce()
   fireEvent.change(fileInput, { target: { files: [new File(['qa-image'], 'avatar.png', { type: 'image/png' })] } })
   const image = await screen.findByRole('img', { name: 'Profile' })
   expect(image.getAttribute('src')).toMatch(/^data:image\/png;base64,/)
   fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
-  await screen.findByText('Profile updated successfully!')
+  await screen.findByText(/profile updated successfully!/i)
   expect(JSON.parse(apiFetch.mock.calls[0][1].body).avatar).toBe(image.getAttribute('src'))
 })
 
@@ -129,7 +152,7 @@ test('doctor saves professional details without requiring password confirmation 
   expect(field('First Name')).toHaveValue('Dr. Nora')
   change('Last Name', 'Clinician')
   change('Specialty', 'Cardiology')
-  change('Consultation Fee ($)', '125')
+  expect(screen.getByRole('spinbutton')).toBeDisabled()
   change('Experience', '8+ Years')
   change('Clinic Location', 'Example Clinic')
   change('Professional Bio', 'Cardiology consultations.')
@@ -138,7 +161,8 @@ test('doctor saves professional details without requiring password confirmation 
   fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
   expect(await screen.findByText('Profile updated successfully!')).toBeInTheDocument()
   const payload = JSON.parse(apiFetch.mock.calls[0][1].body)
-  expect(payload).toMatchObject({ name: 'Dr. Nora Clinician', email: initialUser.email, specialty: 'Cardiology', fee: 125, experience: '8+ Years', location: 'Example Clinic', bio: 'Cardiology consultations.', phone: '0711111111', address: 'Example Clinic Road' })
+  expect(payload).toMatchObject({ name: 'Dr. Nora Clinician', email: initialUser.email, specialty: 'Cardiology', experience: '8+ Years', location: 'Example Clinic', bio: 'Cardiology consultations.', phone: '0711111111', address: 'Example Clinic Road' })
+  expect(payload).not.toHaveProperty('fee')
   expect(payload).not.toHaveProperty('currentPassword')
   expect(setUser).toHaveBeenCalledWith(savedUser)
 })

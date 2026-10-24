@@ -105,7 +105,9 @@ withMongo('Doctors can read only their own recorded-payment totals', () => {
     const myEarnings = await request(app).get('/api/payments/my').set(auth(doctorUser));
     expect(myEarnings.status).toBe(200);
     expect(myEarnings.body.grossEarned).toBe(200);
-    expect(myEarnings.body.totalPaidOut).toBe(150);
+    expect(myEarnings.body.totalPaidOut).toBe(0);
+    expect(myEarnings.body.payouts[0].status).toBe('pending');
+    expect(myEarnings.body.reservedPayouts).toBe(150);
     expect(myEarnings.body.pendingBalance).toBe(50);
     expect(myEarnings.body.payouts).toHaveLength(1);
     expect(myEarnings.body.payouts[0].reference).toBe('SAL-2026-11');
@@ -116,5 +118,20 @@ withMongo('Doctors can read only their own recorded-payment totals', () => {
 
     const patientForbidden = await request(app).post('/api/admin/payouts').set(auth(patient)).send({ doctorId: doctor._id, amount: 50 });
     expect(patientForbidden.status).toBe(403);
+  });
+
+  test('competing payout requests reserve earnings once, cancellation releases them without claiming a transfer', async () => {
+    await receipt(doctor, 20000);
+    const payload = { doctorId: doctor._id, amount: 150, bankDetails: { bankName: 'Sample Bank', accountNumber: '0000012345', accountHolderName: 'Sample Doctor' } };
+    const results = await Promise.all([1, 2].map(() => request(app).post('/api/admin/payouts').set(auth(admin)).send(payload)));
+    expect(results.map(r => r.status).sort()).toEqual([201, 409]);
+    expect(await Payout.countDocuments({ doctor: doctor._id, status: 'pending' })).toBe(1);
+    const payout = results.find(r => r.status === 201).body.payout;
+    expect(payout.bankDetails.accountNumber).toBe('****2345');
+    const held = (await request(app).get('/api/payments/my').set(auth(doctorUser))).body;
+    expect(held).toMatchObject({ totalPaidOut: 0, reservedPayouts: 150, pendingBalance: 50 });
+    expect((await request(app).post(`/api/admin/payouts/${payout._id}/cancel`).set(auth(admin))).status).toBe(200);
+    const released = (await request(app).get('/api/payments/my').set(auth(doctorUser))).body;
+    expect(released).toMatchObject({ totalPaidOut: 0, reservedPayouts: 0, pendingBalance: 200 });
   });
 });

@@ -67,9 +67,7 @@ export default function DoctorProfileSettings() {
       accountHolderName: user.doctorProfile?.bankDetails?.accountHolderName || user.name || '',
       routingNumber: user.doctorProfile?.bankDetails?.routingNumber || ''
     })
-    if (user.avatar) {
-      setProfilePicture(user.avatar)
-    }
+    setProfilePicture(user.avatar || null)
   }, [user])
 
   const handleImageUpload = (e) => {

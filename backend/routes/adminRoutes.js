@@ -7,6 +7,7 @@ const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const Appointment = require('../models/Appointment');
 const Payment = require('../models/Payment');
+const { creditCompletedAppointment } = require('../utils/appointmentEarnings');
 const Payout = require('../models/Payout');
 const Availability = require('../models/Availability');
 const ContactMessage = require('../models/ContactMessage');
@@ -15,12 +16,14 @@ const validateObjectId = require('../middleware/validateObjectId');
 const { isValidDate } = require('../utils/slots');
 const { adminAppointmentFilter, adminAppointmentSelection, serializeAdminAppointment, summarizeAppointments } = require('../utils/adminAppointments');
 const { summarizePayments, withAppointmentPayments } = require('../utils/payments');
+const { summarizePayouts, maskBank } = require('../utils/payouts');
 
 const router = express.Router();
 
 // All admin routes require admin role
 router.use(protect, authorize('admin'));
 router.use(require('./adminPaymentRoutes'));
+router.use(require('./adminPayoutRoutes'));
 
 // ──────────────────────────────────────────────
 // @route   GET /api/admin/stats
@@ -62,8 +65,8 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// Earnings include only manually verified payment receipts. Booking status and
-// consultation fees never imply that money has been received.
+// Earnings combine completion credits and retained historical receipts. Automatic
+// service credits do not confirm that a bank transfer or card charge took place.
 router.get('/earnings', async (req, res) => {
   try {
     const [doctors, appointments, payments, payouts] = await Promise.all([
@@ -75,13 +78,13 @@ router.get('/earnings', async (req, res) => {
     const rowFor = (doctorId) => ({
       doctorId, userId: null, name: 'Removed doctor', specialty: '', fee: 100,
       bankDetails: { bankName: '', accountNumber: '', accountHolderName: '', routingNumber: '', branch: '' },
-      isActive: false, completedAppointments: 0, payments: [], totalPaidOut: 0,
+      isActive: false, completedAppointments: 0, payments: [], payoutRecords: [],
     });
     const rows = new Map(doctors.map((doctor) => [String(doctor._id), {
       ...rowFor(String(doctor._id)), userId: doctor.user?._id || null,
       name: doctor.user?.name || 'Removed doctor', specialty: doctor.specialty,
       fee: doctor.fee ?? 100,
-      bankDetails: doctor.bankDetails || { bankName: '', accountNumber: '', accountHolderName: '', routingNumber: '', branch: '' },
+      bankDetails: maskBank(doctor.bankDetails),
       isActive: Boolean(doctor.user && doctor.user.isActive !== false),
     }]));
     for (const appointment of appointments) {
@@ -96,23 +99,23 @@ router.get('/earnings', async (req, res) => {
     }
     for (const payout of payouts) {
       const key = String(payout.doctor);
-      if (rows.has(key)) {
-        rows.get(key).totalPaidOut = (rows.get(key).totalPaidOut || 0) + payout.amount;
-      }
+      if (rows.has(key)) rows.get(key).payoutRecords.push(payout);
     }
-    const result = [...rows.values()].map(({ payments: receipts, totalPaidOut, ...row }) => {
+    const result = [...rows.values()].map(({ payments: receipts, payoutRecords, ...row }) => {
       const summary = summarizePayments(receipts);
+      const { totalPaidOut, reservedPayouts } = summarizePayouts(payoutRecords);
       const grossEarned = summary.netReceived;
-      const pendingBalance = Math.max(0, grossEarned - totalPaidOut);
+      const pendingBalance = Math.max(0, grossEarned - totalPaidOut - reservedPayouts);
       return {
         ...row,
         ...summary,
         totalPaidOut: Math.round(totalPaidOut * 100) / 100,
+        reservedPayouts,
         pendingBalance: Math.round(pendingBalance * 100) / 100,
       };
     });
     result.sort((a, b) => b.netReceived - a.netReceived || a.name.localeCompare(b.name));
-    const totalDoctorPayouts = payouts.reduce((acc, p) => acc + p.amount, 0);
+    const totalDoctorPayouts = summarizePayouts(payouts).totalPaidOut;
     const earnings = summarizePayments(payments);
     const hospitalRetained = Math.round((earnings.netReceived - totalDoctorPayouts) * 100) / 100;
 
@@ -500,8 +503,12 @@ router.put('/appointments/:id/status', validateObjectId('id'), async (req, res) 
     if (!['confirmed', 'cancelled', 'completed'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid status' });
     }
-    const current = await Appointment.findOne({ _id: req.params.id, ...adminAppointmentFilter }).select('_id status');
+    const current = await Appointment.findOne({ _id: req.params.id, ...adminAppointmentFilter }).select(adminAppointmentSelection);
     if (!current) return res.status(404).json({ success: false, message: 'Appointment not found' });
+    if (current.status === 'completed' && status === 'completed') {
+      await creditCompletedAppointment(current, req.user._id);
+      return res.json({ success: true, appointment: (await withAppointmentPayments([serializeAdminAppointment(current)]))[0] });
+    }
     if (!allowedTransitions[current.status]?.includes(status)) return res.status(409).json({ success: false, message: 'Invalid appointment status transition' });
     const appointment = await Appointment.findOneAndUpdate(
       { _id: current._id, status: current.status, ...adminAppointmentFilter },
@@ -509,35 +516,7 @@ router.put('/appointments/:id/status', validateObjectId('id'), async (req, res) 
     ).select(adminAppointmentSelection);
     if (!appointment) return res.status(409).json({ success: false, message: 'Appointment changed. Refresh and retry.' });
 
-    if (status === 'completed') {
-      try {
-        const existingPayment = await Payment.findOne({ appointment: appointment._id, status: 'received' });
-        if (!existingPayment) {
-          const doc = await Doctor.findById(appointment.doctor);
-          const fee = (typeof appointment.feeAtBooking === 'number' && appointment.feeAtBooking >= 0)
-            ? appointment.feeAtBooking
-            : (doc?.fee ?? 100);
-          const amountMinor = Math.round(fee * 100);
-          if (amountMinor > 0) {
-            await Payment.create({
-              appointment: appointment._id,
-              doctor: appointment.doctor,
-              patient: appointment.patient,
-              amountMinor,
-              currency: 'USD',
-              method: 'auto_credit',
-              reference: `AUTO-${String(appointment._id).slice(-8).toUpperCase()}`,
-              status: 'received',
-              receivedAt: new Date(),
-              recordedAt: new Date(),
-              recordedBy: req.user._id,
-            });
-          }
-        }
-      } catch (paymentErr) {
-        console.error('Error auto-crediting completed appointment payment:', paymentErr);
-      }
-    }
+    if (status === 'completed') await creditCompletedAppointment(appointment, req.user._id);
 
     res.json({ success: true, appointment: (await withAppointmentPayments([serializeAdminAppointment(appointment)]))[0] });
   } catch (error) {
@@ -555,8 +534,8 @@ router.put('/appointments/:id/status', validateObjectId('id'), async (req, res) 
 // ──────────────────────────────────────────────
 router.put('/doctors/:id/fee', validateObjectId('id'), async (req, res) => {
   try {
-    const fee = Number(req.body.fee);
-    if (!Number.isFinite(fee) || fee < 0 || fee > 1000000) {
+    const fee = req.body.fee;
+    if (typeof fee !== 'number' || !Number.isFinite(fee) || fee < 0 || fee > 1000000 || !/^\d+(?:\.\d{1,2})?$/.test(String(fee))) {
       return res.status(400).json({ success: false, message: 'Please provide a valid consultation fee between 0 and 1,000,000' });
     }
 
@@ -592,122 +571,8 @@ router.put('/doctors/:id/fee', validateObjectId('id'), async (req, res) => {
 // @desc    Admin sends money / pays salary to a doctor's bank account
 // @access  Private (admin only)
 // ──────────────────────────────────────────────
-router.post('/payouts', async (req, res) => {
-  try {
-    const { doctorId, amount, bankDetails, reference, notes } = req.body;
-    if (!doctorId) {
-      return res.status(400).json({ success: false, message: 'Doctor ID is required' });
-    }
-    const payoutAmount = Number(amount);
-    if (!Number.isFinite(payoutAmount) || payoutAmount <= 0) {
-      return res.status(400).json({ success: false, message: 'Payout amount must be a positive number' });
-    }
+// Payout requests are managed by adminPayoutRoutes after admin authorization.
 
-    let doctor = await Doctor.findById(doctorId).populate('user', 'name email');
-    if (!doctor) {
-      doctor = await Doctor.findOne({ user: doctorId }).populate('user', 'name email');
-    }
-    if (!doctor) {
-      return res.status(404).json({ success: false, message: 'Doctor not found' });
-    }
-
-    // Determine target bank details
-    const targetBank = {
-      bankName: bankDetails?.bankName || doctor.bankDetails?.bankName || '',
-      accountNumber: bankDetails?.accountNumber || doctor.bankDetails?.accountNumber || '',
-      accountHolderName: bankDetails?.accountHolderName || doctor.bankDetails?.accountHolderName || doctor.user?.name || '',
-      routingNumber: bankDetails?.routingNumber || doctor.bankDetails?.routingNumber || '',
-      branch: bankDetails?.branch || doctor.bankDetails?.branch || '',
-    };
-
-    if (!targetBank.bankName.trim() || !targetBank.accountNumber.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Doctor bank name and account number are required to process bank payout',
-      });
-    }
-
-    // Update doctor's saved bank details if provided
-    doctor.bankDetails = targetBank;
-    await doctor.save();
-
-    // Calculate current gross received and past payouts
-    const [payments, existingPayouts] = await Promise.all([
-      Payment.find({ doctor: doctor._id, status: 'received' }),
-      Payout.find({ doctor: doctor._id, status: 'completed' }),
-    ]);
-
-    const grossEarned = payments.reduce((acc, p) => acc + (p.amountMinor / 100), 0);
-    const pastPaid = existingPayouts.reduce((acc, p) => acc + p.amount, 0);
-    const availableBalance = Math.max(0, grossEarned - pastPaid);
-
-    const ref = (reference || `PAY-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`).trim();
-
-    const payout = await Payout.create({
-      doctor: doctor._id,
-      doctorUser: doctor.user?._id || doctor.user,
-      amount: Math.round(payoutAmount * 100) / 100,
-      currency: 'USD',
-      bankDetails: targetBank,
-      status: 'completed',
-      reference: ref,
-      notes: notes ? String(notes).trim().slice(0, 500) : 'Doctor salary / earnings payout',
-      processedBy: req.user._id,
-      processedAt: new Date(),
-    });
-
-    const newPaidTotal = pastPaid + payout.amount;
-    const newBalance = Math.max(0, grossEarned - newPaidTotal);
-
-    res.status(201).json({
-      success: true,
-      message: `Successfully sent $${payout.amount.toFixed(2)} to ${doctor.user?.name || 'doctor'}'s bank account`,
-      payout,
-      doctorEarnings: {
-        grossEarned: Math.round(grossEarned * 100) / 100,
-        totalPaidOut: Math.round(newPaidTotal * 100) / 100,
-        pendingBalance: Math.round(newBalance * 100) / 100,
-      },
-    });
-  } catch (error) {
-    return errorHandler(error, req, res, () => {});
-  }
-});
-
-// ──────────────────────────────────────────────
-// @route   GET /api/admin/payouts
-// @desc    Get all bank payouts history
-// @access  Private (admin only)
-// ──────────────────────────────────────────────
-router.get('/payouts', async (req, res) => {
-  try {
-    const filter = {};
-    if (req.query.doctorId) {
-      filter.doctor = req.query.doctorId;
-    }
-    const payouts = await Payout.find(filter)
-      .populate('doctorUser', 'name email avatar')
-      .populate('processedBy', 'name email')
-      .sort({ processedAt: -1 });
-
-    const totalAmount = payouts.reduce((sum, p) => sum + p.amount, 0);
-
-    res.json({
-      success: true,
-      count: payouts.length,
-      totalAmount: Math.round(totalAmount * 100) / 100,
-      payouts,
-    });
-  } catch (error) {
-    return errorHandler(error, req, res, () => {});
-  }
-});
-
-// ──────────────────────────────────────────────
-// @route   GET /api/admin/records
-// @desc    Explicitly reject clinical-record access for administrators
-// @access  Private (admin only)
-// ──────────────────────────────────────────────
 router.get('/records', (req, res) => res.status(403).json({
   success: false, message: 'Administrators cannot access clinical records',
 }));
